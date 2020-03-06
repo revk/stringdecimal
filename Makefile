@@ -4,5 +4,5 @@ stringdecimal.o: stringdecimal.c stringdecimal.h
 	cc -O -c -o $@ $< -DLIB 
 
 stringdecimal: stringdecimal.c stringdecimal.h
-	cc -O -o $@ $<
+	cc -O -o $@ $< -g
 
