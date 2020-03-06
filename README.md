@@ -1,4 +1,4 @@
-* stringdecimal
+# stringdecimal
 
 Simple library that does basic decimal maths to any precision on strings.
 
