@@ -432,13 +432,10 @@ umul (sd_t * r, sd_t * a, sd_t * b)
    for (int p = 0; p < a->sig; p++)
       if (a->d[p])
       {                         // Add
-         sd_t *m = base[a->d[p] - 1];
-         m->mag += a->mag - p;
-         sd_t *sum = uadd (NULL, c, m, 0);
+         sd_t *sum = uadd (NULL, c, base[a->d[p] - 1], a->mag - p);
          if (c)
             free (clean (c));
          c = sum;
-         m->mag -= a->mag - p;
       }
    free_base (base);
    if (!r)
@@ -447,6 +444,7 @@ umul (sd_t * r, sd_t * a, sd_t * b)
       memset (r, 0, sizeof (*r));
    else
    {
+      c->neg = r->neg;
       *r = *c;
       free (c);
    }
@@ -882,11 +880,8 @@ stringdecimal_eval (const char *sum, int places, char round)
          operand[operands++] = v;
          break;
       }
-      if (!*sum)
-         break;                 // clean exit
       while (*sum)
-      {
-         // Operator
+      {                         // Close brackets
          while (isspace (*sum))
             sum++;
          if (*sum == ')')
@@ -897,6 +892,15 @@ stringdecimal_eval (const char *sum, int places, char round)
             sum++;
             continue;
          }
+         break;
+      }
+      if (!*sum)
+         break;                 // clean exit
+      while (*sum)
+      {
+         while (isspace (*sum))
+            sum++;
+         // Operator
          void addop (char op, int level)
          {
             while (operators && operator[operators - 1].level >= level)
