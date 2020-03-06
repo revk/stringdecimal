@@ -1092,7 +1092,8 @@ stringdecimal_eval_f (char *sum, int places, char round)
 int
 main (int argc, const char *argv[])
 {
-   int places = 2;
+   int roundplaces = 2;
+   int divplaces = 100;
    char round = 0;
    char rnd = 0;
    for (int a = 1; a < argc; a++)
@@ -1101,15 +1102,17 @@ main (int argc, const char *argv[])
       if (*s == '-' && s[1] == 'r')
       {
          if (s[2])
-            places = atoi (s + 2);
-         rnd = 1;
+         {
+            roundplaces = atoi (s + 2);
+            rnd = 1;
+         } else
+            rnd = 0;
          continue;
       }
-      if (*s == '-' && s[1] == 'p')
+      if (*s == '-' && s[1] == 'd')
       {
-         rnd = 0;
          if (s[2])
-            places = atoi (s + 2);
+            divplaces = atoi (s + 2);
          continue;
       }
       if (*s == '-' && s[1] && strchr ("CFUTRB", toupper (s[1])))
@@ -1117,9 +1120,9 @@ main (int argc, const char *argv[])
          round = toupper (s[1]);
          continue;
       }
-      char *res = stringdecimal_eval (s, places, round);
+      char *res = stringdecimal_eval (s, divplaces, round);
       if (rnd)
-         res = stringdecimal_rnd_f (res, places, round, NULL);
+         res = stringdecimal_rnd_f (res, roundplaces, round, NULL);
       printf ("%s = %s\n", s, res);
       if (res)
          free (res);
