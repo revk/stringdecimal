@@ -1096,10 +1096,12 @@ main (int argc, const char *argv[])
    int divplaces = 100;
    char round = 0;
    char rnd = 0;
+   if (argc <= 1)
+      errx (1, "-p<places> to round, -d<places> to limit division, -c/-f/-u/-t/-r/-b to sett rounding type (default b)");
    for (int a = 1; a < argc; a++)
    {
       const char *s = argv[a];
-      if (*s == '-' && s[1] == 'r')
+      if (*s == '-' && s[1] == 'p')
       {
          if (s[2])
          {
@@ -1118,12 +1120,13 @@ main (int argc, const char *argv[])
       if (*s == '-' && s[1] && strchr ("CFUTRB", toupper (s[1])))
       {
          round = toupper (s[1]);
+         rnd = 1;
          continue;
       }
       char *res = stringdecimal_eval (s, divplaces, round);
       if (rnd)
          res = stringdecimal_rnd_f (res, roundplaces, round, NULL);
-      printf ("%s = %s\n", s, res);
+      printf ("%s\n", res);
       if (res)
          free (res);
    }
