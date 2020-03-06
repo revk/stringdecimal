@@ -1097,7 +1097,7 @@ main (int argc, const char *argv[])
    char round = 0;
    char rnd = 0;
    if (argc <= 1)
-      errx (1, "-p<places> to round, -d<places> to limit division, -c/-f/-u/-t/-r/-b to sett rounding type (default b)");
+      errx (1, "-p<places> to round, -d<places> to limit division, -c/-f/-u/-t/-r/-b to set rounding type (default b)");
    for (int a = 1; a < argc; a++)
    {
       const char *s = argv[a];
