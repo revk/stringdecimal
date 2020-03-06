@@ -1,4 +1,5 @@
 * stringdecimal
+
 Simple library that does basic decimal maths to any precision on strings.
 
 This includes functions for add, subtract, multiple, compare, divide and rounding.
