@@ -1117,21 +1117,10 @@ main (int argc, const char *argv[])
          round = toupper (s[1]);
          continue;
       }
-#if 0
-      sd_t x = { 0 };
-      fprintf (stderr, "Input [%s]\n", s);
-      const char *p = parse (&x, s);
-      if (!p)
-         fprintf (stderr, "Parse fail\n");
-      else if (*p)
-         fprintf (stderr, "Extra [%s]\n", p);
-      dump (&x);
-      fprintf (stderr, "Output [%s]\n", output_clean (&x));
-#endif
       char *res = stringdecimal_eval (s, places, round);
       if (rnd)
          res = stringdecimal_rnd_f (res, places, round, NULL);
-      fprintf (stderr, "[%s] = [%s]\n", s, res);
+      printf ("%s = %s\n", s, res);
       if (res)
          free (res);
    }
