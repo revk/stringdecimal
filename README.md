@@ -2,6 +2,8 @@
 
 Simple library that does basic decimal maths to any precision on strings.
 
+See include file for the various calls available.
+
 This includes functions for add, subtract, multiple, compare, divide and rounding.
 Whilst add, subtract, and multiple always work to whatever precision is needed, division takes a number if places to stop infinite places being generated.
 Various standard rounding, including (default) bankers rounding.
