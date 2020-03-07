@@ -515,15 +515,24 @@ udiv (sd_t * r, sd_t * a, sd_t * b, int places, char round, sd_t * rem)
           || (round == 'B' && diff > 0) // Round up
           || (round == 'B' && !diff && (r->d[r->sig - 1] & 1)))
       {                         // Add one
-         sd_t *s;
-#if 0
-         // Adjust remainder
-         s = usub (NULL, v, &one, r->mag - r->sig + 1);
-         free (clean (v));
-         v = s;
+         if (rem)
+         {                      // Adjust remainder, goes negative
+            base[0]->mag += shift + 1;
+#ifdef DEBUG
+            char *V = output (v);
+            char *O = output (base[0]);
+            fprintf (stderr, "Adjust remainder:\n%s-\n%s\n", O, V);
+            free (V);
+            free (O);
 #endif
+            sd_t *s = usub (NULL, base[0], v, 0);
+            base[0]->mag -= shift + 1;
+            free (clean (v));
+            v = s;
+            v->neg ^= 1;
+         }
          // Adjust r
-         s = uadd (NULL, r, &one, r->mag - r->sig + 1);
+         sd_t *s = uadd (NULL, r, &one, r->mag - r->sig + 1);
          s->neg = r->neg;
          clean (r);
          *r = *s;
@@ -532,8 +541,13 @@ udiv (sd_t * r, sd_t * a, sd_t * b, int places, char round, sd_t * rem)
    }
    free_base (base);
    if (rem)
+   {
+      if (b->neg)
+         v->neg ^= 1;
+      if (r->neg)
+         v->neg ^= 1;
       *rem = *v;
-   else
+   } else
       clean (v);
    free (v);
    return norm (r);
@@ -650,7 +664,7 @@ sdiv (sd_t * r, sd_t * a, sd_t * b, int places, char round, sd_t * rem)
 }
 
 static sd_t *
-srnd (sd_t * r, sd_t * a, int places, char round, sd_t * rem)
+srnd (sd_t * r, sd_t * a, int places, char round)
 {
    if (!r)
       r = calloc (1, sizeof (*r));
@@ -768,14 +782,12 @@ stringdecimal_div (const char *a, const char *b, int places, char round, char **
 };
 
 char *
-stringdecimal_rnd (const char *a, int places, char round, char **rem)
+stringdecimal_rnd (const char *a, int places, char round)
 {                               // Round to specified number of places
-   sd_t A = { 0 }, R = { 0 }, REM = { 0 };
+   sd_t A = { 0 }, R = { 0 };
    parse (&A, a);
-   srnd (&R, &A, places, round, &REM);
-   if (rem)
-      *rem = output (&REM);
-   return output_cleans (&R, &A, &REM, NULL);
+   srnd (&R, &A, places, round);
+   return output_cleans (&R, &A, NULL);
 };
 
 int
@@ -1040,9 +1052,9 @@ stringdecimal_div_ff (char *a, char *b, int places, char round, char **rem)
 };
 
 char *
-stringdecimal_rnd_f (char *a, int places, char round, char **rem)
+stringdecimal_rnd_f (char *a, int places, char round)
 {                               // Round to specified number of places with free arg
-   char *r = stringdecimal_rnd (a, places, round, rem);
+   char *r = stringdecimal_rnd (a, places, round);
    if (a)
       free (a);
    return r;
@@ -1117,6 +1129,14 @@ main (int argc, const char *argv[])
             divplaces = atoi (s + 2);
          continue;
       }
+      if (*s == '-' && s[1] == 'q' && a + 2 <= argc)
+      {
+         char *rem = NULL;
+         char *res = stringdecimal_div (argv[a + 1], argv[a + 2], divplaces, round, &rem);
+         fprintf (stderr, "%s/%s = %s rem %s\n", argv[a + 1], argv[a + 2], res, rem);
+         a += 2;
+         continue;
+      }
       if (*s == '-' && s[1] && strchr ("CFUTRB", toupper (s[1])))
       {
          round = toupper (s[1]);
@@ -1125,7 +1145,7 @@ main (int argc, const char *argv[])
       }
       char *res = stringdecimal_eval (s, divplaces, round);
       if (rnd)
-         res = stringdecimal_rnd_f (res, roundplaces, round, NULL);
+         res = stringdecimal_rnd_f (res, roundplaces, round);
       printf ("%s\n", res);
       if (res)
          free (res);
