@@ -488,17 +488,17 @@ udiv (sd_t * r, sd_t * a, sd_t * b, int places, char round, sd_t * rem)
       if (!v->sig)
          break;
    }
-   if (!round)
-      round = 'B';
-   if (r->neg)
-   {                            // reverse logic for +/-
-      if (round == 'F')
-         round = 'C';
-      else if (round == 'C')
-         round = 'F';
-   }
-   if (round != 'T')
+   if (round != 'T' && v->sig)
    {                            // Rounding
+      if (!round)
+         round = 'B';           // Default
+      if (r->neg)
+      {                         // reverse logic for +/-
+         if (round == 'F')
+            round = 'C';
+         else if (round == 'C')
+            round = 'F';
+      }
       int shift = mag - sig;
       int diff = ucmp (v, base[4], shift);
 #ifdef DEBUG
