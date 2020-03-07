@@ -586,9 +586,21 @@ sadd (sd_t * r, sd_t * a, sd_t * b)
    free (B);
 #endif
    if (a->neg && !b->neg)
-      return usub (r, b, a, 0);
+   {                            // Reverse subtract
+      sd_t *t = a;
+      a = b;
+      b = t;
+   }
    if (!a->neg && b->neg)
+   {                            // Subtract
+      int d = ucmp (a, b, 0);
+      if (d < 0)
+      {                         // a<b so answer will be negative b-a
+         r->neg ^= 1;
+         return usub (r, b, a, 0);
+      }
       return usub (r, a, b, 0);
+   }
    if (a->neg && b->neg)
       r->neg ^= 1;
    return uadd (r, a, b, 0);
