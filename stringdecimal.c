@@ -898,7 +898,7 @@ stringdecimal_eval (const char *sum, int places, char round)
             errx (1, "malloc");
          sum = parse (v, sum);
          if (sum == was)
-            return "* Missing operand";
+            return strdup ("* Missing operand");
          if (operands + 1 > operandmax)
             operand = realloc (operand, (operandmax += 10) * sizeof (*operand));
          operand[operands++] = v;
@@ -911,7 +911,7 @@ stringdecimal_eval (const char *sum, int places, char round)
          if (*sum == ')')
          {
             if (!level)
-               return "* Too many close brackets";
+               return strdup ("* Too many close brackets");
             level -= 10;
             sum++;
             continue;
@@ -945,13 +945,13 @@ stringdecimal_eval (const char *sum, int places, char round)
             addop (*sum++, level + 1);
             break;
          }
-         return "* Missing operator";
+         return strdup ("* Missing operator");
       }
       if (!*sum)
-         return "* Missing operand";
+         return strdup ("* Missing operand");
    }
    if (level)
-      return "* Unclosed brackets";
+      return strdup ("* Unclosed brackets");
    while (operators)
       operate ();
    if (operands != 1)
