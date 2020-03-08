@@ -26,7 +26,7 @@
 #include <stdlib.h>
 #include <err.h>
 
-//#define DEBUG
+#define DEBUG
 
 // Support functions
 
@@ -102,38 +102,6 @@ norm (sd_t * s)
       s->neg = 0;
    }
    return s;
-}
-
-static sd_t *
-neg (sd_t * s)
-{                               // Negate
-   if (!s && !(s = calloc (1, sizeof (*s))))
-      errx (1, "malloc");
-   s->neg ^= 1;
-   return s;
-}
-
-static void
-dump (sd_t * s)
-{
-   if (!s)
-      fprintf (stderr, "NULL\n");
-   else
-   {
-      if (s->neg)
-         fprintf (stderr, " Negative");
-      if (!s->m)
-         fprintf (stderr, " Static");
-      if (!s->d)
-         fprintf (stderr, " No digits");
-      else
-      {
-         fprintf (stderr, " Digits=");
-         for (int n = 0; n < s->sig; n++)
-            fprintf (stderr, "%c", '0' + s->d[n]);
-      }
-      fprintf (stderr, "\n");
-   }
 }
 
 static const char *
@@ -277,14 +245,6 @@ output (sd_t * s)
    }
    *p = 0;
    return d;
-}
-
-static char *
-output_clean (sd_t * s)
-{                               // Convert to string and clean
-   char *r = output (s);
-   clean (s);
-   return r;
 }
 
 static char *
@@ -785,8 +745,13 @@ char *
 stringdecimal_div (const char *a, const char *b, int places, char round, char **rem)
 {                               // Simple divide - to specified number of places, with remainder
    sd_t A = { 0 }, B = { 0 }, R = { 0 }, REM = { 0 };
-   parse (&A, a);
    parse (&B, b);
+   if (!B.sig)
+   {
+      clean (&B);
+      return NULL;              // Divide by zero
+   }
+   parse (&A, a);
    sdiv (&R, &A, &B, places, round, &REM);
    if (rem)
       *rem = output (&REM);
@@ -819,6 +784,7 @@ stringdecimal_eval (const char *sum, int places, char round)
 {                               // Parse a sum and process it using basic maths
    if (!sum)
       return NULL;
+   const char *fail = NULL;
    int level = 0;               // Brackets and operator level
    int operators = 0,
       operatormax = 0;
@@ -868,6 +834,8 @@ stringdecimal_eval (const char *sum, int places, char round)
          r = sdiv (NULL, operand[operands + 0], operand[operands + 1], places, round, NULL);
          free (clean (operand[operands + 0]));
          free (clean (operand[operands + 1]));
+         if (!r)
+            fail = "!Division error";
          break;
       default:
          errx (1, "Bad operator %c", operator[operators].operator);
@@ -889,38 +857,50 @@ stringdecimal_eval (const char *sum, int places, char round)
       operator[operators].level = level;
       operators++;
    }
-   while (1)
+   while (!fail)
    {                            // Main parse loop
-      // Open brackets
-      while (isspace (*sum) || *sum == '(')
+      // Prefix operators and open brackets
+      while (1)
       {
          if (*sum == '(')
             level += 10;
+         else if (!isspace (*sum))
+            break;
          sum++;
       }
       // Operand
       if (*sum == '!')
-         return strdup (sum);   // Previous error used as operand
+      {
+         fail = sum;
+         break;
+      }
       const char *was = sum;
       sd_t *v = calloc (1, sizeof (*v));
       if (!v)
          errx (1, "malloc");
       sum = parse (v, sum);
       if (sum == was)
-         return strdup ("!Missing operand");
+      {
+         fail = "!Missing operand";
+         break;
+      }
       // Add the operand
       if (operands + 1 > operandmax)
          operand = realloc (operand, (operandmax += 10) * sizeof (*operand));
       operand[operands++] = v;
-      // Close brackets
-      while (isspace (*sum) || *sum == ')')
+      // Postfix operators and close brackets
+      while (1)
       {
          if (*sum == ')')
          {
             if (!level)
-               return strdup ("!Too many close brackets");
+            {
+               fail = "!Too many close brackets";
+               break;
+            }
             level -= 10;
-         }
+         } else if (!isspace (*sum))
+            break;
          sum++;
       }
       if (!*sum)
@@ -931,18 +911,34 @@ stringdecimal_eval (const char *sum, int places, char round)
       else if (*sum == '*' || *sum == '/')
          addop (*sum++, level + 1);
       else
-         return strdup ("!Missing/unknown operator");
+      {
+         fail = "!Missing/unknown operator";
+         break;
+      }
    }
-   if (level)
-      return strdup ("!Unclosed brackets");
-   while (operators)
-      operate ();
-   if (operands != 1)
-      errx (1, "Bad eval - operands %d", operands);     // Should not happen
+         while (!fail&&operators)
+            operate (); // Final operators
+   if(!fail)
+   { // Done cleanly?
+      if (level)
+         fail = "!Unclosed brackets";
+      else
+      {                         // Clear operators
+         if (operands != 1)
+            errx (1, "Bad eval - operands %d", operands);       // Should not happen
+      }
+   }
    char *r = output (operand[0]);       // Last remaining operand is the answer
-   free (clean (operand[0]));
+   for (int i = 0; i < operands; i++)
+      free (clean (operand[i]));        // Should be 1
    free (operand);
    free (operator);
+   if (fail)
+   {
+      if (r)
+         free (r);
+      return strdup (fail);
+   }
    return r;
 }
 
