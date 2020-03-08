@@ -74,7 +74,8 @@ copy (sd_t * a)
 static sd_t *
 norm (sd_t * s, char neg)
 {                               // Normalise (striping leading/trailing 0s)
-   assert (s);
+   if (!s)
+      return s;
    while (s->sig && !s->d[0])
    {                            // Leading 0s
       s->d++;
@@ -818,7 +819,9 @@ stringdecimal_eval (const char *sum, int maxplaces, char round)
             sd_t *bn = operand[operands - 1];
             sd_t *bd = denominator[operands - 1];
             debugout ("Div", an, ad ? : &one, bn, bd ? : &one, NULL);
-            if (!ad && !bd)
+            if (!bn->sig)
+               fail = "!Divide by zero";
+            else if (!ad && !bd)
             {                   // Simple - making a new rational
                r = copy (an);
                d = copy (bn);
@@ -828,7 +831,7 @@ stringdecimal_eval (const char *sum, int maxplaces, char round)
                d = smul (ad ? : &one, bn);
             }
             pop (2);
-            if (!r)
+            if (!r&&!fail)
                fail = "!Division error";
          }
          break;
