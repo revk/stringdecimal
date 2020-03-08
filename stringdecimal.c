@@ -819,7 +819,7 @@ stringdecimal_eval (const char *sum, int places, char round)
 {                               // Parse a sum and process it using basic maths
    if (!sum)
       return NULL;
-   int level = 0;               // Brackets
+   int level = 0;               // Brackets and operator level
    int operators = 0,
       operatormax = 0;
    int operands = 0,
@@ -828,10 +828,10 @@ stringdecimal_eval (const char *sum, int places, char round)
    {
       int level;
       char operator;
-   } *operator = NULL;
-   sd_t **operand = NULL;
+   } *operator = NULL;          // Operator stack
+   sd_t **operand = NULL;       // Operand stack
    void operate (void)
-   {                            // Do top operation
+   {                            // Do top operation on stack
       if (!operators--)
          errx (1, "Bad operate");
       sd_t *r = NULL;           // result
@@ -879,82 +879,65 @@ stringdecimal_eval (const char *sum, int places, char round)
          operand[operands++] = r;
       }
    }
+   void addop (char op, int level)
+   {                            // Add an operator
+      while (operators && operator[operators - 1].level >= level)
+         operate ();
+      if (operators + 1 > operatormax)
+         operator = realloc (operator, (operatormax += 10) * sizeof (*operator));
+      operator[operators].operator = op;
+      operator[operators].level = level;
+      operators++;
+   }
    while (1)
-   {
-      while (1)
+   {                            // Main parse loop
+      // Open brackets
+      while (isspace (*sum) || *sum == '(')
       {
-         // Operand
-         while (isspace (*sum))
-            sum++;
          if (*sum == '(')
-         {
             level += 10;
-            sum++;
-            continue;
-         }
-         const char *was = sum;
-         sd_t *v = calloc (1, sizeof (*v));
-         if (!v)
-            errx (1, "malloc");
-         sum = parse (v, sum);
-         if (sum == was)
-            return strdup ("* Missing operand");
-         if (operands + 1 > operandmax)
-            operand = realloc (operand, (operandmax += 10) * sizeof (*operand));
-         operand[operands++] = v;
-         break;
+         sum++;
       }
-      while (1)
-      {                         // Close brackets
-         while (isspace (*sum))
-            sum++;
+      // Operand
+      const char *was = sum;
+      sd_t *v = calloc (1, sizeof (*v));
+      if (!v)
+         errx (1, "malloc");
+      sum = parse (v, sum);
+      if (sum == was)
+         return strdup ("* Missing operand");
+      // Add the operand
+      if (operands + 1 > operandmax)
+         operand = realloc (operand, (operandmax += 10) * sizeof (*operand));
+      operand[operands++] = v;
+      // Close brackets
+      while (isspace (*sum) || *sum == ')')
+      {
          if (*sum == ')')
          {
             if (!level)
                return strdup ("* Too many close brackets");
             level -= 10;
-            sum++;
-            continue;
          }
-         break;
+         sum++;
       }
       if (!*sum)
-         break;                 // clean exit
-      while (1)
-      {
-         while (isspace (*sum))
-            sum++;
-         // Operator
-         void addop (char op, int level)
-         {
-            while (operators && operator[operators - 1].level >= level)
-               operate ();
-            if (operators + 1 > operatormax)
-               operator = realloc (operator, (operatormax += 10) * sizeof (*operator));
-            operator[operators].operator = op;
-            operator[operators].level = level;
-            operators++;
-         }
-         if (*sum == '-' || *sum == '+')
-         {
-            addop (*sum++, level + 0);
-            break;
-         }
-         if (*sum == '*' || *sum == '/')
-         {
-            addop (*sum++, level + 1);
-            break;
-         }
-         return strdup ("* Missing operator");
-      }
+         break;                 // clean exit after last operand
+      // Operator
+      if (*sum == '-' || *sum == '+')
+         addop (*sum++, level + 0);
+      else if (*sum == '*' || *sum == '/')
+         addop (*sum++, level + 1);
+      else
+         return strdup ("* Missing/unknown operator");
    }
    if (level)
       return strdup ("* Unclosed brackets");
    while (operators)
       operate ();
    if (operands != 1)
-      errx (1, "Bad eval - operands %d", operands);
-   char *r = output (operand[0]);
+      errx (1, "Bad eval - operands %d", operands);     // Should not happen
+   char *r = output (operand[0]);       // Last remaining operand is the answer
    free (clean (operand[0]));
    free (operand);
    free (operator);
