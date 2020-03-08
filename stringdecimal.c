@@ -688,45 +688,45 @@ srnd (sd_t * r, sd_t * a, int places, char round)
    sd_t *v = copy (a);
    *r = *v;
    free (v);
-   if (!round)
-      round = 'B';
-   if (r->neg)
-   {                            // reverse logic for +/-
-      if (round == 'F')
-         round = 'C';
-      else if (round == 'C')
-         round = 'F';
-   }
    if (r->sig - r->mag - 1 == places)
       return r;                 // Already that many places
    if (r->sig - r->mag - 1 > places)
    {
-      int sig = r->mag + 1 + places;
+      int sig = r->mag + 1 + places;    // Next digit after number of places
       int p = sig;
       char up = 0;
+      if (!round)
+         round = 'B';
+      if (r->neg)
+      {                         // reverse logic for +/-
+         if (round == 'F')
+            round = 'C';
+         else if (round == 'C')
+            round = 'F';
+      }
       if (round == 'C' || round == 'U')
-      {
+      {                         // Up (away from zero) if not exact
          while (p < r->sig && !r->d[p])
             p++;
          if (p < r->sig)
-            up = 1;
-      } else if (round == 'R' && r->d[p] >= 5)
+            up = 1;             // not exact
+      } else if (round == 'R' && r->d[p] >= 5)  // Up if .5 or above
          up = 1;
       else if (round == 'B' && r->d[p] > 5)
-         up = 1;
+         up = 1;                // Up as more than .5
       else if (round == 'B' && r->d[p] == 5)
-      {                         // Bankers
+      {                         // Bankers, check exactly .5
          p++;
          while (p < r->sig && !r->d[p])
             p++;
          if (p < r->sig)
-            up = 1;
-         else if (r->d[sig - 1] && 1)
-            up = 1;
+            up = 1;             // greater than .5
+         else if (r->d[sig - 1] & 1)
+            up = 1;             // exactly .5 and odd, so move to even
       }
       r->sig = sig;
       if (up)
-      {                         // Round
+      {                         // Round up (away from 0)
          sd_t *s = uadd (NULL, r, &one, r->mag - r->sig + 1);
          s->neg = r->neg;
          clean (r);
@@ -1108,35 +1108,38 @@ main (int argc, const char *argv[])
    for (int a = 1; a < argc; a++)
    {
       const char *s = argv[a];
-      if (*s == '-' && s[1] == 'p')
+      if (*s == '-' && isalpha (s[1]))
       {
-         if (s[2])
+         if (*s == '-' && s[1] == 'p')
          {
-            roundplaces = atoi (s + 2);
-            rnd = 1;
-         } else
-            rnd = 0;
-         continue;
-      }
-      if (*s == '-' && s[1] == 'd')
-      {
-         if (s[2])
+            if (s[2])
+            {
+               roundplaces = atoi (s + 2);
+               rnd = 1;
+            } else
+               rnd = 0;
+            continue;
+         }
+         if (*s == '-' && s[1] == 'd' && isdigit (s[2]))
+         {
             divplaces = atoi (s + 2);
-         continue;
-      }
-      if (*s == '-' && s[1] == 'q' && a + 2 <= argc)
-      {
-         char *rem = NULL;
-         char *res = stringdecimal_div (argv[a + 1], argv[a + 2], divplaces, round, &rem);
-         fprintf (stderr, "%s/%s = %s rem %s\n", argv[a + 1], argv[a + 2], res, rem);
-         a += 2;
-         continue;
-      }
-      if (*s == '-' && s[1] && strchr ("CFUTRB", toupper (s[1])))
-      {
-         round = toupper (s[1]);
-         rnd = 1;
-         continue;
+            continue;
+         }
+         if (*s == '-' && s[1] == 'q' && a + 2 <= argc)
+         {
+            char *rem = NULL;
+            char *res = stringdecimal_div (argv[a + 1], argv[a + 2], divplaces, round, &rem);
+            fprintf (stderr, "%s/%s = %s rem %s\n", argv[a + 1], argv[a + 2], res, rem);
+            a += 2;
+            continue;
+         }
+         if (*s == '-' && s[1] && strchr ("CFUTRB", toupper (s[1])) && !s[2])
+         {
+            round = toupper (s[1]);
+            rnd = 1;
+            continue;
+         }
+         errx (1, "Unknown arg %s", s);
       }
       char *res = stringdecimal_eval (s, divplaces, round);
       if (rnd)
