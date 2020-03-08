@@ -831,8 +831,6 @@ stringdecimal_eval (const char *sum, int maxplaces, char round)
                d = smul (ad ? : &one, bn);
             }
             pop (2);
-            if (!r && !fail)
-               fail = "!Division error";
          }
          break;
       default:
@@ -858,7 +856,8 @@ stringdecimal_eval (const char *sum, int maxplaces, char round)
          operand[operands] = r;
          denominator[operands] = d;
          operands++;
-      }
+      } else if (!fail)
+         fail = "!Maths error"; // Should not happen
    }
    void addop (char op, int level)
    {                            // Add an operator
