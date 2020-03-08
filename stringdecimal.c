@@ -25,8 +25,9 @@
 #include <stdarg.h>
 #include <stdlib.h>
 #include <err.h>
+#include <assert.h>
 
-#define DEBUG
+//#define DEBUG
 
 // Support functions
 
@@ -36,8 +37,8 @@ struct sd_s
    int mag;                     // Magnitude of first digit, e.g. 3 is hundreds, can start negative, e.g. 0.1 would be mag -1
    int sig;                     // Significant figures (i.e. size of d array) - logically unsigned but seriously C fucks up any maths with that
    char *d;                     // Digit array (normally m, or advanced in to m), digits 0-9 not characters '0'-'9'
-   char *m;                     // Malloced space
    char neg:1;                  // Sign (set if -1)
+   char m[];                    // Malloced space
 };
 
 static sd_t zero = { 0 };
@@ -47,17 +48,13 @@ static sd_t one = { 0, 1, (char[])
 };
 
 static sd_t *
-make (sd_t * s, int mag, int sig)
+make (int mag, int sig)
 {                               // Initialise with space for digits
-   if (!s && !(s = calloc (1, sizeof (*s))))
-      errx (1, "malloc");
+   sd_t *s = calloc (1, sizeof (*s) + sig);
+   assert (s);
    // Leave neg as is if set
    s->mag = mag;
    s->sig = sig;
-   if (!sig)
-      return s;                 // zero
-   if (!(s->m = calloc (1, sig)))
-      errx (1, "malloc");
    s->d = s->m;
    return s;
 }
@@ -65,7 +62,7 @@ make (sd_t * s, int mag, int sig)
 static sd_t *
 copy (sd_t * a)
 {                               // Copy
-   sd_t *r = make (NULL, a->mag, a->sig);
+   sd_t *r = make (a->mag, a->sig);
    r->neg = a->neg;
    if (a->sig)
       memcpy (r->d, a->d, a->sig);
@@ -73,21 +70,9 @@ copy (sd_t * a)
 }
 
 static sd_t *
-clean (sd_t * s)
-{                               // Clean up (freeing malloc), returns s so can be used in free if s was malloced as well.
-   if (!s)
-      return s;
-   if (s->m)
-      free (s->m);
-   memset (s, 0, sizeof (*s));
-   return s;
-}
-
-static sd_t *
-norm (sd_t * s)
+norm (sd_t * s, char neg)
 {                               // Normalise (striping leading/trailing 0s)
-   if (!s && !(s = calloc (1, sizeof (*s))))
-      errx (1, "malloc");
+   assert (s);
    while (s->sig && !s->d[0])
    {                            // Leading 0s
       s->d++;
@@ -96,6 +81,8 @@ norm (sd_t * s)
    }
    while (s->sig && !s->d[s->sig - 1])
       s->sig--;                 // Trailing 0
+   if (neg)
+      s->neg ^= 1;
    if (!s->sig)
    {                            // zero
       s->mag = 0;
@@ -104,34 +91,37 @@ norm (sd_t * s)
    return s;
 }
 
-static const char *
-parse (sd_t * s, const char *v)
+static sd_t *
+parse (const char *v, const char **ep)
 {                               // Parse in to s, and return next character
-   if (!s)
-      return NULL;
-   memset (s, 0, sizeof (*s));
    if (!v)
-      return v;
-   const char *e = v;
+      return NULL;
+   if (ep)
+      *ep = v;
+   char neg = 0;
    if (*v == '+')
       v++;                      // Somewhat redundant
    else if (*v == '-')
    {
-      s->neg ^= 1;              // negative
+      neg ^= 1;                 // negative
       v++;
    }
    if (!isdigit (*v) && *v != '.')
-      return e;                 // Unexpected, we do allow leading dot
+      return NULL;              // Unexpected, we do allow leading dot
    while (*v == '0')
       v++;
+   sd_t *s = NULL;
    const char *digits = v;
    if (isdigit (*v))
    {                            // Some initial digits
       int d = 0,
          p = 0;
-      while (isdigit (*v))
+      while (1)
       {
-         d++;
+         if (isdigit (*v))
+            d++;
+         else if (*v != ',')
+            break;
          v++;
       }
       if (*v == '.')
@@ -146,7 +136,7 @@ parse (sd_t * s, const char *v)
          while (p && places[p - 1] == '0')
             p--;                // Training zero
       }
-      make (s, d - 1, d + p);
+      s = make (d - 1, d + p);
    } else if (*v == '.')
    {                            // No initial digits
       v++;
@@ -163,14 +153,16 @@ parse (sd_t * s, const char *v)
          sig++;
          v++;
       }
-      make (s, mag, sig);
-   }
+      s = make (mag, sig);
+   } else s=copy(&zero);
+   if (ep)
+      *ep = v;                  // End of parsing
    if (!s->sig)
    {                            // Zero
       s->mag = 0;
-      s->neg = 0;
-      return v;
+      return s;
    }
+   s->neg = neg;
    // Load digits
    int q = 0;
    while (*digits && q < s->sig)
@@ -195,7 +187,7 @@ parse (sd_t * s, const char *v)
          e = e * 10 + *v++ - '0';
       s->mag += e * sign;
    }
-   return v;
+   return s;
 }
 
 static char *
@@ -247,15 +239,36 @@ output (sd_t * s)
    return d;
 }
 
+#ifdef DEBUG
+void
+debugout (char *msg, ...)
+{
+   fprintf (stderr, "%s:", msg);
+   va_list ap;
+   va_start (ap, msg);
+   sd_t *s;
+   while ((s = va_arg (ap, sd_t *)))
+   {
+      char *v = output (s);
+      fprintf (stderr, " %s", v);
+      free (v);
+   }
+   va_end (ap);
+   fprintf (stderr, "\n");
+}
+#else
+#define debugout(msg,...)
+#endif
+
 static char *
-output_cleans (sd_t * s, ...)
+output_free (sd_t * s, ...)
 {                               // Convert to string and clean null sep list of structures
    char *r = output (s);
-   clean (s);
+   free (s);
    va_list ap;
    va_start (ap, s);
    while ((s = va_arg (ap, sd_t *)))
-      clean (s);
+      free (s);
    va_end (ap);
    return r;
 }
@@ -269,6 +282,7 @@ ucmp (sd_t * a, sd_t * b, int boffset)
       a = &zero;
    if (!b)
       b = &zero;
+   debugout ("ucmp", a, b, NULL);
    if (a->mag > boffset + b->mag)
       return 1;                 // Simple magnitude difference
    if (a->mag < boffset + b->mag)
@@ -294,12 +308,13 @@ ucmp (sd_t * a, sd_t * b, int boffset)
 }
 
 static sd_t *
-uadd (sd_t * r, sd_t * a, sd_t * b, int boffset)
+uadd (sd_t * a, sd_t * b, char neg, int boffset)
 {                               // Unsigned add (i.e. final sign already set in r) and set in r if needed
    if (!a)
       a = &zero;
    if (!b)
       b = &zero;
+   debugout ("uadd", a, b, NULL);
    int mag = a->mag;            // Max mag
    if (boffset + b->mag > a->mag)
       mag = boffset + b->mag;
@@ -307,7 +322,7 @@ uadd (sd_t * r, sd_t * a, sd_t * b, int boffset)
    int end = a->mag - a->sig;
    if (boffset + b->mag - b->sig < end)
       end = boffset + b->mag - b->sig;
-   r = make (r, mag, mag - end);
+   sd_t *r = make (mag, mag - end);
    int c = 0;
    for (int p = end + 1; p <= mag; p++)
    {
@@ -326,23 +341,24 @@ uadd (sd_t * r, sd_t * a, sd_t * b, int boffset)
    }
    if (c)
       errx (1, "Carry add error %d", c);
-   return norm (r);
+   return norm (r, neg);
 }
 
 static sd_t *
-usub (sd_t * r, sd_t * a, sd_t * b, int boffset)
+usub (sd_t * a, sd_t * b, char neg, int boffset)
 {                               // Unsigned sub (i.e. final sign already set in r) and set in r if needed, and assumes b<=a already
    if (!a)
       a = &zero;
    if (!b)
       b = &zero;
+   debugout ("usub", a, b, NULL);
    int mag = a->mag;            // Max mag
    if (boffset + b->mag > a->mag)
       mag = boffset + b->mag;
    int end = a->mag - a->sig;
    if (boffset + b->mag - b->sig < end)
       end = boffset + b->mag - b->sig;
-   r = make (r, mag, mag - end);
+   sd_t *r = make (mag, mag - end);
    int c = 0;
    for (int p = end + 1; p <= mag; p++)
    {
@@ -361,7 +377,7 @@ usub (sd_t * r, sd_t * a, sd_t * b, int boffset)
    }
    if (c)
       errx (1, "Carry sub error %d", c);
-   return norm (r);
+   return norm (r, neg);
 }
 
 static void
@@ -369,55 +385,50 @@ makebase (sd_t * r[9], sd_t * a)
 {                               // Make array of multiples of a, 1 to 9, used for multiply and divide
    r[0] = copy (a);
    for (int n = 1; n < 9; n++)
-      r[n] = uadd (NULL, r[n - 1], a, 0);
+      r[n] = uadd (r[n - 1], a, 0, 0);
 }
 
 static void
 free_base (sd_t * r[9])
 {
    for (int n = 0; n < 9; n++)
-      free (clean (r[n]));
+      free (r[n]);
 }
 
 static sd_t *
-umul (sd_t * r, sd_t * a, sd_t * b)
+umul (sd_t * a, sd_t * b, char neg)
 {                               // Unsigned mul (i.e. final sign already set in r) and set in r if needed
    if (!a)
       a = &zero;
    if (!b)
       b = &zero;
+   debugout ("umul", a, b, NULL);
    sd_t *base[9];
    makebase (base, b);
-   sd_t *c = NULL;
+   sd_t *r = NULL;
    for (int p = 0; p < a->sig; p++)
       if (a->d[p])
       {                         // Add
-         sd_t *sum = uadd (NULL, c, base[a->d[p] - 1], a->mag - p);
-         if (c)
-            free (clean (c));
-         c = sum;
+         sd_t *sum = uadd (r, base[a->d[p] - 1],0, a->mag - p);
+         if (sum)
+         {
+            if (r)
+               free (r);
+            r = sum;
+         }
       }
    free_base (base);
-   if (!r)
-      return c;                 // New
-   if (!c)
-      memset (r, 0, sizeof (*r));
-   else
-   {
-      c->neg = r->neg;
-      *r = *c;
-      free (c);
-   }
-   return norm (r);
+   return norm (r, neg);
 }
 
 static sd_t *
-udiv (sd_t * r, sd_t * a, sd_t * b, int places, char round, sd_t * rem)
+udiv (sd_t * a, sd_t * b, char neg, int places, char round, sd_t ** rem)
 {                               // Unsigned div (i.e. final sign already set in r) and set in r if needed
    if (!a)
       a = &zero;
    if (!b)
       b = &zero;
+   debugout ("udiv", a, b, NULL);
    if (!b->sig)
       return NULL;              // Divide by zero
    sd_t *base[9];
@@ -426,23 +437,25 @@ udiv (sd_t * r, sd_t * a, sd_t * b, int places, char round, sd_t * rem)
    if (mag < -places)
       mag = -places;            // Limit to places
    int sig = mag + places + 1;  // Limit to places
-   r = make (r, mag, sig);
+   sd_t *r = make (mag, sig);
    sd_t *v = copy (a);
+#ifdef DEBUG
+   fprintf(stderr,"Divide %d->%d\n",mag,mag-sig+1);
+#endif
    for (int p = mag; p > mag - sig; p--)
    {
       int n = 0;
-#ifdef DEBUG
-      char *V = output (v);
-      fprintf (stderr, "v=%s p=%d\n", V, p);
-      free (V);
-#endif
       while (n < 9 && ucmp (v, base[n], p) > 0)
          n++;
+      debugout("Remainder",v,NULL);
       if (n)
       {
-         sd_t *s = usub (NULL, v, base[n - 1], p);
-         free (clean (v));
-         v = s;
+         sd_t *s = usub (v, base[n - 1], 0,p);
+         if (s)
+         {
+            free (v);
+            v = s;
+         }
       }
       r->d[mag - p] = n;
       if (!v->sig)
@@ -452,7 +465,7 @@ udiv (sd_t * r, sd_t * a, sd_t * b, int places, char round, sd_t * rem)
    {                            // Rounding
       if (!round)
          round = 'B';           // Default
-      if (r->neg)
+      if (neg)
       {                         // reverse logic for +/-
          if (round == 'F')
             round = 'C';
@@ -485,18 +498,16 @@ udiv (sd_t * r, sd_t * a, sd_t * b, int places, char round, sd_t * rem)
             free (V);
             free (O);
 #endif
-            sd_t *s = usub (NULL, base[0], v, 0);
+            sd_t *s = usub (base[0], v, 0, 0);
             base[0]->mag -= shift + 1;
-            free (clean (v));
+            free (v);
             v = s;
             v->neg ^= 1;
          }
          // Adjust r
-         sd_t *s = uadd (NULL, r, &one, r->mag - r->sig + 1);
-         s->neg = r->neg;
-         clean (r);
-         *r = *s;
-         free (s);
+         sd_t *s = uadd (r, &one, 0,r->mag - r->sig + 1);
+         free (r);
+         r = s;
       }
    }
    free_base (base);
@@ -504,25 +515,18 @@ udiv (sd_t * r, sd_t * a, sd_t * b, int places, char round, sd_t * rem)
    {
       if (b->neg)
          v->neg ^= 1;
-      if (r->neg)
+      if (neg)
          v->neg ^= 1;
-      *rem = *v;
+      *rem = v;
    } else
-      clean (v);
-   free (v);
-   return norm (r);
+      free (v);
+   return norm (r, neg);
 }
 
 static int
 scmp (sd_t * a, sd_t * b)
 {
-#ifdef DEBUG
-   char *A = output (a),
-      *B = output (b);
-   fprintf (stderr, "Do %s>%s\n", A, B);
-   free (A);
-   free (B);
-#endif
+   debugout ("scmp", a, b, NULL);
    if (a->neg && !b->neg)
       return -1;
    if (!a->neg && b->neg)
@@ -533,18 +537,9 @@ scmp (sd_t * a, sd_t * b)
 }
 
 static sd_t *
-sadd (sd_t * r, sd_t * a, sd_t * b)
+sadd (sd_t * a, sd_t * b)
 {                               // Low level add
-   if (!r)
-      r = malloc (sizeof (*r));
-   memset (r, 0, sizeof (*r));
-#ifdef DEBUG
-   char *A = output (a),
-      *B = output (b);
-   fprintf (stderr, "Do %s+%s\n", A, B);
-   free (A);
-   free (B);
-#endif
+   debugout ("sadd", a, b, NULL);
    if (a->neg && !b->neg)
    {                            // Reverse subtract
       sd_t *t = a;
@@ -555,109 +550,67 @@ sadd (sd_t * r, sd_t * a, sd_t * b)
    {                            // Subtract
       int d = ucmp (a, b, 0);
       if (d < 0)
-      {                         // a<b so answer will be negative b-a
-         r->neg ^= 1;
-         return usub (r, b, a, 0);
-      }
-      return usub (r, a, b, 0);
+         return usub (b, a, 1, 0);
+      return usub (a, b, 0, 0);
    }
    if (a->neg && b->neg)
-      r->neg ^= 1;
-   return uadd (r, a, b, 0);
+      return uadd (a, b, 1, 0); // Negative reply
+   return uadd (a, b, 0, 0);
 }
 
 static sd_t *
-ssub (sd_t * r, sd_t * a, sd_t * b)
+ssub (sd_t * a, sd_t * b)
 {
-   if (!r)
-      r = malloc (sizeof (*r));
-   memset (r, 0, sizeof (*r));
-#ifdef DEBUG
-   char *A = output (a),
-      *B = output (b);
-   fprintf (stderr, "Do %s-%s\n", A, B);
-   free (A);
-   free (B);
-#endif
+   debugout ("ssub", a, b, NULL);
    if (a->neg && !b->neg)
-   {
-      r->neg ^= 1;
-      return uadd (r, a, b, 0);
-   }
+      return uadd (a, b, 1, 0);
    if (!a->neg && b->neg)
-      return uadd (r, a, b, 0);
+      return uadd (a, b, 0, 0);
+   char neg = 0;
    if (a->neg && b->neg)
-      r->neg ^= 1;              // Invert output
+      neg ^= 1;                 // Invert output
    int d = ucmp (a, b, 0);
    if (!d)
-      return r;                 // Zero
+      return copy (&zero);      // Zero
    if (d < 0)
-   {                            // a<b so answer will be negative b-a
-      r->neg ^= 1;
-      return usub (r, b, a, 0);
-   }
-   return usub (r, a, b, 0);
+      return usub (b, a, 1 - neg, 0);
+   return usub (a, b, neg, 0);
 }
 
 static sd_t *
-smul (sd_t * r, sd_t * a, sd_t * b)
+smul (sd_t * a, sd_t * b)
 {
-   if (!r)
-      r = malloc (sizeof (*r));
-   memset (r, 0, sizeof (*r));
-#ifdef DEBUG
-   char *A = output (a),
-      *B = output (b);
-   fprintf (stderr, "Do %s*%s\n", A, B);
-   free (A);
-   free (B);
-#endif
+   debugout ("smul", a, b, NULL);
    if ((a->neg && !b->neg) || (!a->neg && b->neg))
-      r->neg ^= 1;
-   return umul (r, a, b);
+      return umul (a, b, 1);
+   return umul (a, b, 0);
 }
 
 static sd_t *
-sdiv (sd_t * r, sd_t * a, sd_t * b, int places, char round, sd_t * rem)
+sdiv (sd_t * a, sd_t * b, int places, char round, sd_t ** rem)
 {
-   if (!r)
-      r = malloc (sizeof (*r));
-   memset (r, 0, sizeof (*r));
-#ifdef DEBUG
-   char *A = output (a),
-      *B = output (b);
-   fprintf (stderr, "Do %s/%s (%d%c)\n", A, B, places, round ? : 'B');
-   free (A);
-   free (B);
-#endif
+   debugout ("sdiv", a, b, NULL);
    if ((a->neg && !b->neg) || (!a->neg && b->neg))
-      r->neg ^= 1;
-   return udiv (r, a, b, places, round, rem);
+      return udiv (a, b, 1,places, round, rem);
+   return udiv (a, b, 0,places, round, rem);
 }
 
 static sd_t *
-srnd (sd_t * r, sd_t * a, int places, char round)
+srnd (sd_t * a, int places, char round)
 {
-   if (!r)
-      r = calloc (1, sizeof (*r));
-#ifdef DEBUG
-   char *A = output (a);
-   fprintf (stderr, "Do %s (%d%c)\n", A, places, round ? : 'B');
-   free (A);
-#endif
-   sd_t *v = copy (a);
-   *r = *v;
-   free (v);
-   if (r->sig - r->mag - 1 == places)
-      return r;                 // Already that many places
-   if (r->sig - r->mag - 1 > places)
-   {
-      int sig = r->mag + 1 + places;    // Next digit after number of places
+   debugout ("srnd", a, NULL);
+   if (a->sig - a->mag - 1 == places)
+      return copy (a);          // Already that many places
+   if (a->sig - a->mag - 1 > places)
+   {                            // more places, needs truncating
+      int sig = a->mag + 1 + places;    // Next digit after number of places
+      sd_t *r = make (a->mag, sig);
+      memcpy (r->d, a->d, sig);
       int p = sig;
       char up = 0;
       if (!round)
          round = 'B';
-      if (r->neg)
+      if (a->neg)
       {                         // reverse logic for +/-
          if (round == 'F')
             round = 'C';
@@ -666,47 +619,42 @@ srnd (sd_t * r, sd_t * a, int places, char round)
       }
       if (round == 'C' || round == 'U')
       {                         // Up (away from zero) if not exact
-         while (p < r->sig && !r->d[p])
+         while (p < a->sig && !a->d[p])
             p++;
-         if (p < r->sig)
+         if (p < a->sig)
             up = 1;             // not exact
-      } else if (round == 'R' && r->d[p] >= 5)  // Up if .5 or above
+      } else if (round == 'R' && a->d[p] >= 5)  // Up if .5 or above
          up = 1;
-      else if (round == 'B' && r->d[p] > 5)
+      else if (round == 'B' && a->d[p] > 5)
          up = 1;                // Up as more than .5
-      else if (round == 'B' && r->d[p] == 5)
+      else if (round == 'B' && a->d[p] == 5)
       {                         // Bankers, check exactly .5
          p++;
-         while (p < r->sig && !r->d[p])
+         while (p < a->sig && !a->d[p])
             p++;
-         if (p < r->sig)
+         if (p < a->sig)
             up = 1;             // greater than .5
-         else if (r->d[sig - 1] & 1)
+         else if (a->d[sig - 1] & 1)
             up = 1;             // exactly .5 and odd, so move to even
       }
-      r->sig = sig;
       if (up)
       {                         // Round up (away from 0)
-         sd_t *s = uadd (NULL, r, &one, r->mag - r->sig + 1);
-         s->neg = r->neg;
-         clean (r);
-         *r = *s;
-         free (s);
+         sd_t *s = uadd (r, &one, r->mag - r->sig + 1, 0);
+         free (r);
+         r = s;
       }
-   }
-   if (r->sig - r->mag - 1 < places)
-   {                            // Artificially extend places, non normalised
-      int sig = r->mag + 1 + places;
-      char *m = calloc (1, sig);
-      if (!m)
-         errx (1, "malloc");
-      memcpy (m, r->d, r->sig);
-      free (r->m);
-      r->m = r->d = m;
-      r->sig = sig;
+      r->neg = a->neg;
       return r;
    }
-   return r;
+   if (a->sig - a->mag - 1 < places)
+   {                            // Artificially extend places, non normalised
+      int sig = a->mag + 1 + places;
+      sd_t *r = make (a->mag, sig);
+      memcpy (r->d, a->d, a->sig);
+      r->neg = a->neg;
+      return r;
+   }
+   return NULL;                 // Uh
 }
 
 // Maths string functions
@@ -714,68 +662,63 @@ srnd (sd_t * r, sd_t * a, int places, char round)
 char *
 stringdecimal_add (const char *a, const char *b)
 {                               // Simple add
-   sd_t A = { 0 }, B = { 0 }, R = { 0 };
-   parse (&A, a);
-   parse (&B, b);
-   sadd (&R, &A, &B);
-   return output_cleans (&R, &A, &B, NULL);
+   sd_t *A = parse (a, NULL);
+   sd_t *B = parse (b, NULL);
+   sd_t *R = sadd (A, B);
+   return output_free (R, A, B, NULL);
 };
 
 char *
 stringdecimal_sub (const char *a, const char *b)
 {                               // Simple subtract
-   sd_t A = { 0 }, B = { 0 }, R = { 0 };
-   parse (&A, a);
-   parse (&B, b);
-   ssub (&R, &A, &B);
-   return output_cleans (&R, &A, &B, NULL);
+   sd_t *A = parse (a, NULL);
+   sd_t *B = parse (b, NULL);
+   sd_t *R = ssub (A, B);
+   return output_free (R, A, B, NULL);
 };
 
 char *
 stringdecimal_mul (const char *a, const char *b)
 {                               // Simple multiply
-   sd_t A = { 0 }, B = { 0 }, R = { 0 };
-   parse (&A, a);
-   parse (&B, b);
-   smul (&R, &A, &B);
-   return output_cleans (&R, &A, &B, NULL);
+   sd_t *A = parse (a, NULL);
+   sd_t *B = parse (b, NULL);
+   sd_t *R = smul (A, B);
+   return output_free (R, A, B, NULL);
 };
 
 char *
 stringdecimal_div (const char *a, const char *b, int places, char round, char **rem)
 {                               // Simple divide - to specified number of places, with remainder
-   sd_t A = { 0 }, B = { 0 }, R = { 0 }, REM = { 0 };
-   parse (&B, b);
-   if (!B.sig)
+   sd_t *B = parse (b, NULL);
+   if (!B->sig)
    {
-      clean (&B);
+      free (B);
       return NULL;              // Divide by zero
    }
-   parse (&A, a);
-   sdiv (&R, &A, &B, places, round, &REM);
+   sd_t *A = parse (a, NULL);
+   sd_t *REM = NULL;
+   sd_t *R = sdiv (A, B, places, round, &REM);
    if (rem)
-      *rem = output (&REM);
-   return output_cleans (&R, &A, &B, &REM, NULL);
+      *rem = output (REM);
+   return output_free (R, A, B, REM, NULL);
 };
 
 char *
 stringdecimal_rnd (const char *a, int places, char round)
 {                               // Round to specified number of places
-   sd_t A = { 0 }, R = { 0 };
-   parse (&A, a);
-   srnd (&R, &A, places, round);
-   return output_cleans (&R, &A, NULL);
+   sd_t *A = parse (a, NULL);
+   sd_t *R = srnd (A, places, round);
+   return output_free (R, A, NULL);
 };
 
 int
 stringdecimal_cmp (const char *a, const char *b)
 {                               // Compare
-   sd_t A = { 0 }, B = { 0 };
-   parse (&A, a);
-   parse (&B, b);
-   int r = scmp (&A, &B);
-   clean (&A);
-   clean (&B);
+   sd_t *A = parse (a, NULL);
+   sd_t *B = parse (b, NULL);
+   int r = scmp (A, B);
+   free (A);
+   free (B);
    return r;
 }
 
@@ -803,37 +746,33 @@ stringdecimal_eval (const char *sum, int places, char round)
       sd_t *r = NULL;           // result
       switch (operator[operators].operator)
       {
+      case '-':
+         if (operands)
+            operand[operands - 1]->neg ^= 1;    // invert and do add
+         // Drop through
       case '+':
          if (operands < 2)
             errx (1, "Bad operands +");
          operands -= 2;
-         r = sadd (NULL, operand[operands + 0], operand[operands + 1]);
-         free (clean (operand[operands + 0]));
-         free (clean (operand[operands + 1]));
-         break;
-      case '-':
-         if (operands < 2)
-            errx (1, "Bad operands -");
-         operands -= 2;
-         r = ssub (NULL, operand[operands + 0], operand[operands + 1]);
-         free (clean (operand[operands + 0]));
-         free (clean (operand[operands + 1]));
+         r = sadd (operand[operands + 0], operand[operands + 1]);
+         free (operand[operands + 0]);
+         free (operand[operands + 1]);
          break;
       case '*':
          if (operands < 2)
             errx (1, "Bad operands *");
          operands -= 2;
-         r = smul (NULL, operand[operands + 0], operand[operands + 1]);
-         free (clean (operand[operands + 0]));
-         free (clean (operand[operands + 1]));
+         r = smul (operand[operands + 0], operand[operands + 1]);
+         free (operand[operands + 0]);
+         free (operand[operands + 1]);
          break;
       case '/':
          if (operands < 2)
             errx (1, "Bad operands /");
          operands -= 2;
-         r = sdiv (NULL, operand[operands + 0], operand[operands + 1], places, round, NULL);
-         free (clean (operand[operands + 0]));
-         free (clean (operand[operands + 1]));
+         r = sdiv (operand[operands + 0], operand[operands + 1], places, round, NULL);
+         free (operand[operands + 0]);
+         free (operand[operands + 1]);
          if (!r)
             fail = "!Division error";
          break;
@@ -875,10 +814,7 @@ stringdecimal_eval (const char *sum, int places, char round)
          break;
       }
       const char *was = sum;
-      sd_t *v = calloc (1, sizeof (*v));
-      if (!v)
-         errx (1, "malloc");
-      sum = parse (v, sum);
+      sd_t *v = parse (sum, &sum);
       if (sum == was)
       {
          fail = "!Missing operand";
@@ -916,10 +852,10 @@ stringdecimal_eval (const char *sum, int places, char round)
          break;
       }
    }
-         while (!fail&&operators)
-            operate (); // Final operators
-   if(!fail)
-   { // Done cleanly?
+   while (!fail && operators)
+      operate ();               // Final operators
+   if (!fail)
+   {                            // Done cleanly?
       if (level)
          fail = "!Unclosed brackets";
       else
@@ -930,7 +866,7 @@ stringdecimal_eval (const char *sum, int places, char round)
    }
    char *r = output (operand[0]);       // Last remaining operand is the answer
    for (int i = 0; i < operands; i++)
-      free (clean (operand[i]));        // Should be 1
+      free (operand[i]);        // Should be 1
    free (operand);
    free (operator);
    if (fail)
