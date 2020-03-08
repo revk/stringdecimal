@@ -28,8 +28,8 @@
 #define	STRINGDECIMAL_ROUND_ROUND	'R' // Away from zero if 0.5 or more
 #define	STRINGDECIMAL_ROUND_BANKING	'B' // Away from zero if above 0.5, or 0.5 exactly and goes to even
 
-#define	STRINGDECIMAL_USE_RATIONAL	1	// Do eval as rational numbers
-#define	STRINGDECIMAL_RESULT_RATIONAL	2	// Don't do final divide on rational eval
+#define	STRINGDECIMAL_USE_RATIONAL	1	// Do eval as rational numbers (normally does final divide at the end)
+#define	STRINGDECIMAL_RESULT_RATIONAL	2	// Don't do final divide on rational eval, but present as a/b string
 
 char * stringdecimal_add(const char *a,const char *b);	// Simple add
 char * stringdecimal_sub(const char *a,const char *b);	// Simple subtract
