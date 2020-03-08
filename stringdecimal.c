@@ -193,6 +193,8 @@ parse (const char *v, const char **ep)
       }
       while (isdigit (*v))
          e = e * 10 + *v++ - '0';
+      if (e > 1000000000)
+         return NULL;           // Silly
       s->mag += e * sign;
    }
    if (ep)
