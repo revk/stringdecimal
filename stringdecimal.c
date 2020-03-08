@@ -159,13 +159,6 @@ parse (const char *v, const char **ep)
       s = make (mag, sig);
    } else
       s = copy (&zero);
-   if (ep)
-      *ep = v;                  // End of parsing
-   if (!s->sig)
-   {                            // Zero
-      s->mag = 0;
-      return s;
-   }
    // Load digits
    int q = 0;
    while (*digits && q < s->sig)
@@ -189,6 +182,13 @@ parse (const char *v, const char **ep)
       while (isdigit (*v))
          e = e * 10 + *v++ - '0';
       s->mag += e * sign;
+   }
+   if (ep)
+      *ep = v;                  // End of parsing
+   if (!s->sig)
+   {                            // Zero
+      s->mag = 0;
+      return s;
    }
    return norm (s, neg);
 }
@@ -831,7 +831,7 @@ stringdecimal_eval (const char *sum, int maxplaces, char round)
                d = smul (ad ? : &one, bn);
             }
             pop (2);
-            if (!r&&!fail)
+            if (!r && !fail)
                fail = "!Division error";
          }
          break;
