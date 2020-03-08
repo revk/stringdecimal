@@ -942,11 +942,14 @@ stringdecimal_eval (const char *sum, int maxplaces, char round)
       }
    }
    char *r = NULL;
-   if (operands)
+   if (!fail && operands)
    {
       if (denominator[0])
-         r = output_free (sdiv (operand[0], denominator[0], maxplaces, round, NULL));   // Simple divide to get answer
-      else
+      {
+         r = output (sdiv (operand[0], denominator[0], maxplaces, round, NULL));        // Simple divide to get answer
+         if (!r)
+            fail = "!Division failure";
+      } else
          r = output (operand[0]);       // Last remaining operand is the answer
    }
    for (int i = 0; i < operands; i++)
