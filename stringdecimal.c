@@ -879,9 +879,9 @@ stringdecimal_eval (const char *sum, int places, char round)
          operand[operands++] = r;
       }
    }
-   while (*sum)
+   while (1)
    {
-      while (*sum)
+      while (1)
       {
          // Operand
          while (isspace (*sum))
@@ -904,7 +904,7 @@ stringdecimal_eval (const char *sum, int places, char round)
          operand[operands++] = v;
          break;
       }
-      while (*sum)
+      while (1)
       {                         // Close brackets
          while (isspace (*sum))
             sum++;
@@ -920,7 +920,7 @@ stringdecimal_eval (const char *sum, int places, char round)
       }
       if (!*sum)
          break;                 // clean exit
-      while (*sum)
+      while (1)
       {
          while (isspace (*sum))
             sum++;
@@ -947,8 +947,6 @@ stringdecimal_eval (const char *sum, int places, char round)
          }
          return strdup ("* Missing operator");
       }
-      if (!*sum)
-         return strdup ("* Missing operand");
    }
    if (level)
       return strdup ("* Unclosed brackets");
