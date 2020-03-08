@@ -20,21 +20,24 @@
 //
 // Add, Sub, Mul all work to necessary places
 // Div works to specified number of places, specified rounding rule, and can return remainder value
-// Rounding rules are specific by a character, default (if 0) is 'B'
-// 'T' truncate (towards 0)
-// 'U' round up (away from 0)
-// 'F' floor, towards -ve infinity
-// 'C' ceiling, towards +ve infinity
-// 'R' simple rounding, exactly 0.5 rounds away from 0
-// 'B' bankers rounding, exactly 0.5 rounds to nearest even
+
+#define	STRINGDECIMAL_ROUND_TRUNCATE	'T' // Towards zero
+#define	STRINGDECIMAL_ROUND_UP		'U' // Away from zero
+#define	STRINGDECIMAL_ROUND_FLOOR	'F' // Towards -ve
+#define	STRINGDECIMAL_ROUND_CEILING	'C' // Towards +ve
+#define	STRINGDECIMAL_ROUND_ROUND	'R' // Away from zero if 0.5 or more
+#define	STRINGDECIMAL_ROUND_BANKING	'B' // Away from zero if above 0.5, or 0.5 exactly and goes to even
+
+#define	STRINGDECIMAL_USE_RATIONAL	1	// Do eval as rational numbers
+#define	STRINGDECIMAL_RESULT_RATIONAL	2	// Don't do final divide on rational eval
 
 char * stringdecimal_add(const char *a,const char *b);	// Simple add
 char * stringdecimal_sub(const char *a,const char *b);	// Simple subtract
 char * stringdecimal_mul(const char *a,const char *b);	// Simple multiply
-char * stringdecimal_div(const char *a,const char *b,int places,char round,char **rem);	// Simple divide - to specified number of places, with remainder
+char * stringdecimal_div(const char *a,const char *b,int maxplaces,char round,char **rem);	// Simple divide - to specified number of places, with remainder
 char * stringdecimal_rnd(const char *a,int places,char round); // Round to specified number of places
 int stringdecimal_cmp(const char *a,const char *b);	// Compare. -1 if a<b, 1 if a>b, 0 if a==b
-char *stringdecimal_eval(const char *sum,int places,char round); // Eval sum using brackets, +, -, *, /
+char *stringdecimal_eval(const char *sum,int maxplaces,char round,int flags); // Eval sum using brackets, +, -, *, /
 
 // Variations with freeing
 char * stringdecimal_add_cf(const char *a,char *b);	// Simple add with free second arg
@@ -44,11 +47,11 @@ char * stringdecimal_sub_cf(const char *a,char *b);	// Simple subtract with free
 char * stringdecimal_sub_ff(char *a,char *b);	// Simple subtract with fere both args
 char * stringdecimal_mul_cf(const char *a,char *b);	// Simple multiply with second arg
 char * stringdecimal_mul_ff(char *a,char *b);	// Simple multiply with free both args
-char * stringdecimal_div_fc(char *a,const char *b,int places,char round,char **rem);	// Simple divide with free first arg
-char * stringdecimal_div_cf(const char *a,char *b,int places,char round,char **rem);	// Simple divide with free second arg
-char * stringdecimal_div_ff(char *a,char *b,int places,char round,char **rem);	// Simple divide with free both args
+char * stringdecimal_div_fc(char *a,const char *b,int maxplaces,char round,char **rem);	// Simple divide with free first arg
+char * stringdecimal_div_cf(const char *a,char *b,int maxplaces,char round,char **rem);	// Simple divide with free second arg
+char * stringdecimal_div_ff(char *a,char *b,int maxplaces,char round,char **rem);	// Simple divide with free both args
 char * stringdecimal_rnd_f(char *a,int places,char round); // Round to specified number of places with free arg
 int stringdecimal_cmp_fc(char *a,const char *b);	// Compare with free first arg
 int stringdecimal_cmp_cf(const char *a,char *b);	// Compare with free second arg
 int stringdecimal_cmp_ff(char *a,char *b);	// Compare with free both args
-char *stringdecimal_eval_f(char *sum,int places,char round); // Evan with free sum
+char *stringdecimal_eval_f(char *sum,int maxplaces,char round,int flags); // Eval with free sum

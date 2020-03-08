@@ -18,7 +18,9 @@
 // Functions return malloced string answers (or NULL for error)
 // Functions have variants to free arguments
 
+#define _GNU_SOURCE             /* See feature_test_macros(7) */
 #include "stringdecimal.h"
+#include <stdio.h>
 #include <string.h>
 #include <malloc.h>
 #include <ctype.h>
@@ -27,7 +29,7 @@
 #include <err.h>
 #include <assert.h>
 
-//#define DEBUG
+#define DEBUG
 
 // Support functions
 
@@ -154,7 +156,8 @@ parse (const char *v, const char **ep)
          v++;
       }
       s = make (mag, sig);
-   } else s=copy(&zero);
+   } else
+      s = copy (&zero);
    if (ep)
       *ep = v;                  // End of parsing
    if (!s->sig)
@@ -409,7 +412,7 @@ umul (sd_t * a, sd_t * b, char neg)
    for (int p = 0; p < a->sig; p++)
       if (a->d[p])
       {                         // Add
-         sd_t *sum = uadd (r, base[a->d[p] - 1],0, a->mag - p);
+         sd_t *sum = uadd (r, base[a->d[p] - 1], 0, a->mag - p);
          if (sum)
          {
             if (r)
@@ -422,7 +425,7 @@ umul (sd_t * a, sd_t * b, char neg)
 }
 
 static sd_t *
-udiv (sd_t * a, sd_t * b, char neg, int places, char round, sd_t ** rem)
+udiv (sd_t * a, sd_t * b, char neg, int maxplaces, char round, sd_t ** rem)
 {                               // Unsigned div (i.e. final sign already set in r) and set in r if needed
    if (!a)
       a = &zero;
@@ -434,23 +437,23 @@ udiv (sd_t * a, sd_t * b, char neg, int places, char round, sd_t ** rem)
    sd_t *base[9];
    makebase (base, b);
    int mag = a->mag - b->mag;
-   if (mag < -places)
-      mag = -places;            // Limit to places
-   int sig = mag + places + 1;  // Limit to places
+   if (mag < -maxplaces)
+      mag = -maxplaces;         // Limit to places
+   int sig = mag + maxplaces + 1;       // Limit to places
    sd_t *r = make (mag, sig);
    sd_t *v = copy (a);
 #ifdef DEBUG
-   fprintf(stderr,"Divide %d->%d\n",mag,mag-sig+1);
+   fprintf (stderr, "Divide %d->%d\n", mag, mag - sig + 1);
 #endif
    for (int p = mag; p > mag - sig; p--)
    {
       int n = 0;
       while (n < 9 && ucmp (v, base[n], p) > 0)
          n++;
-      debugout("Remainder",v,NULL);
+      debugout ("Remainder", v, NULL);
       if (n)
       {
-         sd_t *s = usub (v, base[n - 1], 0,p);
+         sd_t *s = usub (v, base[n - 1], 0, p);
          if (s)
          {
             free (v);
@@ -461,16 +464,16 @@ udiv (sd_t * a, sd_t * b, char neg, int places, char round, sd_t ** rem)
       if (!v->sig)
          break;
    }
-   if (round != 'T' && v->sig)
+   if (round != STRINGDECIMAL_ROUND_TRUNCATE && v->sig)
    {                            // Rounding
       if (!round)
-         round = 'B';           // Default
+         round = STRINGDECIMAL_ROUND_BANKING;   // Default
       if (neg)
       {                         // reverse logic for +/-
-         if (round == 'F')
-            round = 'C';
-         else if (round == 'C')
-            round = 'F';
+         if (round == STRINGDECIMAL_ROUND_FLOOR)
+            round = STRINGDECIMAL_ROUND_CEILING;
+         else if (round == STRINGDECIMAL_ROUND_CEILING)
+            round = STRINGDECIMAL_ROUND_FLOOR;
       }
       int shift = mag - sig;
       int diff = ucmp (v, base[4], shift);
@@ -483,10 +486,10 @@ udiv (sd_t * a, sd_t * b, char neg, int places, char round, sd_t ** rem)
       free (V);
       free (B);
 #endif
-      if (((round == 'U' || round == 'C') && v->sig)    // Round up anyway
-          || (round == 'R' && diff >= 0)        // Round 0.5 and above up
-          || (round == 'B' && diff > 0) // Round up
-          || (round == 'B' && !diff && (r->d[r->sig - 1] & 1)))
+      if (((round == STRINGDECIMAL_ROUND_UP || round == STRINGDECIMAL_ROUND_CEILING) && v->sig) // Round up anyway
+          || (round == STRINGDECIMAL_ROUND_ROUND && diff >= 0)  // Round 0.5 and above up
+          || (round == STRINGDECIMAL_ROUND_BANKING && diff > 0) // Round up
+          || (round == STRINGDECIMAL_ROUND_BANKING && !diff && (r->d[r->sig - 1] & 1)))
       {                         // Add one
          if (rem)
          {                      // Adjust remainder, goes negative
@@ -505,7 +508,7 @@ udiv (sd_t * a, sd_t * b, char neg, int places, char round, sd_t ** rem)
             v->neg ^= 1;
          }
          // Adjust r
-         sd_t *s = uadd (r, &one, 0,r->mag - r->sig + 1);
+         sd_t *s = uadd (r, &one, 0, r->mag - r->sig + 1);
          free (r);
          r = s;
       }
@@ -587,12 +590,12 @@ smul (sd_t * a, sd_t * b)
 }
 
 static sd_t *
-sdiv (sd_t * a, sd_t * b, int places, char round, sd_t ** rem)
+sdiv (sd_t * a, sd_t * b, int maxplaces, char round, sd_t ** rem)
 {
    debugout ("sdiv", a, b, NULL);
    if ((a->neg && !b->neg) || (!a->neg && b->neg))
-      return udiv (a, b, 1,places, round, rem);
-   return udiv (a, b, 0,places, round, rem);
+      return udiv (a, b, 1, maxplaces, round, rem);
+   return udiv (a, b, 0, maxplaces, round, rem);
 }
 
 static sd_t *
@@ -606,42 +609,45 @@ srnd (sd_t * a, int places, char round)
       int sig = a->mag + 1 + places;    // Next digit after number of places
       sd_t *r = make (a->mag, sig);
       memcpy (r->d, a->d, sig);
-      int p = sig;
-      char up = 0;
-      if (!round)
-         round = 'B';
-      if (a->neg)
-      {                         // reverse logic for +/-
-         if (round == 'F')
-            round = 'C';
-         else if (round == 'C')
-            round = 'F';
-      }
-      if (round == 'C' || round == 'U')
-      {                         // Up (away from zero) if not exact
-         while (p < a->sig && !a->d[p])
+      if (round != STRINGDECIMAL_ROUND_TRUNCATE)
+      {
+         int p = sig;
+         char up = 0;
+         if (!round)
+            round = STRINGDECIMAL_ROUND_BANKING;
+         if (a->neg)
+         {                      // reverse logic for +/-
+            if (round == STRINGDECIMAL_ROUND_FLOOR)
+               round = STRINGDECIMAL_ROUND_CEILING;
+            else if (round == STRINGDECIMAL_ROUND_CEILING)
+               round = STRINGDECIMAL_ROUND_FLOOR;
+         }
+         if (round == STRINGDECIMAL_ROUND_CEILING || round == STRINGDECIMAL_ROUND_UP)
+         {                      // Up (away from zero) if not exact
+            while (p < a->sig && !a->d[p])
+               p++;
+            if (p < a->sig)
+               up = 1;          // not exact
+         } else if (round == STRINGDECIMAL_ROUND_ROUND && a->d[p] >= 5) // Up if .5 or above
+            up = 1;
+         else if (round == STRINGDECIMAL_ROUND_BANKING && a->d[p] > 5)
+            up = 1;             // Up as more than .5
+         else if (round == STRINGDECIMAL_ROUND_BANKING && a->d[p] == 5)
+         {                      // Bankers, check exactly .5
             p++;
-         if (p < a->sig)
-            up = 1;             // not exact
-      } else if (round == 'R' && a->d[p] >= 5)  // Up if .5 or above
-         up = 1;
-      else if (round == 'B' && a->d[p] > 5)
-         up = 1;                // Up as more than .5
-      else if (round == 'B' && a->d[p] == 5)
-      {                         // Bankers, check exactly .5
-         p++;
-         while (p < a->sig && !a->d[p])
-            p++;
-         if (p < a->sig)
-            up = 1;             // greater than .5
-         else if (a->d[sig - 1] & 1)
-            up = 1;             // exactly .5 and odd, so move to even
-      }
-      if (up)
-      {                         // Round up (away from 0)
-         sd_t *s = uadd (r, &one, r->mag - r->sig + 1, 0);
-         free (r);
-         r = s;
+            while (p < a->sig && !a->d[p])
+               p++;
+            if (p < a->sig)
+               up = 1;          // greater than .5
+            else if (a->d[sig - 1] & 1)
+               up = 1;          // exactly .5 and odd, so move to even
+         }
+         if (up)
+         {                      // Round up (away from 0)
+            sd_t *s = uadd (r, &one, r->mag - r->sig + 1, 0);
+            free (r);
+            r = s;
+         }
       }
       r->neg = a->neg;
       return r;
@@ -687,7 +693,7 @@ stringdecimal_mul (const char *a, const char *b)
 };
 
 char *
-stringdecimal_div (const char *a, const char *b, int places, char round, char **rem)
+stringdecimal_div (const char *a, const char *b, int maxplaces, char round, char **rem)
 {                               // Simple divide - to specified number of places, with remainder
    sd_t *B = parse (b, NULL);
    if (!B->sig)
@@ -697,7 +703,7 @@ stringdecimal_div (const char *a, const char *b, int places, char round, char **
    }
    sd_t *A = parse (a, NULL);
    sd_t *REM = NULL;
-   sd_t *R = sdiv (A, B, places, round, &REM);
+   sd_t *R = sdiv (A, B, maxplaces, round, &REM);
    if (rem)
       *rem = output (REM);
    return output_free (R, A, B, REM, NULL);
@@ -723,7 +729,7 @@ stringdecimal_cmp (const char *a, const char *b)
 }
 
 char *
-stringdecimal_eval (const char *sum, int places, char round)
+stringdecimal_eval (const char *sum, int maxplaces, char round, int flags)
 {                               // Parse a sum and process it using basic maths
    if (!sum)
       return NULL;
@@ -739,11 +745,23 @@ stringdecimal_eval (const char *sum, int places, char round)
       char operator;
    } *operator = NULL;          // Operator stack
    sd_t **operand = NULL;       // Operand stack
+   sd_t **denominator = NULL;   // Operand stack denominator for rational (NULL entry for not a division, so /1)
    void operate (void)
    {                            // Do top operation on stack
       if (!operators--)
          errx (1, "Bad operate");
       sd_t *r = NULL;           // result
+      sd_t *d = NULL;           // denominator for rational
+      void pop (int n)
+      {
+         while (n--)
+         {
+            operands--;
+            free (operand[operands]);
+            if (denominator[operands])
+               free (denominator[operands]);
+         }
+      }
       switch (operator[operators].operator)
       {
       case '-':
@@ -751,30 +769,83 @@ stringdecimal_eval (const char *sum, int places, char round)
             operand[operands - 1]->neg ^= 1;    // invert and do add
          // Drop through
       case '+':
-         if (operands < 2)
-            errx (1, "Bad operands +");
-         operands -= 2;
-         r = sadd (operand[operands + 0], operand[operands + 1]);
-         free (operand[operands + 0]);
-         free (operand[operands + 1]);
+         {
+            if (operands < 2)
+               errx (1, "Bad operands +");
+            sd_t *an = operand[operands - 2];
+            sd_t *ad = denominator[operands - 2];
+            sd_t *bn = operand[operands - 1];
+            sd_t *bd = denominator[operands - 1];
+            debugout ("Add", an, ad ? : &one, bn, bd ? : &one, NULL);
+            if (ad || bd)
+            {                   // Rational maths
+               if (!scmp (ad ? : &one, bd ? : &one))
+               {                // Simple (same denominator)
+                  r = sadd (an, bn);
+                  d = copy (ad ? : &one);
+               } else
+               {                // cross multiply
+                  sd_t *a = smul (an, bd ? : &one);
+                  sd_t *b = smul (bn, ad ? : &one);
+                  r = sadd (a, b);
+                  free (a);
+                  free (b);
+                  d = smul (ad ? : &one, bd ? : &one);
+               }
+            } else
+               r = sadd (an, bn);
+            pop (2);
+         }
          break;
       case '*':
          if (operands < 2)
             errx (1, "Bad operands *");
-         operands -= 2;
-         r = smul (operand[operands + 0], operand[operands + 1]);
-         free (operand[operands + 0]);
-         free (operand[operands + 1]);
+         {
+            sd_t *an = operand[operands - 2];
+            sd_t *ad = denominator[operands - 2];
+            sd_t *bn = operand[operands - 1];
+            sd_t *bd = denominator[operands - 1];
+            debugout ("Mul", an, ad ? : &one, bn, bd ? : &one, NULL);
+            if (ad || bd)
+            {                   // Rational maths
+               if (!ad && !bd)
+                  r = smul (an, bn);    // Simple
+               else
+               {                // cross multiply
+                  r = smul (an, bn);
+                  d = smul (ad ? : &one, bd ? : &one);
+               }
+            } else
+               r = smul (an, bn);
+            pop (2);
+         }
          break;
       case '/':
          if (operands < 2)
             errx (1, "Bad operands /");
-         operands -= 2;
-         r = sdiv (operand[operands + 0], operand[operands + 1], places, round, NULL);
-         free (operand[operands + 0]);
-         free (operand[operands + 1]);
-         if (!r)
-            fail = "!Division error";
+         {
+            sd_t *an = operand[operands - 2];
+            sd_t *ad = denominator[operands - 2];
+            sd_t *bn = operand[operands - 1];
+            sd_t *bd = denominator[operands - 1];
+            debugout ("Div", an, ad ? : &one, bn, bd ? : &one, NULL);
+            if (flags & STRINGDECIMAL_USE_RATIONAL)
+            {                   // Rational maths
+               if (!ad && !bd)
+               {                // Simple - making a new rational
+                  r = copy (an);
+                  d = copy (bn);
+               } else
+               {                // Cross divide
+                  r = smul (an, bd ? : &one);
+                  d = smul (ad ? : &one, bn);
+               }
+            } else
+               r = sdiv (an, bn, maxplaces, round, NULL);       // Simple divide
+            pop (2);
+            if (!r)
+               fail = "!Division error";
+         }
          break;
       default:
          errx (1, "Bad operator %c", operator[operators].operator);
@@ -782,8 +853,14 @@ stringdecimal_eval (const char *sum, int places, char round)
       if (r)
       {
          if (operands + 1 > operandmax)
-            operand = realloc (operand, (operandmax += 10) * sizeof (*operand));
-         operand[operands++] = r;
+         {
+            operandmax += 10;
+            operand = realloc (operand, operandmax * sizeof (*operand));
+            denominator = realloc (denominator, operandmax * sizeof (*denominator));
+         }
+         operand[operands] = r;
+         denominator[operands] = d;
+         operands++;
       }
    }
    void addop (char op, int level)
@@ -822,8 +899,14 @@ stringdecimal_eval (const char *sum, int places, char round)
       }
       // Add the operand
       if (operands + 1 > operandmax)
-         operand = realloc (operand, (operandmax += 10) * sizeof (*operand));
-      operand[operands++] = v;
+      {
+         operandmax += 10;
+         operand = realloc (operand, operandmax * sizeof (*operand));
+         denominator = realloc (denominator, operandmax * sizeof (*operand));
+      }
+      operand[operands] = v;
+      denominator[operands] = NULL;     // Assumed not ration
+      operands++;
       // Postfix operators and close brackets
       while (1)
       {
@@ -864,9 +947,37 @@ stringdecimal_eval (const char *sum, int places, char round)
             errx (1, "Bad eval - operands %d", operands);       // Should not happen
       }
    }
-   char *r = output (operand[0]);       // Last remaining operand is the answer
+   char *r = NULL;
+   if (operands)
+   {
+      if (denominator[0])
+      {                         // rational response
+         debugout ("Rational", operand[0], denominator[0], NULL);
+         if (flags & STRINGDECIMAL_RESULT_RATIONAL)
+         {                      // Return as a rational
+            int aplaces = operand[0]->sig - operand[0]->mag - 1;
+            int bplaces = denominator[0]->sig - denominator[0]->mag - 1;
+            int places = aplaces;
+            if (bplaces > aplaces)
+               places = bplaces;
+            operand[0]->mag += places - aplaces;
+            denominator[0]->mag += places - bplaces;
+            char *a = output (operand[0]);
+            char *b = output (denominator[0]);
+            assert (asprintf (&r, "%s/%s", a, b) >= 0);
+            free (a);
+            free (b);
+         } else
+            r = output_free (sdiv (operand[0], denominator[0], maxplaces, round, NULL));        // Simple divide
+      } else
+         r = output (operand[0]);       // Last remaining operand is the answer
+   }
    for (int i = 0; i < operands; i++)
-      free (operand[i]);        // Should be 1
+   {
+      free (operand[i]);
+      if (denominator[i])
+         free (denominator[i]);
+   }
    free (operand);
    free (operator);
    if (fail)
@@ -1017,9 +1128,9 @@ stringdecimal_cmp_ff (char *a, char *b)
 };
 
 char *
-stringdecimal_eval_f (char *sum, int places, char round)
+stringdecimal_eval_f (char *sum, int places, char round, int flags)
 {                               // Eval and free
-   char *r = stringdecimal_eval (sum, places, round);
+   char *r = stringdecimal_eval (sum, places, round, flags);
    if (sum)
       free (sum);
    return r;
@@ -1036,7 +1147,8 @@ main (int argc, const char *argv[])
    char round = 0;
    char rnd = 0;
    if (argc <= 1)
-      errx (1, "-p<places> to round, -d<places> to limit division, -c/-f/-u/-t/-r/-b to set rounding type (default b)");
+      errx (1, "-p<places> to round, -d<places> to limit division, -e<flags>, -c/-f/-u/-t/-r/-b to set rounding type (default b)");
+   int flags = 0;
    for (int a = 1; a < argc; a++)
    {
       const char *s = argv[a];
@@ -1050,6 +1162,11 @@ main (int argc, const char *argv[])
                rnd = 1;
             } else
                rnd = 0;
+            continue;
+         }
+         if (*s == '-' && s[1] == 'e' && isdigit (s[2]))
+         {
+            flags = atoi (s + 2);
             continue;
          }
          if (*s == '-' && s[1] == 'd' && isdigit (s[2]))
@@ -1073,7 +1190,7 @@ main (int argc, const char *argv[])
          }
          errx (1, "Unknown arg %s", s);
       }
-      char *res = stringdecimal_eval (s, divplaces, round);
+      char *res = stringdecimal_eval (s, divplaces, round, flags);
       if (rnd)
          res = stringdecimal_rnd_f (res, roundplaces, round);
       printf ("%s\n", res);
