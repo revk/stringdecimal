@@ -899,13 +899,15 @@ stringdecimal_eval (const char *sum, int places, char round)
          sum++;
       }
       // Operand
+      if (*sum == '!')
+         return strdup (sum);   // Previous error used as operand
       const char *was = sum;
       sd_t *v = calloc (1, sizeof (*v));
       if (!v)
          errx (1, "malloc");
       sum = parse (v, sum);
       if (sum == was)
-         return strdup ("* Missing operand");
+         return strdup ("!Missing operand");
       // Add the operand
       if (operands + 1 > operandmax)
          operand = realloc (operand, (operandmax += 10) * sizeof (*operand));
@@ -916,7 +918,7 @@ stringdecimal_eval (const char *sum, int places, char round)
          if (*sum == ')')
          {
             if (!level)
-               return strdup ("* Too many close brackets");
+               return strdup ("!Too many close brackets");
             level -= 10;
          }
          sum++;
@@ -929,10 +931,10 @@ stringdecimal_eval (const char *sum, int places, char round)
       else if (*sum == '*' || *sum == '/')
          addop (*sum++, level + 1);
       else
-         return strdup ("* Missing/unknown operator");
+         return strdup ("!Missing/unknown operator");
    }
    if (level)
-      return strdup ("* Unclosed brackets");
+      return strdup ("!Unclosed brackets");
    while (operators)
       operate ();
    if (operands != 1)
