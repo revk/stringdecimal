@@ -118,33 +118,41 @@ parse (const char *v, const char **ep)
    if (isdigit (*v))
    {                            // Some initial digits
       int d = 0,
-         p = 0;
+         p = 0,
+         t = 0;
       while (1)
       {
          if (isdigit (*v))
+         {
+            if (*v == '0')
+               t++;             // count trailing zeros
+            else
+               t = 0;
             d++;
-         else if (*v != ',')
+         } else if (*v != ',')
             break;
          v++;
       }
       if (*v == '.')
       {
          v++;
-         const char *places = v;
          while (isdigit (*v))
          {
+            if (*v == '0')
+               t++;             // count trailing zeros
+            else
+               t = 0;
             p++;
             v++;
          }
-         while (p && places[p - 1] == '0')
-            p--;                // Training zero
       }
-      s = make (d - 1, d + p);
+      s = make (d - 1, d + p - t);
    } else if (*v == '.')
    {                            // No initial digits
       v++;
       int mag = -1,
-         sig = 0;
+         sig = 0,
+         t = 0;
       while (*v == '0')
       {
          mag--;
@@ -153,10 +161,14 @@ parse (const char *v, const char **ep)
       digits = v;
       while (isdigit (*v))
       {
+         if (*v == '0')
+            t++;                // count trailing zeros
+         else
+            t = 0;
          sig++;
          v++;
       }
-      s = make (mag, sig);
+      s = make (mag, sig - t);
    } else
       s = copy (&zero);
    // Load digits
@@ -186,11 +198,10 @@ parse (const char *v, const char **ep)
    if (ep)
       *ep = v;                  // End of parsing
    if (!s->sig)
-   {                            // Zero
-      s->mag = 0;
-      return s;
-   }
-   return norm (s, neg);
+      s->mag = 0;               // Zero
+   else
+      s->neg = neg;
+   return s;
 }
 
 static char *
