@@ -285,6 +285,12 @@ ucmp (sd_t * a, sd_t * b, int boffset)
    if (!b)
       b = &zero;
    //debugout ("ucmp", a, b, NULL);
+   if (!a->sig && !b->sig)
+      return 0;                 // Zeros
+   if (a->sig && !b->sig)
+      return 1;                 // Zero compare
+   if (!a->sig && b->sig)
+      return -1;                // Zero compare
    if (a->mag > boffset + b->mag)
       return 1;                 // Simple magnitude difference
    if (a->mag < boffset + b->mag)
