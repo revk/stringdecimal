@@ -165,7 +165,6 @@ parse (const char *v, const char **ep)
       s->mag = 0;
       return s;
    }
-   s->neg = neg;
    // Load digits
    int q = 0;
    while (*digits && q < s->sig)
@@ -190,7 +189,7 @@ parse (const char *v, const char **ep)
          e = e * 10 + *v++ - '0';
       s->mag += e * sign;
    }
-   return s;
+   return norm (s, neg);
 }
 
 static char *
@@ -285,7 +284,7 @@ ucmp (sd_t * a, sd_t * b, int boffset)
       a = &zero;
    if (!b)
       b = &zero;
-   debugout ("ucmp", a, b, NULL);
+   //debugout ("ucmp", a, b, NULL);
    if (a->mag > boffset + b->mag)
       return 1;                 // Simple magnitude difference
    if (a->mag < boffset + b->mag)
@@ -317,7 +316,7 @@ uadd (sd_t * a, sd_t * b, char neg, int boffset)
       a = &zero;
    if (!b)
       b = &zero;
-   debugout ("uadd", a, b, NULL);
+   //debugout ("uadd", a, b, NULL);
    int mag = a->mag;            // Max mag
    if (boffset + b->mag > a->mag)
       mag = boffset + b->mag;
@@ -354,7 +353,7 @@ usub (sd_t * a, sd_t * b, char neg, int boffset)
       a = &zero;
    if (!b)
       b = &zero;
-   debugout ("usub", a, b, NULL);
+   //debugout ("usub", a, b, NULL);
    int mag = a->mag;            // Max mag
    if (boffset + b->mag > a->mag)
       mag = boffset + b->mag;
@@ -405,7 +404,7 @@ umul (sd_t * a, sd_t * b, char neg)
       a = &zero;
    if (!b)
       b = &zero;
-   debugout ("umul", a, b, NULL);
+   //debugout ("umul", a, b, NULL);
    sd_t *base[9];
    makebase (base, b);
    sd_t *r = NULL;
@@ -431,7 +430,7 @@ udiv (sd_t * a, sd_t * b, char neg, int maxplaces, char round, sd_t ** rem)
       a = &zero;
    if (!b)
       b = &zero;
-   debugout ("udiv", a, b, NULL);
+   //debugout ("udiv", a, b, NULL);
    if (!b->sig)
       return NULL;              // Divide by zero
    sd_t *base[9];
@@ -450,7 +449,7 @@ udiv (sd_t * a, sd_t * b, char neg, int maxplaces, char round, sd_t ** rem)
       int n = 0;
       while (n < 9 && ucmp (v, base[n], p) > 0)
          n++;
-      debugout ("Remainder", v, NULL);
+      //debugout ("udiv rem", v, NULL);
       if (n)
       {
          sd_t *s = usub (v, base[n - 1], 0, p);
@@ -477,15 +476,6 @@ udiv (sd_t * a, sd_t * b, char neg, int maxplaces, char round, sd_t ** rem)
       }
       int shift = mag - sig;
       int diff = ucmp (v, base[4], shift);
-#ifdef DEBUG
-      char *V = output (v);
-      base[4]->mag += shift;
-      char *B = output (base[4]);
-      base[4]->mag -= shift;
-      fprintf (stderr, "v=%s diff=%d mag=%d sig=%d \nb=%s shift=%d\n", V, diff, mag, sig, B, shift);
-      free (V);
-      free (B);
-#endif
       if (((round == STRINGDECIMAL_ROUND_UP || round == STRINGDECIMAL_ROUND_CEILING) && v->sig) // Round up anyway
           || (round == STRINGDECIMAL_ROUND_ROUND && diff >= 0)  // Round 0.5 and above up
           || (round == STRINGDECIMAL_ROUND_BANKING && diff > 0) // Round up
@@ -494,13 +484,6 @@ udiv (sd_t * a, sd_t * b, char neg, int maxplaces, char round, sd_t ** rem)
          if (rem)
          {                      // Adjust remainder, goes negative
             base[0]->mag += shift + 1;
-#ifdef DEBUG
-            char *V = output (v);
-            char *O = output (base[0]);
-            fprintf (stderr, "Adjust remainder:\n%s-\n%s\n", O, V);
-            free (V);
-            free (O);
-#endif
             sd_t *s = usub (base[0], v, 0, 0);
             base[0]->mag -= shift + 1;
             free (v);
@@ -848,6 +831,15 @@ stringdecimal_eval (const char *sum, int maxplaces, char round)
       }
       if (r)
       {
+         if (d && d->sig == 1 && d->d[0] == 1)
+         {                      // Simple powers of 10 - no need for rationals
+            if (d->neg)
+               r->neg ^= 1;
+            r->mag -= d->mag;
+            free (d);
+            d = NULL;
+         }
+         debugout ("Result", r, d, NULL);
          if (operands + 1 > operandmax)
          {
             operandmax += 10;
