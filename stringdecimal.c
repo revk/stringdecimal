@@ -29,7 +29,7 @@
 #include <err.h>
 #include <assert.h>
 
-#define DEBUG
+//#define DEBUG
 
 // Support functions
 
@@ -729,7 +729,7 @@ stringdecimal_cmp (const char *a, const char *b)
 }
 
 char *
-stringdecimal_eval (const char *sum, int maxplaces, char round, int flags)
+stringdecimal_eval (const char *sum, int maxplaces, char round)
 {                               // Parse a sum and process it using basic maths
    if (!sum)
       return NULL;
@@ -829,19 +829,15 @@ stringdecimal_eval (const char *sum, int maxplaces, char round, int flags)
             sd_t *bn = operand[operands - 1];
             sd_t *bd = denominator[operands - 1];
             debugout ("Div", an, ad ? : &one, bn, bd ? : &one, NULL);
-            if (flags & STRINGDECIMAL_USE_RATIONAL)
-            {                   // Rational maths
-               if (!ad && !bd)
-               {                // Simple - making a new rational
-                  r = copy (an);
-                  d = copy (bn);
-               } else
-               {                // Cross divide
-                  r = smul (an, bd ? : &one);
-                  d = smul (ad ? : &one, bn);
-               }
+            if (!ad && !bd)
+            {                   // Simple - making a new rational
+               r = copy (an);
+               d = copy (bn);
             } else
-               r = sdiv (an, bn, maxplaces, round, NULL);       // Simple divide
+            {                   // Cross divide
+               r = smul (an, bd ? : &one);
+               d = smul (ad ? : &one, bn);
+            }
             pop (2);
             if (!r)
                fail = "!Division error";
@@ -951,25 +947,8 @@ stringdecimal_eval (const char *sum, int maxplaces, char round, int flags)
    if (operands)
    {
       if (denominator[0])
-      {                         // rational response
-         debugout ("Rational", operand[0], denominator[0], NULL);
-         if (flags & STRINGDECIMAL_RESULT_RATIONAL)
-         {                      // Return as a rational
-            int aplaces = operand[0]->sig - operand[0]->mag - 1;
-            int bplaces = denominator[0]->sig - denominator[0]->mag - 1;
-            int places = aplaces;
-            if (bplaces > aplaces)
-               places = bplaces;
-            operand[0]->mag += places - aplaces;
-            denominator[0]->mag += places - bplaces;
-            char *a = output (operand[0]);
-            char *b = output (denominator[0]);
-            assert (asprintf (&r, "%s/%s", a, b) >= 0);
-            free (a);
-            free (b);
-         } else
-            r = output_free (sdiv (operand[0], denominator[0], maxplaces, round, NULL));        // Simple divide
-      } else
+         r = output_free (sdiv (operand[0], denominator[0], maxplaces, round, NULL));   // Simple divide to get answer
+      else
          r = output (operand[0]);       // Last remaining operand is the answer
    }
    for (int i = 0; i < operands; i++)
@@ -1128,9 +1107,9 @@ stringdecimal_cmp_ff (char *a, char *b)
 };
 
 char *
-stringdecimal_eval_f (char *sum, int places, char round, int flags)
+stringdecimal_eval_f (char *sum, int places, char round)
 {                               // Eval and free
-   char *r = stringdecimal_eval (sum, places, round, flags);
+   char *r = stringdecimal_eval (sum, places, round);
    if (sum)
       free (sum);
    return r;
@@ -1147,8 +1126,7 @@ main (int argc, const char *argv[])
    char round = 0;
    char rnd = 0;
    if (argc <= 1)
-      errx (1, "-p<places> to round, -d<places> to limit division, -e<flags>, -c/-f/-u/-t/-r/-b to set rounding type (default b)");
-   int flags = 0;
+      errx (1, "-p<places> to round, -d<places> to limit division, -c/-f/-u/-t/-r/-b to set rounding type (default b)");
    for (int a = 1; a < argc; a++)
    {
       const char *s = argv[a];
@@ -1162,11 +1140,6 @@ main (int argc, const char *argv[])
                rnd = 1;
             } else
                rnd = 0;
-            continue;
-         }
-         if (*s == '-' && s[1] == 'e' && isdigit (s[2]))
-         {
-            flags = atoi (s + 2);
             continue;
          }
          if (*s == '-' && s[1] == 'd' && isdigit (s[2]))
@@ -1190,7 +1163,7 @@ main (int argc, const char *argv[])
          }
          errx (1, "Unknown arg %s", s);
       }
-      char *res = stringdecimal_eval (s, divplaces, round, flags);
+      char *res = stringdecimal_eval (s, divplaces, round);
       if (rnd)
          res = stringdecimal_rnd_f (res, roundplaces, round);
       printf ("%s\n", res);
