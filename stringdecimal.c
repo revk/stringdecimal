@@ -894,7 +894,7 @@ stringdecimal_eval (const char *sum, int maxplaces, char round)
       // Operand
       if (*sum == '!')
       {
-         fail = sum;
+         fail = "!Error";
          break;
       }
       const char *was = sum;
