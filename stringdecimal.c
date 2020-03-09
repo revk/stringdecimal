@@ -743,6 +743,7 @@ stringdecimal_eval (const char *sum, int maxplaces, char round)
    struct operator_s
    {
       int level;
+      int args;
       char operator;
    } *operator = NULL;          // Operator stack
    sd_t **operand = NULL;       // Operand stack
@@ -753,30 +754,28 @@ stringdecimal_eval (const char *sum, int maxplaces, char round)
          errx (1, "Bad operate");
       sd_t *r = NULL;           // result
       sd_t *d = NULL;           // denominator for rational
-      void pop (int n)
-      {
-         while (n--)
-         {
-            operands--;
-            free (operand[operands]);
-            if (denominator[operands])
-               free (denominator[operands]);
-         }
-      }
+      if (operands < operator[operators].args)
+         errx (1, "Expecting %d args, only %d present", operator[operators].args, operands);
+      operands -= operator[operators].args;
       switch (operator[operators].operator)
       {
       case '-':
-         if (operands)
-            operand[operands - 1]->neg ^= 1;    // invert and do add
+         if (operator[operators].args == 1)     // unary negate
+         {
+            r = copy (operand[operands + 0]);
+            if (r->sig)
+               r->neg ^= 1;
+            break;
+         }
+	 if(operand[operands + 1]->sig)
+         operand[operands + 1]->neg ^= 1;       // invert second arg and do add
          // Drop through
       case '+':
          {
-            if (operands < 2)
-               errx (1, "Bad operands +");
-            sd_t *an = operand[operands - 2];
-            sd_t *ad = denominator[operands - 2];
-            sd_t *bn = operand[operands - 1];
-            sd_t *bd = denominator[operands - 1];
+            sd_t *an = operand[operands + 0];
+            sd_t *ad = denominator[operands + 0];
+            sd_t *bn = operand[operands + 1];
+            sd_t *bd = denominator[operands + 1];
             debugout ("Add", an, ad ? : &one, bn, bd ? : &one, NULL);
             if (ad || bd)
             {                   // Rational maths
@@ -795,17 +794,14 @@ stringdecimal_eval (const char *sum, int maxplaces, char round)
                }
             } else
                r = sadd (an, bn);
-            pop (2);
          }
          break;
       case '*':
-         if (operands < 2)
-            errx (1, "Bad operands *");
          {
-            sd_t *an = operand[operands - 2];
-            sd_t *ad = denominator[operands - 2];
-            sd_t *bn = operand[operands - 1];
-            sd_t *bd = denominator[operands - 1];
+            sd_t *an = operand[operands + 0];
+            sd_t *ad = denominator[operands + 0];
+            sd_t *bn = operand[operands + 1];
+            sd_t *bd = denominator[operands + 1];
             debugout ("Mul", an, ad ? : &one, bn, bd ? : &one, NULL);
             if (ad || bd)
             {                   // Rational maths
@@ -818,17 +814,14 @@ stringdecimal_eval (const char *sum, int maxplaces, char round)
                }
             } else
                r = smul (an, bn);
-            pop (2);
          }
          break;
       case '/':
-         if (operands < 2)
-            errx (1, "Bad operands /");
          {
-            sd_t *an = operand[operands - 2];
-            sd_t *ad = denominator[operands - 2];
-            sd_t *bn = operand[operands - 1];
-            sd_t *bd = denominator[operands - 1];
+            sd_t *an = operand[operands + 0];
+            sd_t *ad = denominator[operands + 0];
+            sd_t *bn = operand[operands + 1];
+            sd_t *bd = denominator[operands + 1];
             debugout ("Div", an, ad ? : &one, bn, bd ? : &one, NULL);
             if (!bn->sig)
                fail = "!Divide by zero";
@@ -841,11 +834,16 @@ stringdecimal_eval (const char *sum, int maxplaces, char round)
                r = smul (an, bd ? : &one);
                d = smul (ad ? : &one, bn);
             }
-            pop (2);
          }
          break;
       default:
          errx (1, "Bad operator %c", operator[operators].operator);
+      }
+      for (int n = 0; n < operator[operators].args; n++)
+      {                         // Free args
+         free (operand[operands + n]);
+         if (denominator[operands + n])
+            free (denominator[operands + n]);
       }
       if (r)
       {
@@ -870,14 +868,17 @@ stringdecimal_eval (const char *sum, int maxplaces, char round)
       } else if (!fail)
          fail = "!Maths error"; // Should not happen
    }
-   void addop (char op, int level)
+   void addop (char op, int level, int args)
    {                            // Add an operator
-      while (operators && operator[operators - 1].level >= level)
+      while (operators
+             && (operator[operators - 1].level > level
+                 || (operator[operators - 1].level == level && operator[operators - 1].args > 1)))
          operate ();
       if (operators + 1 > operatormax)
          operator = realloc (operator, (operatormax += 10) * sizeof (*operator));
       operator[operators].operator = op;
       operator[operators].level = level;
+      operator[operators].args = args;
       operators++;
    }
    while (!fail)
@@ -887,6 +888,8 @@ stringdecimal_eval (const char *sum, int maxplaces, char round)
       {
          if (*sum == '(')
             level += 10;
+         else if (*sum == '-')
+            addop (*sum, level + 9, 1); // Unary negate
          else if (!isspace (*sum))
             break;
          sum++;
@@ -933,9 +936,9 @@ stringdecimal_eval (const char *sum, int maxplaces, char round)
          break;                 // clean exit after last operand
       // Operator
       if (*sum == '-' || *sum == '+')
-         addop (*sum++, level + 0);
+         addop (*sum++, level + 0, 2);
       else if (*sum == '*' || *sum == '/')
-         addop (*sum++, level + 1);
+         addop (*sum++, level + 1, 2);
       else
       {
          fail = "!Missing/unknown operator";
