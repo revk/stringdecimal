@@ -649,7 +649,7 @@ srnd (sd_t * a, int places, char round)
          if (sig < 0)
             return r;
          sig = 0;               // Allow rounding
-         if (r->mag >= 0)
+	 if(r->mag>=0)
             r->mag--;
       } else
       {
@@ -702,6 +702,7 @@ srnd (sd_t * a, int places, char round)
    if (decimals < places)
    {                            // Artificially extend places, non normalised
       int sig = a->sig + (places - decimals);
+      if(a->mag>0)sig=a->mag+1+places;
       sd_t *r = make (a->mag, sig);
       memcpy (r->d, a->d, a->sig);
       r->neg = a->neg;
