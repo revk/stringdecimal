@@ -244,11 +244,14 @@ output (sd_t * s)
    if (s->mag < 0)
    {
       *p++ = '0';
-      *p++ = '.';
-      for (q = 0; q < -1 - s->mag; q++)
-         *p++ = '0';
-      for (q = 0; q < s->sig; q++)
-         *p++ = '0' + s->d[q];
+      if (s->sig || s->mag < -1)
+      {
+         *p++ = '.';
+         for (q = 0; q < -1 - s->mag; q++)
+            *p++ = '0';
+         for (q = 0; q < s->sig; q++)
+            *p++ = '0' + s->d[q];
+      }
    } else
    {
       while (q <= s->mag && q < s->sig)
