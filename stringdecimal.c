@@ -95,12 +95,15 @@ norm (sd_t * s, char neg)
 }
 
 static sd_t *
-parse (const char *v, const char **ep)
+parse2 (const char *v, const char **ep, int *placesp)
 {                               // Parse in to s, and return next character
    if (!v)
       return NULL;
    if (ep)
       *ep = v;
+   if (placesp)
+      *placesp = 0;
+   int places = 0;              // count places
    char neg = 0;
    if (*v == '+')
       v++;                      // Somewhat redundant
@@ -138,6 +141,7 @@ parse (const char *v, const char **ep)
          v++;
          while (isdigit (*v))
          {
+            places++;
             if (*v == '0')
                t++;             // count trailing zeros
             else
@@ -155,12 +159,14 @@ parse (const char *v, const char **ep)
          t = 0;
       while (*v == '0')
       {
+         places++;
          mag--;
          v++;
       }
       digits = v;
       while (isdigit (*v))
       {
+         places++;
          if (*v == '0')
             t++;                // count trailing zeros
          else
@@ -201,7 +207,15 @@ parse (const char *v, const char **ep)
       s->mag = 0;               // Zero
    else
       s->neg = neg;
+   if (placesp)
+      *placesp = places;
    return s;
+}
+
+static sd_t *
+parse (const char *v)
+{
+   return parse2 (v, NULL, NULL);
 }
 
 static char *
@@ -669,8 +683,8 @@ srnd (sd_t * a, int places, char round)
 char *
 stringdecimal_add (const char *a, const char *b)
 {                               // Simple add
-   sd_t *A = parse (a, NULL);
-   sd_t *B = parse (b, NULL);
+   sd_t *A = parse (a);
+   sd_t *B = parse (b);
    sd_t *R = sadd (A, B);
    return output_free (R, A, B, NULL);
 };
@@ -678,8 +692,8 @@ stringdecimal_add (const char *a, const char *b)
 char *
 stringdecimal_sub (const char *a, const char *b)
 {                               // Simple subtract
-   sd_t *A = parse (a, NULL);
-   sd_t *B = parse (b, NULL);
+   sd_t *A = parse (a);
+   sd_t *B = parse (b);
    sd_t *R = ssub (A, B);
    return output_free (R, A, B, NULL);
 };
@@ -687,24 +701,24 @@ stringdecimal_sub (const char *a, const char *b)
 char *
 stringdecimal_mul (const char *a, const char *b)
 {                               // Simple multiply
-   sd_t *A = parse (a, NULL);
-   sd_t *B = parse (b, NULL);
+   sd_t *A = parse (a);
+   sd_t *B = parse (b);
    sd_t *R = smul (A, B);
    return output_free (R, A, B, NULL);
 };
 
 char *
-stringdecimal_div (const char *a, const char *b, int maxplaces, char round, char **rem)
+stringdecimal_div (const char *a, const char *b, int maxdivide, char round, char **rem)
 {                               // Simple divide - to specified number of places, with remainder
-   sd_t *B = parse (b, NULL);
+   sd_t *B = parse (b);
    if (!B->sig)
    {
       free (B);
       return NULL;              // Divide by zero
    }
-   sd_t *A = parse (a, NULL);
+   sd_t *A = parse (a);
    sd_t *REM = NULL;
-   sd_t *R = sdiv (A, B, maxplaces, round, &REM);
+   sd_t *R = sdiv (A, B, maxdivide, round, &REM);
    if (rem)
       *rem = output (REM);
    return output_free (R, A, B, REM, NULL);
@@ -713,7 +727,7 @@ stringdecimal_div (const char *a, const char *b, int maxplaces, char round, char
 char *
 stringdecimal_rnd (const char *a, int places, char round)
 {                               // Round to specified number of places
-   sd_t *A = parse (a, NULL);
+   sd_t *A = parse (a);
    sd_t *R = srnd (A, places, round);
    return output_free (R, A, NULL);
 };
@@ -721,8 +735,8 @@ stringdecimal_rnd (const char *a, int places, char round)
 int
 stringdecimal_cmp (const char *a, const char *b)
 {                               // Compare
-   sd_t *A = parse (a, NULL);
-   sd_t *B = parse (b, NULL);
+   sd_t *A = parse (a);
+   sd_t *B = parse (b);
    int r = scmp (A, B);
    free (A);
    free (B);
@@ -730,8 +744,11 @@ stringdecimal_cmp (const char *a, const char *b)
 }
 
 char *
-stringdecimal_eval (const char *sum, int maxplaces, char round)
+stringdecimal_eval (const char *sum, int maxdivide, char round, int *maxplacesp)
 {                               // Parse a sum and process it using basic maths
+   int maxplaces = 0;
+   if (maxplacesp)
+      *maxplacesp = 0;
    if (!sum)
       return NULL;
    const char *fail = NULL;
@@ -767,8 +784,8 @@ stringdecimal_eval (const char *sum, int maxplaces, char round)
                r->neg ^= 1;
             break;
          }
-	 if(operand[operands + 1]->sig)
-         operand[operands + 1]->neg ^= 1;       // invert second arg and do add
+         if (operand[operands + 1]->sig)
+            operand[operands + 1]->neg ^= 1;    // invert second arg and do add
          // Drop through
       case '+':
          {
@@ -901,12 +918,15 @@ stringdecimal_eval (const char *sum, int maxplaces, char round)
          break;
       }
       const char *was = sum;
-      sd_t *v = parse (sum, &sum);
+      int places = 0;
+      sd_t *v = parse2 (sum, &sum, &places);
       if (sum == was)
       {
          fail = "!Missing operand";
          break;
       }
+      if (places > maxplaces)
+         maxplaces = places;
       // Add the operand
       if (operands + 1 > operandmax)
       {
@@ -962,7 +982,7 @@ stringdecimal_eval (const char *sum, int maxplaces, char round)
    {
       if (denominator[0])
       {
-         r = output (sdiv (operand[0], denominator[0], maxplaces, round, NULL));        // Simple divide to get answer
+         r = output (sdiv (operand[0], denominator[0], maxdivide, round, NULL));        // Simple divide to get answer
          if (!r)
             fail = "!Division failure";
       } else
@@ -976,6 +996,8 @@ stringdecimal_eval (const char *sum, int maxplaces, char round)
    }
    free (operand);
    free (operator);
+   if (maxplacesp)
+      *maxplacesp = maxplaces;
    if (fail)
    {
       if (r)
@@ -1057,27 +1079,27 @@ stringdecimal_mul_ff (char *a, char *b)
 };
 
 char *
-stringdecimal_div_cf (const char *a, char *b, int places, char round, char **rem)
+stringdecimal_div_cf (const char *a, char *b, int maxdivide, char round, char **rem)
 {                               // Simple divide with free second arg
-   char *r = stringdecimal_div (a, b, places, round, rem);
+   char *r = stringdecimal_div (a, b, maxdivide, round, rem);
    if (b)
       free (b);
    return r;
 };
 
 char *
-stringdecimal_div_fc (char *a, const char *b, int places, char round, char **rem)
+stringdecimal_div_fc (char *a, const char *b, int maxdivide, char round, char **rem)
 {                               // Simple divide with free first arg
-   char *r = stringdecimal_div (a, b, places, round, rem);
+   char *r = stringdecimal_div (a, b, maxdivide, round, rem);
    if (a)
       free (a);
    return r;
 };
 
 char *
-stringdecimal_div_ff (char *a, char *b, int places, char round, char **rem)
+stringdecimal_div_ff (char *a, char *b, int maxdivide, char round, char **rem)
 {                               // Simple divide with free both args
-   char *r = stringdecimal_div (a, b, places, round, rem);
+   char *r = stringdecimal_div (a, b, maxdivide, round, rem);
    if (a)
       free (a);
    if (b)
@@ -1124,9 +1146,9 @@ stringdecimal_cmp_ff (char *a, char *b)
 };
 
 char *
-stringdecimal_eval_f (char *sum, int places, char round)
+stringdecimal_eval_f (char *sum, int places, char round, int *maxplacesp)
 {                               // Eval and free
-   char *r = stringdecimal_eval (sum, places, round);
+   char *r = stringdecimal_eval (sum, places, round, maxplacesp);
    if (sum)
       free (sum);
    return r;
@@ -1180,7 +1202,7 @@ main (int argc, const char *argv[])
          }
          errx (1, "Unknown arg %s", s);
       }
-      char *res = stringdecimal_eval (s, divplaces, round);
+      char *res = stringdecimal_eval (s, divplaces, round, NULL);
       if (rnd)
          res = stringdecimal_rnd_f (res, roundplaces, round);
       printf ("%s\n", res);
