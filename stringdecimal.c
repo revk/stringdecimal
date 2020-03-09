@@ -55,6 +55,8 @@ make (int mag, int sig)
    sd_t *s = calloc (1, sizeof (*s) + sig);
    assert (s);
    // Leave neg as is if set
+   if (!sig)
+      mag = 0;
    s->mag = mag;
    s->sig = sig;
    s->d = s->m;
@@ -619,13 +621,38 @@ srnd (sd_t * a, int places, char round)
    if (!a)
       return NULL;
    debugout ("srnd", a, NULL);
-   if (a->sig - a->mag - 1 == places)
+   int decimals = a->sig - a->mag - 1;
+   if (decimals < 0)
+      decimals = 0;
+   sd_t *z (void)
+   {
+      sd_t *r = copy (&zero);
+      r->mag = -places;
+      if (places > 0)
+         r->mag--;
+      return r;
+   }
+   if (!a->sig)
+      return z ();
+   if (decimals == places)
       return copy (a);          // Already that many places
-   if (a->sig - a->mag - 1 > places)
+   if (decimals > places)
    {                            // more places, needs truncating
-      int sig = a->mag + 1 + places;    // Next digit after number of places
-      sd_t *r = make (a->mag, sig);
-      memcpy (r->d, a->d, sig);
+      int sig = a->sig - (decimals - places);
+      sd_t *r;
+      if (sig <= 0)
+      {
+         r = z ();
+         if (sig < 0)
+            return r;
+         sig = 0;               // Allow rounding
+         if (r->mag >= 0)
+            r->mag--;
+      } else
+      {
+         r = make (a->mag, sig);
+         memcpy (r->d, a->d, sig);
+      }
       if (round != STRINGDECIMAL_ROUND_TRUNCATE)
       {
          int p = sig;
@@ -661,7 +688,7 @@ srnd (sd_t * a, int places, char round)
          }
          if (up)
          {                      // Round up (away from 0)
-            sd_t *s = uadd (r, &one, r->mag - r->sig + 1, 0);
+            sd_t *s = uadd (r, &one, 0, r->mag - r->sig + 1);
             free (r);
             r = s;
          }
@@ -669,9 +696,9 @@ srnd (sd_t * a, int places, char round)
       r->neg = a->neg;
       return r;
    }
-   if (a->sig - a->mag - 1 < places)
+   if (decimals < places)
    {                            // Artificially extend places, non normalised
-      int sig = a->mag + 1 + places;
+      int sig = a->sig + (places - decimals);
       sd_t *r = make (a->mag, sig);
       memcpy (r->d, a->d, a->sig);
       r->neg = a->neg;
