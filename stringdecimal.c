@@ -616,6 +616,8 @@ sdiv (sd_t * a, sd_t * b, int maxplaces, char round, sd_t ** rem)
 static sd_t *
 srnd (sd_t * a, int places, char round)
 {
+   if (!a)
+      return NULL;
    debugout ("srnd", a, NULL);
    if (a->sig - a->mag - 1 == places)
       return copy (a);          // Already that many places
