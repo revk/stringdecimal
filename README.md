@@ -4,7 +4,7 @@ Simple library that does basic decimal maths to any precision on C strings.
 
 See include file for the various calls available. String answers are malloced, and functions exist to free the arguments used, making it simple to do a series of sums if you wish.
 
-This includes functions for add, subtract, multiple, compare, divide and rounding.
+This includes functions for add, subtract, multiply, compare, divide and rounding.
 
 Whilst add, subtract, and multiple always work to whatever precision is needed, division takes a number of decimal places places to limit the result. Allows various common rounding algorithms, including (default) bankers rounding.
 
