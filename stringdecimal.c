@@ -28,6 +28,7 @@
 #include <stdlib.h>
 #include <err.h>
 #include <assert.h>
+#include <limits.h>
 
 //#define DEBUG
 
@@ -649,7 +650,7 @@ srnd (sd_t * a, int places, char round)
          if (sig < 0)
             return r;
          sig = 0;               // Allow rounding
-	 if(r->mag>=0)
+         if (r->mag >= 0)
             r->mag--;
       } else
       {
@@ -702,7 +703,8 @@ srnd (sd_t * a, int places, char round)
    if (decimals < places)
    {                            // Artificially extend places, non normalised
       int sig = a->sig + (places - decimals);
-      if(a->mag>0)sig=a->mag+1+places;
+      if (a->mag > 0)
+         sig = a->mag + 1 + places;
       sd_t *r = make (a->mag, sig);
       memcpy (r->d, a->d, a->sig);
       r->neg = a->neg;
@@ -920,10 +922,11 @@ stringdecimal_eval (const char *sum, int maxdivide, char round, int *maxplacesp)
    }
    void addop (char op, int level, int args)
    {                            // Add an operator
-      while (operators
-             && (operator[operators - 1].level > level
-                 || (operator[operators - 1].level == level && operator[operators - 1].args > 1)))
-         operate ();
+      if (args < 0)
+         args = 0 - args;       // USed for prexif unary ops, don't run stack
+      else
+         while (operators && operator[operators - 1].level >= level)
+            operate ();         // Clear stack of pending ops
       if (operators + 1 > operatormax)
          operator = realloc (operator, (operatormax += 10) * sizeof (*operator));
       operator[operators].operator = op;
@@ -939,7 +942,7 @@ stringdecimal_eval (const char *sum, int maxdivide, char round, int *maxplacesp)
          if (*sum == '(')
             level += 10;
          else if (*sum == '-')
-            addop (*sum, level + 9, 1); // Unary negate
+            addop (*sum, level + 9, -1);        // Unary negate
          else if (!isspace (*sum))
             break;
          sum++;
@@ -1015,7 +1018,7 @@ stringdecimal_eval (const char *sum, int maxdivide, char round, int *maxplacesp)
    {
       if (denominator[0])
       {
-         r = output (sdiv (operand[0], denominator[0], maxdivide, round, NULL));        // Simple divide to get answer
+         r = output (sdiv (operand[0], denominator[0], maxdivide == INT_MAX ? maxplaces : maxdivide, round, NULL));     // Simple divide to get answer
          if (!r)
             fail = "!Division failure";
       } else
@@ -1194,7 +1197,7 @@ int
 main (int argc, const char *argv[])
 {
    int roundplaces = 2;
-   int divplaces = 100;
+   int divplaces = INT_MAX;     // Use number of places seen
    char round = 0;
    char rnd = 0;
    if (argc <= 1)
@@ -1219,14 +1222,6 @@ main (int argc, const char *argv[])
             divplaces = atoi (s + 2);
             continue;
          }
-         if (*s == '-' && s[1] == 'q' && a + 2 <= argc)
-         {
-            char *rem = NULL;
-            char *res = stringdecimal_div (argv[a + 1], argv[a + 2], divplaces, round, &rem);
-            fprintf (stderr, "%s/%s = %s rem %s\n", argv[a + 1], argv[a + 2], res, rem);
-            a += 2;
-            continue;
-         }
          if (*s == '-' && s[1] && strchr ("CFUTRB", toupper (s[1])) && !s[2])
          {
             round = toupper (s[1]);
@@ -1235,7 +1230,7 @@ main (int argc, const char *argv[])
          }
          errx (1, "Unknown arg %s", s);
       }
-      char *res = stringdecimal_eval (s, divplaces, round, NULL);
+      char *res = stringdecimal_eval (s, (divplaces == INT_MAX && rnd) ? roundplaces : divplaces, round, NULL);
       if (rnd)
          res = stringdecimal_rnd_f (res, roundplaces, round);
       printf ("%s\n", res);

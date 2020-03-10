@@ -35,8 +35,8 @@ char * stringdecimal_div(const char *a,const char *b,int maxplaces,char round,ch
 char * stringdecimal_rnd(const char *a,int places,char round); // Round to specified number of places
 int stringdecimal_cmp(const char *a,const char *b);	// Compare. -1 if a<b, 1 if a>b, 0 if a==b
 char *stringdecimal_eval(const char *sum,int maxdivide,char round,int *maxplacesp); // Eval sum using brackets, +, -, *, /
-// Eval will limit final divide to maxdivide
 // Eval will return max decimal places found in any arg at maxplacesp
+// Eval will limit final divide to maxdivide (set to INT_MAX to use the calculated maximum number of places seen in args)
 
 // Variations with freeing
 char * stringdecimal_add_cf(const char *a,char *b);	// Simple add with free second arg
