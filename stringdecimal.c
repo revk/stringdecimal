@@ -787,6 +787,59 @@ stringdecimal_cmp (const char *a, const char *b)
    return r;
 }
 
+#define ops	\
+	op(ADD,"+",1,2)	\
+	op(SUB,"-",1,2)	\
+	op(NEG,"-",9,-1)\
+	op(MUL,"*",2,2)	\
+	op(DIV,"/",2,2)	\
+	op(GE,">=",0,2)	\
+	op(LE,"<=",0,2)	\
+	op(GT,">",0,2)	\
+	op(LT,"<",0,2)	\
+	op(EQ,"=",0,2)	\
+	op(NE,"<>",0,2)	\
+	op2(EQ,"≸",0,2)	\
+	op2(EQ,"≹",0,2)	\
+	op2(NE,"!=",0,2)\
+	op2(NE,"≠",0,2)	\
+	op2(NE,"≶",0,2)	\
+	op2(NE,"≷",0,2)	\
+	op2(MUL,"×",2,2)\
+	op2(SUB,"−",1,2)	\
+	op2(NEG,"−",9,-1)\
+	op2(DIV,"÷",2,2)\
+	op2(GE,"≥",0,2)	\
+	op2(GE,"≮",0,2)	\
+	op2(LE,"≤",0,2)	\
+	op2(LE,"≯",0,2)	\
+	op2(GT,"≰",0,2)	\
+	op2(LT,"≱",0,2)	\
+
+enum
+{
+#define op(label,tag,level,ops) OP_##label,
+#define op2(label,tag,level,ops)
+   ops
+#undef op
+#undef op2
+};
+
+struct
+{
+   const char *tag;
+   int len;
+   int level;
+   int operands;
+   int operator;
+} op[] = {
+#define op(label,tag,level,ops) {tag,sizeof(tag)-1,level,ops,OP_##label},
+#define op2(label,tag,level,ops) {tag,sizeof(tag)-1,level,ops,OP_##label},
+   ops
+#undef op
+#undef op2
+};
+
 char *
 stringdecimal_eval (const char *sum, int maxdivide, char round, int *maxplacesp)
 {                               // Parse a sum and process it using basic maths
@@ -820,18 +873,62 @@ stringdecimal_eval (const char *sum, int maxdivide, char round, int *maxplacesp)
       operands -= operator[operators].args;
       switch (operator[operators].operator)
       {
-      case '-':
-         if (operator[operators].args == 1)     // unary negate
+      case OP_EQ:
+      case OP_NE:
+      case OP_LT:
+      case OP_LE:
+      case OP_GT:
+      case OP_GE:
          {
-            r = copy (operand[operands + 0]);
-            if (r->sig)
-               r->neg ^= 1;
-            break;
+            sd_t *an = operand[operands + 0];
+            sd_t *ad = denominator[operands + 0];
+            sd_t *bn = operand[operands + 1];
+            sd_t *bd = denominator[operands + 1];
+            debugout ("Cmp", an, ad ? : &one, bn, bd ? : &one, NULL);
+            int diff = 0;
+            if (ad || bd)
+            {
+               sd_t *a = sdiv (an, ad ? : &one, maxdivide, round, NULL);
+               sd_t *b = sdiv (bn, bd ? : &one, maxdivide, round, NULL);
+               diff = scmp (a, b);
+               freez (a);
+               freez (b);
+            } else
+               diff = scmp (an, bn);
+
+            switch (operator[operators].operator)
+            {
+            case OP_EQ:
+               r = copy (diff == 0 ? &one : &zero);
+               break;
+            case OP_NE:
+               r = copy (diff != 0 ? &one : &zero);
+               break;
+            case OP_LT:
+               r = copy (diff < 0 ? &one : &zero);
+               break;
+            case OP_LE:
+               r = copy (diff <= 0 ? &one : &zero);
+               break;
+            case OP_GT:
+               r = copy (diff > 0 ? &one : &zero);
+               break;
+            case OP_GE:
+               r = copy (diff >= 0 ? &one : &zero);
+               break;
+            }
          }
+         break;
+      case OP_NEG:
+         r = copy (operand[operands + 0]);
+         if (r->sig)
+            r->neg ^= 1;
+         break;
+      case OP_SUB:
          if (operand[operands + 1]->sig)
             operand[operands + 1]->neg ^= 1;    // invert second arg and do add
          // Drop through
-      case '+':
+      case OP_ADD:
          {
             sd_t *an = operand[operands + 0];
             sd_t *ad = denominator[operands + 0];
@@ -857,7 +954,7 @@ stringdecimal_eval (const char *sum, int maxdivide, char round, int *maxplacesp)
                r = sadd (an, bn);
          }
          break;
-      case '*':
+      case OP_MUL:
          {
             sd_t *an = operand[operands + 0];
             sd_t *ad = denominator[operands + 0];
@@ -877,7 +974,7 @@ stringdecimal_eval (const char *sum, int maxdivide, char round, int *maxplacesp)
                r = smul (an, bn);
          }
          break;
-      case '/':
+      case OP_DIV:
          {
             sd_t *an = operand[operands + 0];
             sd_t *ad = denominator[operands + 0];
@@ -948,12 +1045,27 @@ stringdecimal_eval (const char *sum, int maxdivide, char round, int *maxplacesp)
       while (1)
       {
          if (*sum == '(')
+         {
             level += 10;
-         else if (*sum == '-')
-            addop (*sum, level + 9, -1);        // Unary negate
-         else if (!isspace (*sum))
-            break;
-         sum++;
+            sum++;
+            continue;
+         }
+         if (isspace (*sum))
+         {
+            sum++;
+            continue;
+         }
+         int q = 0;
+         for (q = 0; q < sizeof (op) / sizeof (*op); q++)
+            if (op[q].operands < 0 && !strncmp (op[q].tag, sum, op[q].len))
+            {
+               addop (op[q].operator, level + op[q].level, op[q].operands);
+               sum += op[q].len;
+               break;
+            }
+         if (q < sizeof (op) / sizeof (*op))
+            continue;
+         break;
       }
       // Operand
       if (*sum == '!')
@@ -999,15 +1111,18 @@ stringdecimal_eval (const char *sum, int maxdivide, char round, int *maxplacesp)
       if (!*sum)
          break;                 // clean exit after last operand
       // Operator
-      if (*sum == '-' || *sum == '+')
-         addop (*sum++, level + 0, 2);
-      else if (*sum == '*' || *sum == '/')
-         addop (*sum++, level + 1, 2);
-      else
-      {
-         fail = "!Missing/unknown operator";
-         break;
-      }
+      int q = 0;
+      for (q = 0; q < sizeof (op) / sizeof (*op); q++)
+         if (op[q].operands > 0 && !strncmp (op[q].tag, sum, op[q].len))
+         {
+            sum += op[q].len;
+            addop (op[q].operator, level + op[q].level, op[q].operands);
+            break;
+         }
+      if (q < sizeof (op) / sizeof (*op))
+         continue;
+      fail = "!Missing/unknown operator";
+      break;
    }
    while (!fail && operators)
       operate ();               // Final operators
