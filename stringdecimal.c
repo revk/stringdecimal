@@ -788,17 +788,27 @@ stringdecimal_cmp (const char *a, const char *b)
 }
 
 #define ops	\
-	op(ADD,"+",1,2)	\
-	op(SUB,"-",1,2)	\
+	op(ADD,"+",4,2)	\
+	op(SUB,"-",4,2)	\
 	op(NEG,"-",9,-1)\
-	op(MUL,"*",2,2)	\
-	op(DIV,"/",2,2)	\
+	op(MUL,"*",5,2)	\
+	op(DIV,"/",5,2)	\
 	op(GE,">=",0,2)	\
-	op(LE,"<=",0,2)	\
 	op(GT,">",0,2)	\
-	op(LT,"<",0,2)	\
-	op(EQ,"=",0,2)	\
+	op(LE,"<=",0,2)	\
 	op(NE,"<>",0,2)	\
+	op(LT,"<",0,2)	\
+	op2(EQ,"==",0,2)	\
+	op(EQ,"=",0,2)	\
+	op(NOT,"!",9,-1)\
+	op2(AND,"&&",2,2)\
+	op(AND,"&",2,2)	\
+	op2(OR,"||",1,2)\
+	op(OR,"|",1,2)	\
+	op2(NOT,"¬",9,-1)\
+	op2(NOT,"~",9,-1)\
+	op2(AND,"∧",2,2)\
+	op2(OR,"∨",1,2)\
 	op2(EQ,"≸",0,2)	\
 	op2(EQ,"≹",0,2)	\
 	op2(NE,"!=",0,2)\
@@ -873,6 +883,40 @@ stringdecimal_eval (const char *sum, int maxdivide, char round, int *maxplacesp)
       operands -= operator[operators].args;
       switch (operator[operators].operator)
       {
+      case OP_AND:
+      case OP_OR:
+         {
+            sd_t *an = operand[operands + 0];
+            sd_t *ad = denominator[operands + 0];
+            sd_t *bn = operand[operands + 1];
+            sd_t *bd = denominator[operands + 1];
+            debugout ("Cmp", an, ad ? : &one, bn, bd ? : &one, NULL);
+            int A = 0,
+               B = 0;
+            if (ad || bd)
+            {
+               sd_t *a = sdiv (an, ad ? : &one, maxdivide, round, NULL);
+               sd_t *b = sdiv (bn, bd ? : &one, maxdivide, round, NULL);
+               A = scmp (a, &zero);
+               B = scmp (b, &zero);
+               freez (a);
+               freez (b);
+            } else
+            {
+               A = scmp (an, &zero);
+               B = scmp (bn, &zero);
+            }
+            switch (operator[operators].operator)
+            {
+            case OP_AND:
+               r = copy (A && B ? &one : &zero);
+               break;
+            case OP_OR:
+               r = copy (A || B ? &one : &zero);
+               break;
+            }
+         }
+         break;
       case OP_EQ:
       case OP_NE:
       case OP_LT:
@@ -918,6 +962,9 @@ stringdecimal_eval (const char *sum, int maxdivide, char round, int *maxplacesp)
                break;
             }
          }
+         break;
+      case OP_NOT:
+         r = copy (scmp (operand[operands + 0], &zero) ? &one : &zero);
          break;
       case OP_NEG:
          r = copy (operand[operands + 0]);
