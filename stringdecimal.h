@@ -34,6 +34,7 @@ char * stringdecimal_mul(const char *a,const char *b);	// Simple multiply
 char * stringdecimal_div(const char *a,const char *b,int maxplaces,char round,char **rem);	// Simple divide - to specified number of places, with remainder
 char * stringdecimal_rnd(const char *a,int places,char round); // Round to specified number of places
 int stringdecimal_cmp(const char *a,const char *b);	// Compare. -1 if a<b, 1 if a>b, 0 if a==b
+const char * stringdecimal_check(const char *,int *); // Check if a is number, return first non number after, else NULL if not valid, sets number of decimal places
 char *stringdecimal_eval(const char *sum,int maxdivide,char round,int *maxplacesp); // Eval sum using brackets, +, -, *, /
 // Eval will return max decimal places found in any arg at maxplacesp
 // Eval will limit final divide to maxdivide (set to INT_MAX to use the calculated maximum number of places seen in args)

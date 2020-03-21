@@ -224,6 +224,17 @@ parse (const char *v)
    return parse2 (v, NULL, NULL);
 }
 
+const char *
+stringdecimal_check (const char *v, int *placesp)
+{
+   const char *e = NULL;
+   sd_t *s = parse2 (v, &e, placesp);
+   if (!s)
+      return NULL;
+   freez (s);
+   return e;
+}
+
 static char *
 output (sd_t * s)
 {                               // Convert to a string (malloced)
