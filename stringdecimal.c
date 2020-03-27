@@ -975,7 +975,7 @@ stringdecimal_eval (const char *sum, int maxdivide, char round, int *maxplacesp)
          }
          break;
       case OP_NOT:
-         r = copy (scmp (operand[operands + 0], &zero) ? &one : &zero);
+         r = copy (scmp (operand[operands + 0], &zero) ? &zero : &one);
          break;
       case OP_NEG:
          r = copy (operand[operands + 0]);
@@ -1040,7 +1040,7 @@ stringdecimal_eval (const char *sum, int maxdivide, char round, int *maxplacesp)
             sd_t *bd = denominator[operands + 1];
             debugout ("Div", an, ad ? : &one, bn, bd ? : &one, NULL);
             if (!bn->sig)
-               fail = "!Divide by zero";
+               fail = "!!Divide by zero";
             else if (!ad && !bd)
             {                   // Simple - making a new rational
                r = copy (an);
@@ -1081,7 +1081,7 @@ stringdecimal_eval (const char *sum, int maxdivide, char round, int *maxplacesp)
          denominator[operands] = d;
          operands++;
       } else if (!fail)
-         fail = "!Maths error"; // Should not happen
+         fail = "!!Maths error"; // Should not happen
    }
    void addop (char op, int level, int args)
    {                            // Add an operator
@@ -1100,6 +1100,11 @@ stringdecimal_eval (const char *sum, int maxdivide, char round, int *maxplacesp)
    while (!fail)
    {                            // Main parse loop
       // Prefix operators and open brackets
+      if (*sum == '!'&&sum[1]=='!')
+      {
+         fail = "!!Error";
+         break;
+      }
       while (1)
       {
          if (*sum == '(')
@@ -1126,9 +1131,9 @@ stringdecimal_eval (const char *sum, int maxdivide, char round, int *maxplacesp)
          break;
       }
       // Operand
-      if (*sum == '!')
+      if (*sum == '!'&&sum[1]=='!')
       {
-         fail = "!Error";
+         fail = "!!Error";
          break;
       }
       const char *was = sum;
@@ -1136,7 +1141,7 @@ stringdecimal_eval (const char *sum, int maxdivide, char round, int *maxplacesp)
       sd_t *v = parse2 (sum, &sum, &places);
       if (sum == was)
       {
-         fail = "!Missing operand";
+         fail = "!!Missing operand";
          break;
       }
       if (places > maxplaces)
@@ -1158,7 +1163,7 @@ stringdecimal_eval (const char *sum, int maxdivide, char round, int *maxplacesp)
          {
             if (!level)
             {
-               fail = "!Too many close brackets";
+               fail = "!!Too many close brackets";
                break;
             }
             level -= 10;
@@ -1179,7 +1184,7 @@ stringdecimal_eval (const char *sum, int maxdivide, char round, int *maxplacesp)
          }
       if (q < sizeof (op) / sizeof (*op))
          continue;
-      fail = "!Missing/unknown operator";
+      fail = "!!Missing/unknown operator";
       break;
    }
    while (!fail && operators)
@@ -1187,7 +1192,7 @@ stringdecimal_eval (const char *sum, int maxdivide, char round, int *maxplacesp)
    if (!fail)
    {                            // Done cleanly?
       if (level)
-         fail = "!Unclosed brackets";
+         fail = "!!Unclosed brackets";
       else
       {                         // Clear operators
          if (operands != 1)
@@ -1201,7 +1206,7 @@ stringdecimal_eval (const char *sum, int maxdivide, char round, int *maxplacesp)
       {
          r = output (sdiv (operand[0], denominator[0], maxdivide == INT_MAX ? maxplaces : maxdivide, round, NULL));     // Simple divide to get answer
          if (!r)
-            fail = "!Division failure";
+            fail = "!!Division failure";
       } else
          r = output (operand[0]);       // Last remaining operand is the answer
    }
