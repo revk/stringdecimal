@@ -30,7 +30,7 @@
 #include <assert.h>
 #include <limits.h>
 
-//#define DEBUG
+// #define DEBUG
 
 // Support functions
 
@@ -289,7 +289,7 @@ output (sd_t * s)
 
 #ifdef DEBUG
 void
-debugout (char *msg, ...)
+debugout (const char *msg, ...)
 {
    fprintf (stderr, "%s:", msg);
    va_list ap;
@@ -864,7 +864,6 @@ struct
 char *
 stringdecimal_eval (const char *sum, int maxdivide, char round, int *maxplacesp)
 {                               // Parse a sum and process it using basic maths
-   int maxplaces = 0;
    if (maxplacesp)
       *maxplacesp = 0;
    if (!sum)
@@ -879,10 +878,14 @@ stringdecimal_eval (const char *sum, int maxdivide, char round, int *maxplacesp)
    {
       int level;
       int args;
-      char operator;
+      int operator;
    } *operator = NULL;          // Operator stack
-   sd_t **operand = NULL;       // Operand stack
-   sd_t **denominator = NULL;   // Operand stack denominator for rational (NULL entry for not a division, so /1)
+   struct operand_s
+   {
+      sd_t *n;
+      sd_t *d;
+      int places;
+   } *operand = NULL;
    void operate (void)
    {                            // Do top operation on stack
       if (!operators--)
@@ -893,15 +896,21 @@ stringdecimal_eval (const char *sum, int maxdivide, char round, int *maxplacesp)
          errx (1, "Expecting %d args, only %d present", operator[operators].args, operands);
       operands -= operator[operators].args;
       // The operators (A and optionally B)
-      sd_t *an = operand[operands + 0];
-      sd_t *ad = denominator[operands + 0];
+      sd_t *an = operand[operands + 0].n;
+      sd_t *ad = operand[operands + 0].d;
+      int p = operand[operands + 0].places;     // Max places of args
       sd_t *bn = NULL,
          *bd = NULL;
       if (operator[operators].args > 1)
       {
-         bn = operand[operands + 1];
-         bd = denominator[operands + 1];
-      }
+         bn = operand[operands + 1].n;
+         bd = operand[operands + 1].d;
+         if (operand[operands + 1].places > p)
+            p = operand[operands + 1].places;
+         debugout (op[operator[operators].operator].tag, an, ad ? : &one, bn, bd ? : &one, NULL);
+      } else
+         debugout (op[operator[operators].operator].tag, an, ad ? : &one, NULL);
+
       switch (operator[operators].operator)
       {
       case OP_AND:
@@ -918,10 +927,12 @@ stringdecimal_eval (const char *sum, int maxdivide, char round, int *maxplacesp)
                r = copy (A || B ? &one : &zero);
                break;
             }
+            p = 1;              // logic
          }
          break;
       case OP_NOT:
          r = copy (scmp (an, &zero) ? &zero : &one);
+         p = 1;                 // logic
          break;
       case OP_NEG:
          r = copy (an);
@@ -962,21 +973,27 @@ stringdecimal_eval (const char *sum, int maxdivide, char round, int *maxplacesp)
                break;
             case OP_EQ:
                r = copy (scmp (a ? : an, b ? : bn) == 0 ? &one : &zero);
+               p = 1;           // Logic
                break;
             case OP_NE:
                r = copy (scmp (a ? : an, b ? : bn) != 0 ? &one : &zero);
+               p = 1;           // Logic
                break;
             case OP_LT:
                r = copy (scmp (a ? : an, b ? : bn) < 0 ? &one : &zero);
+               p = 1;           // Logic
                break;
             case OP_LE:
                r = copy (scmp (a ? : an, b ? : bn) <= 0 ? &one : &zero);
+               p = 1;           // Logic
                break;
             case OP_GT:
                r = copy (scmp (a ? : an, b ? : bn) > 0 ? &one : &zero);
+               p = 1;           // Logic
                break;
             case OP_GE:
                r = copy (scmp (a ? : an, b ? : bn) >= 0 ? &one : &zero);
+               p = 1;           // Logic
                break;
             }
             freez (a);
@@ -1010,8 +1027,8 @@ stringdecimal_eval (const char *sum, int maxdivide, char round, int *maxplacesp)
       }
       for (int n = 0; n < operator[operators].args; n++)
       {                         // Free args
-         freez (operand[operands + n]);
-         freez (denominator[operands + n]);
+         freez (operand[operands + n].n);
+         freez (operand[operands + n].d);
       }
       if (r)
       {
@@ -1028,10 +1045,10 @@ stringdecimal_eval (const char *sum, int maxdivide, char round, int *maxplacesp)
          {
             operandmax += 10;
             operand = realloc (operand, operandmax * sizeof (*operand));
-            denominator = realloc (denominator, operandmax * sizeof (*denominator));
          }
-         operand[operands] = r;
-         denominator[operands] = d;
+         operand[operands].n = r;
+         operand[operands].d = d;
+         operand[operands].places = p;
          operands++;
       } else if (!fail)
          fail = "!!Maths error";        // Should not happen
@@ -1099,17 +1116,15 @@ stringdecimal_eval (const char *sum, int maxdivide, char round, int *maxplacesp)
          fail = "!!Missing operand";
          break;
       }
-      if (places > maxplaces)
-         maxplaces = places;
       // Add the operand
       if (operands + 1 > operandmax)
       {
          operandmax += 10;
          operand = realloc (operand, operandmax * sizeof (*operand));
-         denominator = realloc (denominator, operandmax * sizeof (*operand));
       }
-      operand[operands] = v;
-      denominator[operands] = NULL;     // Assumed not ration
+      operand[operands].n = v;
+      operand[operands].d = NULL;       // Assumed not ration
+      operand[operands].places = places;
       operands++;
       // Postfix operators and close brackets
       while (1)
@@ -1158,24 +1173,23 @@ stringdecimal_eval (const char *sum, int maxdivide, char round, int *maxplacesp)
    char *r = NULL;
    if (!fail && operands)
    {
-      if (denominator[0])
+      if (maxplacesp)
+         *maxplacesp = operand[0].places;
+      if (operand[0].d)
       {
-         r = output (sdiv (operand[0], denominator[0], maxdivide == INT_MAX ? maxplaces : maxdivide, round, NULL));     // Simple divide to get answer
+         r = output (sdiv (operand[0].n, operand[0].d, maxdivide == INT_MAX ? operand[0].places : maxdivide, round, NULL));     // Simple divide to get answer
          if (!r)
             fail = "!!Division failure";
       } else
-         r = output (operand[0]);       // Last remaining operand is the answer
+         r = output (operand[0].n);     // Last remaining operand is the answer
    }
    for (int i = 0; i < operands; i++)
    {
-      freez (operand[i]);
-      freez (denominator[i]);
+      freez (operand[i].n);
+      freez (operand[i].d);
    }
-
    freez (operand);
    freez (operator);
-   if (maxplacesp)
-      *maxplacesp = maxplaces;
    if (fail)
    {
       freez (r);
