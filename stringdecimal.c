@@ -892,31 +892,23 @@ stringdecimal_eval (const char *sum, int maxdivide, char round, int *maxplacesp)
       if (operands < operator[operators].args)
          errx (1, "Expecting %d args, only %d present", operator[operators].args, operands);
       operands -= operator[operators].args;
+      // The operators (A and optionally B)
+      sd_t *an = operand[operands + 0];
+      sd_t *ad = denominator[operands + 0];
+      sd_t *bn = NULL,
+         *bd = NULL;
+      if (operator[operators].args > 1)
+      {
+         bn = operand[operands + 1];
+         bd = denominator[operands + 1];
+      }
       switch (operator[operators].operator)
       {
       case OP_AND:
       case OP_OR:
          {
-            sd_t *an = operand[operands + 0];
-            sd_t *ad = denominator[operands + 0];
-            sd_t *bn = operand[operands + 1];
-            sd_t *bd = denominator[operands + 1];
-            debugout ("Cmp", an, ad ? : &one, bn, bd ? : &one, NULL);
-            int A = 0,
-               B = 0;
-            if (ad || bd)
-            {
-               sd_t *a = sdiv (an, ad ? : &one, maxdivide, round, NULL);
-               sd_t *b = sdiv (bn, bd ? : &one, maxdivide, round, NULL);
-               A = scmp (a, &zero);
-               B = scmp (b, &zero);
-               freez (a);
-               freez (b);
-            } else
-            {
-               A = scmp (an, &zero);
+            int A = scmp (an, &zero),
                B = scmp (bn, &zero);
-            }
             switch (operator[operators].operator)
             {
             case OP_AND:
@@ -928,6 +920,19 @@ stringdecimal_eval (const char *sum, int maxdivide, char round, int *maxplacesp)
             }
          }
          break;
+      case OP_NOT:
+         r = copy (scmp (an, &zero) ? &zero : &one);
+         break;
+      case OP_NEG:
+         r = copy (an);
+         if (r->sig)
+            r->neg ^= 1;
+         break;
+      case OP_SUB:
+         if (bn->sig)
+            bn->neg ^= 1;       // invert second arg and do add
+         // Drop through
+      case OP_ADD:
       case OP_EQ:
       case OP_NE:
       case OP_LT:
@@ -935,110 +940,58 @@ stringdecimal_eval (const char *sum, int maxdivide, char round, int *maxplacesp)
       case OP_GT:
       case OP_GE:
          {
-            sd_t *an = operand[operands + 0];
-            sd_t *ad = denominator[operands + 0];
-            sd_t *bn = operand[operands + 1];
-            sd_t *bd = denominator[operands + 1];
-            debugout ("Cmp", an, ad ? : &one, bn, bd ? : &one, NULL);
-            int diff = 0;
-            if (ad || bd)
-            {
-               sd_t *a = sdiv (an, ad ? : &one, maxdivide, round, NULL);
-               sd_t *b = sdiv (bn, bd ? : &one, maxdivide, round, NULL);
-               diff = scmp (a, b);
-               freez (a);
-               freez (b);
-            } else
-               diff = scmp (an, bn);
-
+            sd_t *a = NULL,
+               *b = NULL;
+            if ((ad || bd) && scmp (ad ? : &one, bd ? : &one))
+            {                   // Multiply out
+               a = smul (an, bd ? : &one);
+               b = smul (bn, ad ? : &one);
+            }
             switch (operator[operators].operator)
             {
+            case OP_SUB:
+            case OP_ADD:
+               r = sadd (a ? : an, b ? : bn);
+               if (ad || bd)
+               {
+                  if (!scmp (ad ? : &one, bd ? : &one))
+                     d = copy (ad ? : &one);
+                  else
+                     d = smul (ad ? : &one, bd ? : &one);
+               }
+               break;
             case OP_EQ:
-               r = copy (diff == 0 ? &one : &zero);
+               r = copy (scmp (a ? : an, b ? : bn) == 0 ? &one : &zero);
                break;
             case OP_NE:
-               r = copy (diff != 0 ? &one : &zero);
+               r = copy (scmp (a ? : an, b ? : bn) != 0 ? &one : &zero);
                break;
             case OP_LT:
-               r = copy (diff < 0 ? &one : &zero);
+               r = copy (scmp (a ? : an, b ? : bn) < 0 ? &one : &zero);
                break;
             case OP_LE:
-               r = copy (diff <= 0 ? &one : &zero);
+               r = copy (scmp (a ? : an, b ? : bn) <= 0 ? &one : &zero);
                break;
             case OP_GT:
-               r = copy (diff > 0 ? &one : &zero);
+               r = copy (scmp (a ? : an, b ? : bn) > 0 ? &one : &zero);
                break;
             case OP_GE:
-               r = copy (diff >= 0 ? &one : &zero);
+               r = copy (scmp (a ? : an, b ? : bn) >= 0 ? &one : &zero);
                break;
             }
-         }
-         break;
-      case OP_NOT:
-         r = copy (scmp (operand[operands + 0], &zero) ? &zero : &one);
-         break;
-      case OP_NEG:
-         r = copy (operand[operands + 0]);
-         if (r->sig)
-            r->neg ^= 1;
-         break;
-      case OP_SUB:
-         if (operand[operands + 1]->sig)
-            operand[operands + 1]->neg ^= 1;    // invert second arg and do add
-         // Drop through
-      case OP_ADD:
-         {
-            sd_t *an = operand[operands + 0];
-            sd_t *ad = denominator[operands + 0];
-            sd_t *bn = operand[operands + 1];
-            sd_t *bd = denominator[operands + 1];
-            debugout ("Add", an, ad ? : &one, bn, bd ? : &one, NULL);
-            if (ad || bd)
-            {                   // Rational maths
-               if (!scmp (ad ? : &one, bd ? : &one))
-               {                // Simple (same denominator)
-                  r = sadd (an, bn);
-                  d = copy (ad ? : &one);
-               } else
-               {                // cross multiply
-                  sd_t *a = smul (an, bd ? : &one);
-                  sd_t *b = smul (bn, ad ? : &one);
-                  r = sadd (a, b);
-                  freez (a);
-                  freez (b);
-                  d = smul (ad ? : &one, bd ? : &one);
-               }
-            } else
-               r = sadd (an, bn);
+            freez (a);
+            freez (b);
          }
          break;
       case OP_MUL:
          {
-            sd_t *an = operand[operands + 0];
-            sd_t *ad = denominator[operands + 0];
-            sd_t *bn = operand[operands + 1];
-            sd_t *bd = denominator[operands + 1];
-            debugout ("Mul", an, ad ? : &one, bn, bd ? : &one, NULL);
             if (ad || bd)
-            {                   // Rational maths
-               if (!ad && !bd)
-                  r = smul (an, bn);    // Simple
-               else
-               {                // cross multiply
-                  r = smul (an, bn);
-                  d = smul (ad ? : &one, bd ? : &one);
-               }
-            } else
-               r = smul (an, bn);
+               d = smul (ad ? : &one, bd ? : &one);
+            r = smul (an, bn);
          }
          break;
       case OP_DIV:
          {
-            sd_t *an = operand[operands + 0];
-            sd_t *ad = denominator[operands + 0];
-            sd_t *bn = operand[operands + 1];
-            sd_t *bd = denominator[operands + 1];
-            debugout ("Div", an, ad ? : &one, bn, bd ? : &one, NULL);
             if (!bn->sig)
                fail = "!!Divide by zero";
             else if (!ad && !bd)
@@ -1081,8 +1034,9 @@ stringdecimal_eval (const char *sum, int maxdivide, char round, int *maxplacesp)
          denominator[operands] = d;
          operands++;
       } else if (!fail)
-         fail = "!!Maths error"; // Should not happen
+         fail = "!!Maths error";        // Should not happen
    }
+
    void addop (char op, int level, int args)
    {                            // Add an operator
       if (args < 0)
@@ -1097,10 +1051,11 @@ stringdecimal_eval (const char *sum, int maxdivide, char round, int *maxplacesp)
       operator[operators].args = args;
       operators++;
    }
+
    while (!fail)
    {                            // Main parse loop
       // Prefix operators and open brackets
-      if (*sum == '!'&&sum[1]=='!')
+      if (*sum == '!' && sum[1] == '!')
       {
          fail = "!!Error";
          break;
@@ -1131,7 +1086,7 @@ stringdecimal_eval (const char *sum, int maxdivide, char round, int *maxplacesp)
          break;
       }
       // Operand
-      if (*sum == '!'&&sum[1]=='!')
+      if (*sum == '!' && sum[1] == '!')
       {
          fail = "!!Error";
          break;
@@ -1187,6 +1142,7 @@ stringdecimal_eval (const char *sum, int maxdivide, char round, int *maxplacesp)
       fail = "!!Missing/unknown operator";
       break;
    }
+
    while (!fail && operators)
       operate ();               // Final operators
    if (!fail)
@@ -1215,6 +1171,7 @@ stringdecimal_eval (const char *sum, int maxdivide, char round, int *maxplacesp)
       freez (operand[i]);
       freez (denominator[i]);
    }
+
    freez (operand);
    freez (operator);
    if (maxplacesp)
