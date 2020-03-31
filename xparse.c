@@ -144,7 +144,7 @@ xparse (xparse_config_t * config, void *context, const char *sum, const char **e
       // Operand
       const char *was = sum;
       void *v = config->operand (context, sum, &sum);
-      if (!v||sum == was)
+      if (!v || sum == was)
       {
          fail = "Missing operand";
          break;
@@ -190,6 +190,10 @@ xparse (xparse_config_t * config, void *context, const char *sum, const char **e
       v = config->final (context, operand[0]);
    while (operands)
       config->dispose (context, operand[--operands]);
+   if (operand)
+      free (operand);
+   if (operator)
+      free (operator);
    if (fail)
       config->fail (context, fail, sum);
    return v;

@@ -917,9 +917,9 @@ parse_add (void *context, void *data, void *l, void *r)
 static void *
 parse_sub (void *context, void *data, void *l, void *r)
 {
-	 parse_value_t *R=r;
-	 R->n->neg=1-R->n->neg;
-	 return parse_add(context,data,l,r);
+   parse_value_t *R = r;
+   R->n->neg = 1 - R->n->neg;
+   return parse_add (context, data, l, r);
 }
 
 static void *
@@ -949,10 +949,10 @@ parse_mul (void *context, void *data, void *l, void *r)
    parse_value_t *L = l,
       *R = r,
       *v = parse_bin (l, r);
-            if (L->d || R->d)
-               v->d = smul (L->d ? : &one, R->d ? : &one);
-            v->n = smul (L->n, R->n);
-	    return v;
+   if (L->d || R->d)
+      v->d = smul (L->d ? : &one, R->d ? : &one);
+   v->n = smul (L->n, R->n);
+   return v;
 }
 
 // List of functions
