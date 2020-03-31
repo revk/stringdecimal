@@ -20,6 +20,7 @@
 
 #define _GNU_SOURCE             /* See feature_test_macros(7) */
 #include "stringdecimal.h"
+#include "xparse.h"
 #include <stdio.h>
 #include <string.h>
 #include <malloc.h>
@@ -797,6 +798,97 @@ stringdecimal_cmp (const char *a, const char *b)
    freez (B);
    return r;
 }
+
+// Parsing
+#include "xparse.c"
+typedef struct xparse_value_s xparse_value_t;
+struct xparse_value_s
+{
+   sd_t *d;                     // Denominator
+   sd_t *n;                     // Numerator
+   int places;
+};
+
+typedef struct xparse_context_s xparse_context_t;
+struct xparse_context_s
+{
+   int maxdivide;
+   char round;
+   int *maxplacesp;
+};
+
+// Parse Support functions
+void *
+parse_operand (void *context, const char *p, const char **end)
+{                               // Parse an operand, malloc value (or null if error), set end
+   // Parse operands
+   // TODO
+   return NULL;
+}
+
+void *
+parse_final (void *context, void *v)
+{                               // Final processing
+   if (!v)
+      return NULL;
+   //xparse_context_t *C=context;
+   // Rational and rounding
+   // TODO
+   return NULL;
+}
+
+void
+parse_dispose (void *context, void *v)
+{                               // Disposing of an operand
+   xparse_value_t *V = v;
+   if (!V)
+      return;
+   freez (V->d);
+   freez (V->n);
+   freez (V);
+}
+
+void
+parse_fail (void *context, const char *failure, const char *posn)
+{                               // Reporting an error
+   warnx ("Fail [%s] at [%s]", failure, posn);
+}
+
+// Parse Functions
+
+
+
+// List of functions
+xparse_op_t parse_uniary[] = {
+   // TODO
+   {NULL},
+};
+
+xparse_op_t parse_binary[] = {
+   // TODO
+   {NULL},
+};
+
+// Parse Config
+xparse_config_t xparse_config = {
+ unary:parse_uniary,
+ binary:parse_binary,
+ operand:parse_operand,
+ final:parse_final,
+ dispose:parse_dispose,
+ fail:parse_fail,
+};
+
+// Parse
+char *
+stringdecimal_eval2 (const char *sum, int maxdivide, char round, int *maxplacesp)
+{
+ xparse_context_t context = { maxdivide: maxdivide, round: round, maxplacesp:maxplacesp };
+   return xparse (&xparse_config, &context, sum, NULL);
+}
+
+
+// Old parse, being replaces, work in progress TODO
 
 #define ops	\
 	op(ADD,"+",4,2)	\
