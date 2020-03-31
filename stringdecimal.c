@@ -19,8 +19,8 @@
 // Functions have variants to free arguments
 
 #define _GNU_SOURCE             /* See feature_test_macros(7) */
-#include "stringdecimal.h"
 #include "xparse.h"
+#include "stringdecimal.h"
 #include <stdio.h>
 #include <string.h>
 #include <malloc.h>
@@ -801,46 +801,49 @@ stringdecimal_cmp (const char *a, const char *b)
 
 // Parsing
 #include "xparse.c"
-typedef struct xparse_value_s xparse_value_t;
-struct xparse_value_s
+typedef struct parse_value_s parse_value_t;
+struct parse_value_s
 {
    sd_t *d;                     // Denominator
    sd_t *n;                     // Numerator
    int places;
 };
 
-typedef struct xparse_context_s xparse_context_t;
-struct xparse_context_s
-{
-   int maxdivide;
-   char round;
-   int *maxplacesp;
-};
-
 // Parse Support functions
-void *
+static void *
 parse_operand (void *context, const char *p, const char **end)
 {                               // Parse an operand, malloc value (or null if error), set end
-   // Parse operands
-   // TODO
-   return NULL;
+   parse_value_t *v = malloc (sizeof (*v));
+   assert (v);
+   v->n = parse2 (p, end, &v->places);
+   v->d = NULL;
+   return v;
 }
 
-void *
+static void *
 parse_final (void *context, void *v)
 {                               // Final processing
-   if (!v)
+   parse_context_t *C = context;
+   parse_value_t *V = v;
+   if (!V)
       return NULL;
-   //xparse_context_t *C=context;
-   // Rational and rounding
-   // TODO
-   return NULL;
+   if (C->maxplacesp)
+      *(C->maxplacesp) = V->places;
+   char *r = NULL;
+   if (V->d)
+   {
+      r = output (sdiv (V->n, V->d, C->maxdivide == INT_MAX ? V->places : C->maxdivide, C->round, NULL));       // Simple divide to get answer
+      if (!r)
+         C->fail = "Division failure";
+   } else
+      r = output (V->n);        // Last remaining operand is the answer
+   return r;                    // A string
 }
 
-void
+static void
 parse_dispose (void *context, void *v)
 {                               // Disposing of an operand
-   xparse_value_t *V = v;
+   parse_value_t *V = v;
    if (!V)
       return;
    freez (V->d);
@@ -848,29 +851,125 @@ parse_dispose (void *context, void *v)
    freez (V);
 }
 
-void
+static void
 parse_fail (void *context, const char *failure, const char *posn)
 {                               // Reporting an error
-   warnx ("Fail [%s] at [%s]", failure, posn);
+   parse_context_t *C = context;
+   C->fail = failure;
+}
+
+static parse_value_t *
+parse_bin (parse_value_t * l, parse_value_t * r)
+{                               // Basic details for binary operator
+   if (!l || !r)
+      return NULL;
+   parse_value_t *v = malloc (sizeof (*v));
+   assert (v);
+   v->places = l->places;
+   if (r->places > v->places)
+      v->places = r->places;
+   v->n = NULL;
+   v->d = NULL;
+   return v;
+}
+
+static parse_value_t *
+parse_bin_add (parse_value_t * l, parse_value_t * r, sd_t ** ap, sd_t ** bp)
+{
+   *ap = *bp = NULL;
+   parse_value_t *v = parse_bin (l, r);
+   if (v)
+   {
+      if ((l->d || l->d) && scmp (l->d ? : &one, r->d ? : &one))
+      {                         // Multiply out numerators
+         *ap = smul (l->n, r->d ? : &one);
+         *bp = smul (r->n, l->d ? : &one);
+      }
+   }
+   return v;
 }
 
 // Parse Functions
+static void *
+parse_add (void *context, void *data, void *l, void *r)
+{
+   sd_t *a,
+    *b;
+   parse_value_t *L = l,
+      *R = r,
+      *v = parse_bin_add (l, r, &a, &b);
+   if (v)
+   {
+      v->n = sadd (a ? : L->n, b ? : R->n);
+      if (L->d || R->d)
+      {
+         if (!scmp (L->d ? : &one, R->d ? : &one))
+            v->d = copy (L->d ? : &one);
+         else
+            v->d = smul (L->d ? : &one, R->d ? : &one);
+      }
+      freez (a);
+      freez (b);
+   }
+   return v;
+}
 
+static void *
+parse_sub (void *context, void *data, void *l, void *r)
+{
+	 parse_value_t *R=r;
+	 R->n->neg=1-R->n->neg;
+	 return parse_add(context,data,l,r);
+}
 
+static void *
+parse_div (void *context, void *data, void *l, void *r)
+{
+   parse_context_t *C = context;
+   parse_value_t *L = l,
+      *R = r,
+      *v = parse_bin (l, r);
+   if (!R->n->sig)
+      C->fail = "Divide by zero";
+   else if (!L->d && !R->d)
+   {                            // Simple - making a new rational
+      v->n = copy (L->n);
+      v->d = copy (R->n);
+   } else
+   {                            // Cross divide
+      v->n = smul (L->n, R->d ? : &one);
+      v->d = smul (L->d ? : &one, R->n);
+   }
+   return v;
+}
+
+static void *
+parse_mul (void *context, void *data, void *l, void *r)
+{
+   parse_value_t *L = l,
+      *R = r,
+      *v = parse_bin (l, r);
+            if (L->d || R->d)
+               v->d = smul (L->d ? : &one, R->d ? : &one);
+            v->n = smul (L->n, R->n);
+	    return v;
+}
 
 // List of functions
 xparse_op_t parse_uniary[] = {
-   // TODO
    {NULL},
 };
 
 xparse_op_t parse_binary[] = {
-   // TODO
+ {op: "+", level: 3, func:parse_add},
+ {op: "-", level: 3, func:parse_sub},
+ {op: "/", level: 4, func:parse_div},
+ {op: "*", level: 4, func:parse_mul},
    {NULL},
 };
 
 // Parse Config
-xparse_config_t xparse_config = {
+xparse_config_t parse_config = {
  unary:parse_uniary,
  binary:parse_binary,
  operand:parse_operand,
@@ -883,8 +982,9 @@ xparse_config_t xparse_config = {
 char *
 stringdecimal_eval2 (const char *sum, int maxdivide, char round, int *maxplacesp)
 {
- xparse_context_t context = { maxdivide: maxdivide, round: round, maxplacesp:maxplacesp };
-   return xparse (&xparse_config, &context, sum, NULL);
+ parse_context_t context = { maxdivide: maxdivide, round: round, maxplacesp:maxplacesp };
+   // TODO error logic
+   return xparse (&parse_config, &context, sum, NULL);
 }
 
 
@@ -1457,10 +1557,11 @@ main (int argc, const char *argv[])
          }
          errx (1, "Unknown arg %s", s);
       }
-      char *res = stringdecimal_eval (s, (divplaces == INT_MAX && rnd) ? roundplaces : divplaces, round, NULL);
+      char *res = stringdecimal_eval2 (s, (divplaces == INT_MAX && rnd) ? roundplaces : divplaces, round, NULL);
       if (rnd)
          res = stringdecimal_rnd_f (res, roundplaces, round);
-      printf ("%s\n", res);
+      if (res)
+         printf ("%s\n", res);
       freez (res);
    }
    return 0;

@@ -21,37 +21,50 @@
 // Add, Sub, Mul all work to necessary places
 // Div works to specified number of places, specified rounding rule, and can return remainder value
 
-#define	STRINGDECIMAL_ROUND_TRUNCATE	'T' // Towards zero
-#define	STRINGDECIMAL_ROUND_UP		'U' // Away from zero
-#define	STRINGDECIMAL_ROUND_FLOOR	'F' // Towards -ve
-#define	STRINGDECIMAL_ROUND_CEILING	'C' // Towards +ve
-#define	STRINGDECIMAL_ROUND_ROUND	'R' // Away from zero if 0.5 or more
-#define	STRINGDECIMAL_ROUND_BANKING	'B' // Away from zero if above 0.5, or 0.5 exactly and goes to even
+#define	STRINGDECIMAL_ROUND_TRUNCATE	'T'     // Towards zero
+#define	STRINGDECIMAL_ROUND_UP		'U'     // Away from zero
+#define	STRINGDECIMAL_ROUND_FLOOR	'F'     // Towards -ve
+#define	STRINGDECIMAL_ROUND_CEILING	'C'     // Towards +ve
+#define	STRINGDECIMAL_ROUND_ROUND	'R'     // Away from zero if 0.5 or more
+#define	STRINGDECIMAL_ROUND_BANKING	'B'     // Away from zero if above 0.5, or 0.5 exactly and goes to even
 
-char * stringdecimal_add(const char *a,const char *b);	// Simple add
-char * stringdecimal_sub(const char *a,const char *b);	// Simple subtract
-char * stringdecimal_mul(const char *a,const char *b);	// Simple multiply
-char * stringdecimal_div(const char *a,const char *b,int maxplaces,char round,char **rem);	// Simple divide - to specified number of places, with remainder
-char * stringdecimal_rnd(const char *a,int places,char round); // Round to specified number of places
-int stringdecimal_cmp(const char *a,const char *b);	// Compare. -1 if a<b, 1 if a>b, 0 if a==b
-const char * stringdecimal_check(const char *,int *); // Check if a is number, return first non number after, else NULL if not valid, sets number of decimal places
-char *stringdecimal_eval(const char *sum,int maxdivide,char round,int *maxplacesp); // Eval sum using brackets, +, -, *, /
+char *stringdecimal_add (const char *a, const char *b); // Simple add
+char *stringdecimal_sub (const char *a, const char *b); // Simple subtract
+char *stringdecimal_mul (const char *a, const char *b); // Simple multiply
+char *stringdecimal_div (const char *a, const char *b, int maxplaces, char round, char **rem);  // Simple divide - to specified number of places, with remainder
+char *stringdecimal_rnd (const char *a, int places, char round);        // Round to specified number of places
+int stringdecimal_cmp (const char *a, const char *b);   // Compare. -1 if a<b, 1 if a>b, 0 if a==b
+const char *stringdecimal_check (const char *, int *);  // Check if a is number, return first non number after, else NULL if not valid, sets number of decimal places
+char *stringdecimal_eval (const char *sum, int maxdivide, char round, int *maxplacesp); // Eval sum using brackets, +, -, *, /
 // Eval will return max decimal places found in any arg at maxplacesp
 // Eval will limit final divide to maxdivide (set to INT_MAX to use the calculated maximum number of places seen in args)
 
 // Variations with freeing
-char * stringdecimal_add_cf(const char *a,char *b);	// Simple add with free second arg
-char * stringdecimal_add_ff(char *a,char *b);	// Simple add with free both args
-char * stringdecimal_sub_fc(char *a,const char *b);	// Simple subtract with free first arg
-char * stringdecimal_sub_cf(const char *a,char *b);	// Simple subtract with free second arg
-char * stringdecimal_sub_ff(char *a,char *b);	// Simple subtract with fere both args
-char * stringdecimal_mul_cf(const char *a,char *b);	// Simple multiply with second arg
-char * stringdecimal_mul_ff(char *a,char *b);	// Simple multiply with free both args
-char * stringdecimal_div_fc(char *a,const char *b,int maxdivide,char round,char **rem);	// Simple divide with free first arg
-char * stringdecimal_div_cf(const char *a,char *b,int maxdivide,char round,char **rem);	// Simple divide with free second arg
-char * stringdecimal_div_ff(char *a,char *b,int maxdivide,char round,char **rem);	// Simple divide with free both args
-char * stringdecimal_rnd_f(char *a,int places,char round); // Round to specified number of places with free arg
-int stringdecimal_cmp_fc(char *a,const char *b);	// Compare with free first arg
-int stringdecimal_cmp_cf(const char *a,char *b);	// Compare with free second arg
-int stringdecimal_cmp_ff(char *a,char *b);	// Compare with free both args
-char *stringdecimal_eval_f(char *sum,int maxdivide,char round,int *maxplacesp); // Eval with free sum
+char *stringdecimal_add_cf (const char *a, char *b);    // Simple add with free second arg
+char *stringdecimal_add_ff (char *a, char *b);  // Simple add with free both args
+char *stringdecimal_sub_fc (char *a, const char *b);    // Simple subtract with free first arg
+char *stringdecimal_sub_cf (const char *a, char *b);    // Simple subtract with free second arg
+char *stringdecimal_sub_ff (char *a, char *b);  // Simple subtract with fere both args
+char *stringdecimal_mul_cf (const char *a, char *b);    // Simple multiply with second arg
+char *stringdecimal_mul_ff (char *a, char *b);  // Simple multiply with free both args
+char *stringdecimal_div_fc (char *a, const char *b, int maxdivide, char round, char **rem);     // Simple divide with free first arg
+char *stringdecimal_div_cf (const char *a, char *b, int maxdivide, char round, char **rem);     // Simple divide with free second arg
+char *stringdecimal_div_ff (char *a, char *b, int maxdivide, char round, char **rem);   // Simple divide with free both args
+char *stringdecimal_rnd_f (char *a, int places, char round);    // Round to specified number of places with free arg
+int stringdecimal_cmp_fc (char *a, const char *b);      // Compare with free first arg
+int stringdecimal_cmp_cf (const char *a, char *b);      // Compare with free second arg
+int stringdecimal_cmp_ff (char *a, char *b);    // Compare with free both args
+char *stringdecimal_eval_f (char *sum, int maxdivide, char round, int *maxplacesp);     // Eval with free sum
+
+// Using stringdecimal to build a higher layer parser
+#ifdef	XPARSE_H
+typedef struct parse_context_s parse_context_t;
+struct parse_context_s
+{
+   int maxdivide;
+   char round;
+   int *maxplacesp;
+   const char *fail;
+};
+extern xparse_config_t parse_config;
+#endif

@@ -33,6 +33,7 @@ xparse (xparse_config_t * config, void *context, const char *sum, const char **e
       int level;
       int args;
       xparse_operate *func;
+      void *data;
    } *operator = NULL;          // Operator stack
    int operands = 0,
       operandmax = 0;
@@ -67,10 +68,10 @@ xparse (xparse_config_t * config, void *context, const char *sum, const char **e
       }
       void *v = NULL;
       if (args == 1)
-         v = operator[operators].func (context, NULL, operand[operands - 1]);
+         v = operator[operators].func (context, operator[operators].data, NULL, operand[operands - 1]);
       else
-         v = operator[operators].func (context, operand[operands - 2], operand[operands - 1]);
-      while (args)
+         v = operator[operators].func (context, operator[operators].data, operand[operands - 2], operand[operands - 1]);
+      while (args--)
          config->dispose (context, operand[--operands]);
       if (!v)
       {
@@ -79,7 +80,7 @@ xparse (xparse_config_t * config, void *context, const char *sum, const char **e
       }
       addarg (v);
    }
-   void addop (xparse_operate * func, int level, int args)
+   void addop (const xparse_op_t * op, int level, int args)
    {                            // Add an operator
       if (args < 0)
          args = 0 - args;       // Used for prefix unary ops, don't run stack
@@ -88,13 +89,16 @@ xparse (xparse_config_t * config, void *context, const char *sum, const char **e
             operate ();         // Clear stack of pending ops
       if (operators + 1 > operatormax)
          operator = realloc (operator, (operatormax += 10) * sizeof (*operator));
-      operator[operators].func = func;
+      operator[operators].func = op->func;
+      operator[operators].data = op->data;
       operator[operators].level = level;
       operator[operators].args = args;
       operators++;
    }
    int comp (const char *a, const char *b)
    {
+      if (!a || !b)
+         return 0;
       int l = 0;
       while (a[l] && b[l] && a[l] == b[l])
          l++;
@@ -127,10 +131,10 @@ xparse (xparse_config_t * config, void *context, const char *sum, const char **e
          int q = 0,
             l;
          for (q = 0; config->unary[q].op; q++)
-            if ((l = comp (config->unary[q].op, sum)))
+            if ((l = comp (config->unary[q].op, sum)) || (l = comp (config->unary[q].op2, sum)))
             {
                sum += l;
-               addop (config->unary[q].func, level + config->unary[q].level, 1);
+               addop (&config->unary[q], level + config->unary[q].level, 1);
                break;
             }
          if (config->unary[q].op)
@@ -140,7 +144,7 @@ xparse (xparse_config_t * config, void *context, const char *sum, const char **e
       // Operand
       const char *was = sum;
       void *v = config->operand (context, sum, &sum);
-      if (sum == was)
+      if (!v||sum == was)
       {
          fail = "Missing operand";
          break;
@@ -168,10 +172,10 @@ xparse (xparse_config_t * config, void *context, const char *sum, const char **e
       int q = 0,
          l;
       for (q = 0; config->binary[q].op; q++)
-         if ((l = comp (config->binary[q].op, sum)))
+         if ((l = comp (config->binary[q].op, sum)) || (l = comp (config->binary[q].op2, sum)))
          {
             sum += l;
-            addop (config->binary[q].func, level + config->binary[q].level, 2);
+            addop (&config->binary[q], level + config->binary[q].level, 2);
             break;
          }
       if (config->binary[q].op)
