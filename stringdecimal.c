@@ -832,7 +832,7 @@ parse_final (void *context, void *v)
    char *r = NULL;
    if (V->d)
    {
-      r = output (sdiv (V->n, V->d, C->maxdivide == INT_MAX ? V->places : C->maxdivide, C->round, NULL));       // Simple divide to get answer
+      r = output_free (sdiv (V->n, V->d, C->maxdivide == INT_MAX ? V->places : C->maxdivide, C->round, NULL), 0);       // Simple divide to get answer
       if (!r)
          C->fail = "Division failure";
    } else
