@@ -823,7 +823,7 @@ parse_operand (void *context, const char *p, const char **end)
 static void *
 parse_final (void *context, void *v)
 {                               // Final processing
-   parse_context_t *C = context;
+   stringdecimal_context_t *C = context;
    parse_value_t *V = v;
    if (!V)
       return NULL;
@@ -854,7 +854,7 @@ parse_dispose (void *context, void *v)
 static void
 parse_fail (void *context, const char *failure, const char *posn)
 {                               // Reporting an error
-   parse_context_t *C = context;
+   stringdecimal_context_t *C = context;
    C->fail = failure;
 }
 
@@ -947,7 +947,7 @@ parse_sub (void *context, void *data, void *l, void *r)
 static void *
 parse_div (void *context, void *data, void *l, void *r)
 {
-   parse_context_t *C = context;
+   stringdecimal_context_t *C = context;
    parse_value_t *L = l,
       *R = r,
       *v = parse_bin (l, r);
@@ -1066,7 +1066,7 @@ static xparse_op_t parse_binary[] = {
 };
 
 // Parse Config (optionally public to allow building layers on top)
-xparse_config_t parse_config = {
+xparse_config_t stringdecimal_xparse = {
  unary:parse_uniary,
  binary:parse_binary,
  operand:parse_operand,
@@ -1079,9 +1079,9 @@ xparse_config_t parse_config = {
 char *
 stringdecimal_eval (const char *sum, int maxdivide, char round, int *maxplacesp)
 {
- parse_context_t context = { maxdivide: maxdivide, round: round, maxplacesp:maxplacesp };
+ stringdecimal_context_t context = { maxdivide: maxdivide, round: round, maxplacesp:maxplacesp };
    // TODO error logic
-   return xparse (&parse_config, &context, sum, NULL);
+   return xparse (&stringdecimal_xparse, &context, sum, NULL);
 }
 
 char *

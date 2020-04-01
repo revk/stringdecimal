@@ -58,13 +58,13 @@ char *stringdecimal_eval_f (char *sum, int maxdivide, char round, int *maxplaces
 
 // Using stringdecimal to build a higher layer parser
 #ifdef	XPARSE_H
-typedef struct parse_context_s parse_context_t;
-struct parse_context_s
+typedef struct stringdecimal_context_s stringdecimal_context_t;
+struct stringdecimal_context_s
 {
    int maxdivide;
    char round;
    int *maxplacesp;
    const char *fail;
 };
-extern xparse_config_t parse_config;
+extern xparse_config_t stringdecimal_xparse;
 #endif
