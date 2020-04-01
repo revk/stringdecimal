@@ -1049,22 +1049,18 @@ static void *
 parse_and (void *context, void *data, void *l, void *r)
 {
    parse_value_t *L = l,
-      *R = r,
-      *v = parse_bin (l, r);
-   v->n = copy (L->n->sig && R->n->sig ? &one : &zero);
-   v->places = 0;
-   return v;
+      *R = r;
+   if(!L->n->sig)return L; // False
+   return R; // Whatever second argument is
 }
 
 static void *
 parse_or (void *context, void *data, void *l, void *r)
 {
    parse_value_t *L = l,
-      *R = r,
-      *v = parse_bin (l, r);
-   v->n = copy (L->n->sig || R->n->sig ? &one : &zero);
-   v->places = 0;
-   return v;
+      *R = r;
+   if(L->n->sig)return L; // True
+   return R; // Whatever second argument is
 }
 
 // List of functions
