@@ -860,14 +860,27 @@ parse_fail (void *context, const char *failure, const char *posn)
 }
 
 static parse_value_t *
+parse_tidy (parse_value_t * v)
+{                               // Check answer
+   if (v && v->n && v->d && v->d->sig == 1 && v->d->d[0] == 1)
+   {                            // Power of 10 denominator
+      if (v->d->neg)
+         v->n->neg ^= 1;
+      v->n->mag -= v->d->mag;
+      freez (v->d);
+   }
+   return v;
+}
+
+static parse_value_t *
 parse_bin (parse_value_t * l, parse_value_t * r)
 {                               // Basic details for binary operator
-   if (!l || !r)
-      return NULL;
    parse_value_t *v = malloc (sizeof (*v));
    assert (v);
-   v->places = l->places;
-   if (r->places > v->places)
+   v->places = 0;
+   if (l)
+      v->places = l->places;
+   if (r && r->places > v->places)
       v->places = r->places;
    v->n = NULL;
    v->d = NULL;
@@ -934,7 +947,7 @@ parse_add (void *context, void *data, void *l, void *r)
       freez (a);
       freez (b);
    }
-   return v;
+   return parse_tidy (v);
 }
 
 static void *
@@ -963,7 +976,7 @@ parse_div (void *context, void *data, void *l, void *r)
       v->n = smul (L->n, R->d ? : &one);
       v->d = smul (L->d ? : &one, R->n);
    }
-   return v;
+   return parse_tidy (v);
 }
 
 static void *
@@ -975,7 +988,7 @@ parse_mul (void *context, void *data, void *l, void *r)
    if (L->d || R->d)
       v->d = smul (L->d ? : &one, R->d ? : &one);
    v->n = smul (L->n, R->n);
-   return v;
+   return parse_tidy (v);
 }
 
 static void *
@@ -984,6 +997,16 @@ parse_neg (void *context, void *data, void *l, void *r)
    parse_value_t *R = r;
    R->n->neg ^= 1;
    return r;
+}
+
+static void *
+parse_not (void *context, void *data, void *l, void *r)
+{
+   parse_value_t *R = r,
+      *v = parse_bin (l, r);
+   v->n = copy (!R->n->sig ? &one : &zero);
+   v->places = 0;
+   return v;
 }
 
 static void *
@@ -1046,7 +1069,8 @@ parse_or (void *context, void *data, void *l, void *r)
 
 // List of functions
 static xparse_op_t parse_uniary[] = {
- {op: "-", op2: "¬", level: 9, func:parse_neg},
+ {op: "-", level: 9, func:parse_neg},
+ {op: "!", op2: "¬", level: 9, func:parse_not},
    {NULL},
 };
 

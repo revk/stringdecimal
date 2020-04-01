@@ -2,7 +2,7 @@
 
 Simple library that does basic decimal maths to any precision on C strings.
 
-See include file for the various calls available. String answers are malloced, and functions exist to free the arguments used, making it simple to do a series of sums if you wish.
+See stringdecimal.h for the various calls available. String answers are malloced, and functions exist to free the arguments used, making it simple to do a series of sums if you wish.
 
 This includes functions for add, subtract, multiply, compare, divide and rounding.
 
@@ -12,6 +12,8 @@ A general purpose "eval" function parses sums using +, -, ÷, ×, (, and ) to pr
 
 Additional comparison operators return 1 for true and 0 for false: <, >, ≤, ≥, =, ≠. ASCII/alternative versions >=, <=, !=, == also work.
 
-Additional logic operators return 1 for true and 0 for false, and assume non zero is true: ∧, ∨, and unary ¬. ASCII/alternative versions &, &&, |, ||, ~, and ! also work.
+Additional logic operators return 1 for true and 0 for false, and assume non zero is true: ∧, ∨, and unary ¬. ASCII/alternative versions &&, ||, ! also work.
+
+The code actually includes a general expression parse which allows extensions on the stringdecimal logic if needed.
 
 And yes, it will happily (if you have the memory) work out 1e1000000000+1 if you ask it to.
