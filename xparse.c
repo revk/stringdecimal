@@ -184,7 +184,8 @@ xparse (xparse_config_t * config, void *context, const char *sum, const char **e
          }
       if (config->binary[q].op)
          continue;
-      fail = "Missing/unknown operator";
+      if (!end || level)
+         fail = "Missing/unknown operator";
       break;
    }
    while (!fail && operators)
