@@ -73,9 +73,9 @@ xparse (xparse_config_t * config, void *context, const char *sum, const char **e
          v = operator[operators].func (context, operator[operators].data, operand[operands - 2], operand[operands - 1]);
       while (args--)
       {
-	 operands--;
-	 if(operand[operands]!=v)
-         config->dispose (context, operand[operands]);
+         operands--;
+         if (operand[operands] != v)
+            config->dispose (context, operand[operands]);
       }
       if (!v)
       {

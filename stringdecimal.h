@@ -65,6 +65,7 @@ struct stringdecimal_context_s
    char round;
    int *maxplacesp;
    const char *fail;
+   const char *posn;
 };
 extern xparse_config_t stringdecimal_xparse;
 #endif

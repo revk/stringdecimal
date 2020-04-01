@@ -856,6 +856,7 @@ parse_fail (void *context, const char *failure, const char *posn)
 {                               // Reporting an error
    stringdecimal_context_t *C = context;
    C->fail = failure;
+   C->posn = posn;
 }
 
 static parse_value_t *
@@ -1080,8 +1081,10 @@ char *
 stringdecimal_eval (const char *sum, int maxdivide, char round, int *maxplacesp)
 {
  stringdecimal_context_t context = { maxdivide: maxdivide, round: round, maxplacesp:maxplacesp };
-   // TODO error logic
-   return xparse (&stringdecimal_xparse, &context, sum, NULL);
+   char *ret = xparse (&stringdecimal_xparse, &context, sum, NULL);
+   if (!ret)
+      assert (asprintf (&ret, "!!%s at %.*s", context.fail, 10, context.posn) >= 0);
+   return ret;
 }
 
 char *
