@@ -18,7 +18,7 @@
 #define	XPARSE_H
 
 // The operators take one or two args and return a result.
-// The result must be malloced. The args should be left intact and are freed as needed later
+// The result must be malloced or one of the input args. The args should be left intact and are freed as needed later.
 typedef void *xparse_operate (void *context, void *data, void *l, void *r);     // For unary prefix operators l is NULL
 // Parse operand
 typedef void *xparse_operand (void *context, const char *p, const char **end);  // Parse an operand, malloc value (or null if error), set end

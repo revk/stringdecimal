@@ -72,7 +72,11 @@ xparse (xparse_config_t * config, void *context, const char *sum, const char **e
       else
          v = operator[operators].func (context, operator[operators].data, operand[operands - 2], operand[operands - 1]);
       while (args--)
-         config->dispose (context, operand[--operands]);
+      {
+	 operands--;
+	 if(operand[operands]!=v)
+         config->dispose (context, operand[operands]);
+      }
       if (!v)
       {
          fail = "Operation failed";
@@ -134,7 +138,7 @@ xparse (xparse_config_t * config, void *context, const char *sum, const char **e
             if ((l = comp (config->unary[q].op, sum)) || (l = comp (config->unary[q].op2, sum)))
             {
                sum += l;
-               addop (&config->unary[q], level + config->unary[q].level, 1);
+               addop (&config->unary[q], level + config->unary[q].level, -1);
                break;
             }
          if (config->unary[q].op)

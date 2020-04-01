@@ -889,6 +889,28 @@ parse_bin_add (parse_value_t * l, parse_value_t * r, sd_t ** ap, sd_t ** bp)
    return v;
 }
 
+#define MATCH_LT 1
+#define MATCH_GT 2
+#define MATCH_EQ 4
+#define MATCH_NE 8
+static parse_value_t *
+parse_bin_cmp (parse_value_t * l, parse_value_t * r, int match)
+{
+   sd_t *a,
+    *b;
+   parse_value_t *L = l,
+      *R = r,
+      *v = parse_bin_add (l, r, &a, &b);
+   int diff = scmp (a ? : L->n, b ? : R->n);
+   if (((match & MATCH_LT) && diff < 0) ||
+       ((match & MATCH_GT) && diff > 0) || ((match & MATCH_EQ) && diff == 0) || ((match & MATCH_NE) && diff != 0))
+      v->n = copy (&one);
+   else
+      v->n = copy (&zero);
+   v->places = 0;
+   return v;
+}
+
 // Parse Functions
 static void *
 parse_add (void *context, void *data, void *l, void *r)
@@ -918,7 +940,7 @@ static void *
 parse_sub (void *context, void *data, void *l, void *r)
 {
    parse_value_t *R = r;
-   R->n->neg = 1 - R->n->neg;
+   R->n->neg ^= 1;
    return parse_add (context, data, l, r);
 }
 
@@ -955,20 +977,95 @@ parse_mul (void *context, void *data, void *l, void *r)
    return v;
 }
 
+static void *
+parse_neg (void *context, void *data, void *l, void *r)
+{
+   parse_value_t *R = r;
+   R->n->neg ^= 1;
+   return r;
+}
+
+static void *
+parse_eq (void *context, void *data, void *l, void *r)
+{
+   return parse_bin_cmp (l, r, MATCH_EQ);
+}
+
+static void *
+parse_ne (void *context, void *data, void *l, void *r)
+{
+   return parse_bin_cmp (l, r, MATCH_NE);
+}
+
+static void *
+parse_gt (void *context, void *data, void *l, void *r)
+{
+   return parse_bin_cmp (l, r, MATCH_GT);
+}
+
+static void *
+parse_ge (void *context, void *data, void *l, void *r)
+{
+   return parse_bin_cmp (l, r, MATCH_EQ | MATCH_GT);
+}
+
+static void *
+parse_le (void *context, void *data, void *l, void *r)
+{
+   return parse_bin_cmp (l, r, MATCH_EQ | MATCH_LT);
+}
+
+static void *
+parse_lt (void *context, void *data, void *l, void *r)
+{
+   return parse_bin_cmp (l, r, MATCH_LT);
+}
+
+static void *
+parse_and (void *context, void *data, void *l, void *r)
+{
+   parse_value_t *L = l,
+      *R = r,
+      *v = parse_bin (l, r);
+   v->n = copy (L->n->sig && R->n->sig ? &one : &zero);
+   v->places = 0;
+   return v;
+}
+
+static void *
+parse_or (void *context, void *data, void *l, void *r)
+{
+   parse_value_t *L = l,
+      *R = r,
+      *v = parse_bin (l, r);
+   v->n = copy (L->n->sig || R->n->sig ? &one : &zero);
+   v->places = 0;
+   return v;
+}
+
 // List of functions
-xparse_op_t parse_uniary[] = {
+static xparse_op_t parse_uniary[] = {
+ {op: "-", op2: "¬", level: 9, func:parse_neg},
    {NULL},
 };
 
-xparse_op_t parse_binary[] = {
- {op: "+", level: 3, func:parse_add},
- {op: "-", level: 3, func:parse_sub},
- {op: "/", level: 4, func:parse_div},
- {op: "*", level: 4, func:parse_mul},
+static xparse_op_t parse_binary[] = {
+ {op: "+", level: 5, func:parse_add},
+ {op: "-", op2: "−", level: 5, func:parse_sub},
+ {op: "/", op2: "÷", level: 6, func:parse_div},
+ {op: "*", op2: "×", level: 6, func:parse_mul},
+ {op: "==", op2: "=", level: 3, func:parse_eq},
+ {op: ">=", op2: "≥", level: 3, func:parse_ge},
+ {op: "<=", op2: "≤", level: 3, func:parse_le},
+ {op: "!=", op2: "≠", level: 3, func:parse_ne},
+ {op: ">", op2: "≰", level: 3, func:parse_gt},
+ {op: "<", op2: "≱", level: 3, func:parse_lt},
+ {op: "&&", op2: "∧", level: 2, func:parse_and},
+ {op: "||", op2: "∨", level: 1, func:parse_or},
    {NULL},
 };
 
-// Parse Config
+// Parse Config (optionally public to allow building layers on top)
 xparse_config_t parse_config = {
  unary:parse_uniary,
  binary:parse_binary,
@@ -980,417 +1077,12 @@ xparse_config_t parse_config = {
 
 // Parse
 char *
-stringdecimal_eval2 (const char *sum, int maxdivide, char round, int *maxplacesp)
+stringdecimal_eval (const char *sum, int maxdivide, char round, int *maxplacesp)
 {
  parse_context_t context = { maxdivide: maxdivide, round: round, maxplacesp:maxplacesp };
    // TODO error logic
    return xparse (&parse_config, &context, sum, NULL);
 }
-
-
-// Old parse, being replaces, work in progress TODO
-
-#define ops	\
-	op(ADD,"+",4,2)	\
-	op(SUB,"-",4,2)	\
-	op(NEG,"-",9,-1)\
-	op(MUL,"*",5,2)	\
-	op(DIV,"/",5,2)	\
-	op(GE,">=",0,2)	\
-	op(GT,">",0,2)	\
-	op(LE,"<=",0,2)	\
-	op(NE,"<>",0,2)	\
-	op(LT,"<",0,2)	\
-	op2(EQ,"==",0,2)	\
-	op(EQ,"=",0,2)	\
-	op(NOT,"!",9,-1)\
-	op2(AND,"&&",2,2)\
-	op(AND,"&",2,2)	\
-	op2(OR,"||",1,2)\
-	op(OR,"|",1,2)	\
-	op2(NOT,"¬",9,-1)\
-	op2(NOT,"~",9,-1)\
-	op2(AND,"∧",2,2)\
-	op2(OR,"∨",1,2)\
-	op2(EQ,"≸",0,2)	\
-	op2(EQ,"≹",0,2)	\
-	op2(NE,"!=",0,2)\
-	op2(NE,"≠",0,2)	\
-	op2(NE,"≶",0,2)	\
-	op2(NE,"≷",0,2)	\
-	op2(MUL,"×",2,2)\
-	op2(SUB,"−",1,2)	\
-	op2(NEG,"−",9,-1)\
-	op2(DIV,"÷",2,2)\
-	op2(GE,"≥",0,2)	\
-	op2(GE,"≮",0,2)	\
-	op2(LE,"≤",0,2)	\
-	op2(LE,"≯",0,2)	\
-	op2(GT,"≰",0,2)	\
-	op2(LT,"≱",0,2)	\
-
-enum
-{
-#define op(label,tag,level,ops) OP_##label,
-#define op2(label,tag,level,ops)
-   ops
-#undef op
-#undef op2
-};
-
-struct
-{
-   const char *tag;
-   int len;
-   int level;
-   int operands;
-   int operator;
-} op[] = {
-#define op(label,tag,level,ops) {tag,sizeof(tag)-1,level,ops,OP_##label},
-#define op2(label,tag,level,ops) {tag,sizeof(tag)-1,level,ops,OP_##label},
-   ops
-#undef op
-#undef op2
-};
-
-char *
-stringdecimal_eval (const char *sum, int maxdivide, char round, int *maxplacesp)
-{                               // Parse a sum and process it using basic maths
-   if (maxplacesp)
-      *maxplacesp = 0;
-   if (!sum)
-      return NULL;
-   const char *fail = NULL;
-   int level = 0;               // Brackets and operator level
-   int operators = 0,
-      operatormax = 0;
-   int operands = 0,
-      operandmax = 0;
-   struct operator_s
-   {
-      int level;
-      int args;
-      int operator;
-   } *operator = NULL;          // Operator stack
-   struct operand_s
-   {
-      sd_t *n;
-      sd_t *d;
-      int places;
-   } *operand = NULL;
-   void operate (void)
-   {                            // Do top operation on stack
-      if (!operators--)
-         errx (1, "Bad operate");
-      sd_t *r = NULL;           // result
-      sd_t *d = NULL;           // denominator for rational
-      if (operands < operator[operators].args)
-         errx (1, "Expecting %d args, only %d present", operator[operators].args, operands);
-      operands -= operator[operators].args;
-      // The operators (A and optionally B)
-      sd_t *an = operand[operands + 0].n;
-      sd_t *ad = operand[operands + 0].d;
-      int p = operand[operands + 0].places;     // Max places of args
-      sd_t *bn = NULL,
-         *bd = NULL;
-      if (operator[operators].args > 1)
-      {
-         bn = operand[operands + 1].n;
-         bd = operand[operands + 1].d;
-         if (operand[operands + 1].places > p)
-            p = operand[operands + 1].places;
-         debugout (op[operator[operators].operator].tag, an, ad ? : &one, bn, bd ? : &one, NULL);
-      } else
-         debugout (op[operator[operators].operator].tag, an, ad ? : &one, NULL);
-
-      switch (operator[operators].operator)
-      {
-      case OP_AND:
-      case OP_OR:
-         {
-            int A = scmp (an, &zero),
-               B = scmp (bn, &zero);
-            switch (operator[operators].operator)
-            {
-            case OP_AND:
-               r = copy (A && B ? &one : &zero);
-               break;
-            case OP_OR:
-               r = copy (A || B ? &one : &zero);
-               break;
-            }
-            p = 1;              // logic
-         }
-         break;
-      case OP_NOT:
-         r = copy (scmp (an, &zero) ? &zero : &one);
-         p = 1;                 // logic
-         break;
-      case OP_NEG:
-         r = copy (an);
-         if (r->sig)
-            r->neg ^= 1;
-         break;
-      case OP_SUB:
-         if (bn->sig)
-            bn->neg ^= 1;       // invert second arg and do add
-         // Drop through
-      case OP_ADD:
-      case OP_EQ:
-      case OP_NE:
-      case OP_LT:
-      case OP_LE:
-      case OP_GT:
-      case OP_GE:
-         {
-            sd_t *a = NULL,
-               *b = NULL;
-            if ((ad || bd) && scmp (ad ? : &one, bd ? : &one))
-            {                   // Multiply out
-               a = smul (an, bd ? : &one);
-               b = smul (bn, ad ? : &one);
-            }
-            switch (operator[operators].operator)
-            {
-            case OP_SUB:
-            case OP_ADD:
-               r = sadd (a ? : an, b ? : bn);
-               if (ad || bd)
-               {
-                  if (!scmp (ad ? : &one, bd ? : &one))
-                     d = copy (ad ? : &one);
-                  else
-                     d = smul (ad ? : &one, bd ? : &one);
-               }
-               break;
-            case OP_EQ:
-               r = copy (scmp (a ? : an, b ? : bn) == 0 ? &one : &zero);
-               p = 1;           // Logic
-               break;
-            case OP_NE:
-               r = copy (scmp (a ? : an, b ? : bn) != 0 ? &one : &zero);
-               p = 1;           // Logic
-               break;
-            case OP_LT:
-               r = copy (scmp (a ? : an, b ? : bn) < 0 ? &one : &zero);
-               p = 1;           // Logic
-               break;
-            case OP_LE:
-               r = copy (scmp (a ? : an, b ? : bn) <= 0 ? &one : &zero);
-               p = 1;           // Logic
-               break;
-            case OP_GT:
-               r = copy (scmp (a ? : an, b ? : bn) > 0 ? &one : &zero);
-               p = 1;           // Logic
-               break;
-            case OP_GE:
-               r = copy (scmp (a ? : an, b ? : bn) >= 0 ? &one : &zero);
-               p = 1;           // Logic
-               break;
-            }
-            freez (a);
-            freez (b);
-         }
-         break;
-      case OP_MUL:
-         {
-            if (ad || bd)
-               d = smul (ad ? : &one, bd ? : &one);
-            r = smul (an, bn);
-         }
-         break;
-      case OP_DIV:
-         {
-            if (!bn->sig)
-               fail = "!!Divide by zero";
-            else if (!ad && !bd)
-            {                   // Simple - making a new rational
-               r = copy (an);
-               d = copy (bn);
-            } else
-            {                   // Cross divide
-               r = smul (an, bd ? : &one);
-               d = smul (ad ? : &one, bn);
-            }
-         }
-         break;
-      default:
-         errx (1, "Bad operator %c", operator[operators].operator);
-      }
-      for (int n = 0; n < operator[operators].args; n++)
-      {                         // Free args
-         freez (operand[operands + n].n);
-         freez (operand[operands + n].d);
-      }
-      if (r)
-      {
-         if (d && d->sig == 1 && d->d[0] == 1)
-         {                      // Simple powers of 10 - no need for rationals
-            if (d->neg)
-               r->neg ^= 1;
-            r->mag -= d->mag;
-            freez (d);
-            d = NULL;
-         }
-         debugout ("Result", r, d, NULL);
-         if (operands + 1 > operandmax)
-         {
-            operandmax += 10;
-            operand = realloc (operand, operandmax * sizeof (*operand));
-         }
-         operand[operands].n = r;
-         operand[operands].d = d;
-         operand[operands].places = p;
-         operands++;
-      } else if (!fail)
-         fail = "!!Maths error";        // Should not happen
-   }
-
-   void addop (char op, int level, int args)
-   {                            // Add an operator
-      if (args < 0)
-         args = 0 - args;       // USed for prexif unary ops, don't run stack
-      else
-         while (operators && operator[operators - 1].level >= level)
-            operate ();         // Clear stack of pending ops
-      if (operators + 1 > operatormax)
-         operator = realloc (operator, (operatormax += 10) * sizeof (*operator));
-      operator[operators].operator = op;
-      operator[operators].level = level;
-      operator[operators].args = args;
-      operators++;
-   }
-
-   while (!fail)
-   {                            // Main parse loop
-      // Prefix operators and open brackets
-      if (*sum == '!' && sum[1] == '!')
-      {
-         fail = "!!Error";
-         break;
-      }
-      while (1)
-      {
-         if (*sum == '(')
-         {
-            level += 10;
-            sum++;
-            continue;
-         }
-         if (isspace (*sum))
-         {
-            sum++;
-            continue;
-         }
-         int q = 0;
-         for (q = 0; q < sizeof (op) / sizeof (*op); q++)
-            if (op[q].operands < 0 && !strncmp (op[q].tag, sum, op[q].len))
-            {
-               addop (op[q].operator, level + op[q].level, op[q].operands);
-               sum += op[q].len;
-               break;
-            }
-         if (q < sizeof (op) / sizeof (*op))
-            continue;
-         break;
-      }
-      // Operand
-      if (*sum == '!' && sum[1] == '!')
-      {
-         fail = "!!Error";
-         break;
-      }
-      const char *was = sum;
-      int places = 0;
-      sd_t *v = parse2 (sum, &sum, &places);
-      if (sum == was)
-      {
-         fail = "!!Missing operand";
-         break;
-      }
-      // Add the operand
-      if (operands + 1 > operandmax)
-      {
-         operandmax += 10;
-         operand = realloc (operand, operandmax * sizeof (*operand));
-      }
-      operand[operands].n = v;
-      operand[operands].d = NULL;       // Assumed not ration
-      operand[operands].places = places;
-      operands++;
-      // Postfix operators and close brackets
-      while (1)
-      {
-         if (*sum == ')')
-         {
-            if (!level)
-            {
-               fail = "!!Too many close brackets";
-               break;
-            }
-            level -= 10;
-         } else if (!isspace (*sum))
-            break;
-         sum++;
-      }
-      if (!*sum)
-         break;                 // clean exit after last operand
-      // Operator
-      int q = 0;
-      for (q = 0; q < sizeof (op) / sizeof (*op); q++)
-         if (op[q].operands > 0 && !strncmp (op[q].tag, sum, op[q].len))
-         {
-            sum += op[q].len;
-            addop (op[q].operator, level + op[q].level, op[q].operands);
-            break;
-         }
-      if (q < sizeof (op) / sizeof (*op))
-         continue;
-      fail = "!!Missing/unknown operator";
-      break;
-   }
-
-   while (!fail && operators)
-      operate ();               // Final operators
-   if (!fail)
-   {                            // Done cleanly?
-      if (level)
-         fail = "!!Unclosed brackets";
-      else
-      {                         // Clear operators
-         if (operands != 1)
-            errx (1, "Bad eval - operands %d", operands);       // Should not happen
-      }
-   }
-   char *r = NULL;
-   if (!fail && operands)
-   {
-      if (maxplacesp)
-         *maxplacesp = operand[0].places;
-      if (operand[0].d)
-      {
-         r = output (sdiv (operand[0].n, operand[0].d, maxdivide == INT_MAX ? operand[0].places : maxdivide, round, NULL));     // Simple divide to get answer
-         if (!r)
-            fail = "!!Division failure";
-      } else
-         r = output (operand[0].n);     // Last remaining operand is the answer
-   }
-   for (int i = 0; i < operands; i++)
-   {
-      freez (operand[i].n);
-      freez (operand[i].d);
-   }
-   freez (operand);
-   freez (operator);
-   if (fail)
-   {
-      freez (r);
-      return strdup (fail);
-   }
-   return r;
-}
-
-// Version with frees
 
 char *
 stringdecimal_add_cf (const char *a, char *b)
@@ -1557,7 +1249,7 @@ main (int argc, const char *argv[])
          }
          errx (1, "Unknown arg %s", s);
       }
-      char *res = stringdecimal_eval2 (s, (divplaces == INT_MAX && rnd) ? roundplaces : divplaces, round, NULL);
+      char *res = stringdecimal_eval (s, (divplaces == INT_MAX && rnd) ? roundplaces : divplaces, round, NULL);
       if (rnd)
          res = stringdecimal_rnd_f (res, roundplaces, round);
       if (res)
