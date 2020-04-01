@@ -200,5 +200,7 @@ xparse (xparse_config_t * config, void *context, const char *sum, const char **e
       free (operator);
    if (fail)
       config->fail (context, fail, sum);
+   if (end)
+      *end = sum;
    return v;
 }
