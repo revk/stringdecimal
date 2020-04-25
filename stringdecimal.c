@@ -35,8 +35,8 @@
 
 // Support functions
 
-typedef struct sd_s sd_t;
-struct sd_s
+typedef struct sd_val_s sd_val_t;
+struct sd_val_s
 {                               // The structure used internally for digit sequences
    int mag;                     // Magnitude of first digit, e.g. 3 is hundreds, can start negative, e.g. 0.1 would be mag -1
    int sig;                     // Significant figures (i.e. size of d array) - logically unsigned but seriously C fucks up any maths with that
@@ -45,19 +45,19 @@ struct sd_s
    char m[];                    // Malloced space
 };
 
-static sd_t zero = { 0 };
+static sd_val_t zero = { 0 };
 
-static sd_t one = { 0, 1, (char[])
+static sd_val_t one = { 0, 1, (char[])
    {1}
 };
 
 // Safe free and NULL value
 #define freez(x)	do{if(x)free(x);x=NULL;}while(0)
 
-static sd_t *
+static sd_val_t *
 make (int mag, int sig)
 {                               // Initialise with space for digits
-   sd_t *s = calloc (1, sizeof (*s) + sig);
+   sd_val_t *s = calloc (1, sizeof (*s) + sig);
    assert (s);
    // Leave neg as is if set
    if (!sig)
@@ -68,18 +68,18 @@ make (int mag, int sig)
    return s;
 }
 
-static sd_t *
-copy (sd_t * a)
+static sd_val_t *
+copy (sd_val_t * a)
 {                               // Copy
-   sd_t *r = make (a->mag, a->sig);
+   sd_val_t *r = make (a->mag, a->sig);
    r->neg = a->neg;
    if (a->sig)
       memcpy (r->d, a->d, a->sig);
    return r;
 }
 
-static sd_t *
-norm (sd_t * s, char neg)
+static sd_val_t *
+norm (sd_val_t * s, char neg)
 {                               // Normalise (striping leading/trailing 0s)
    if (!s)
       return s;
@@ -101,7 +101,7 @@ norm (sd_t * s, char neg)
    return s;
 }
 
-static sd_t *
+static sd_val_t *
 parse2 (const char *v, const char **ep, int *placesp)
 {                               // Parse in to s, and return next character
    if (!v)
@@ -123,7 +123,7 @@ parse2 (const char *v, const char **ep, int *placesp)
       return NULL;              // Unexpected, we do allow leading dot
    while (*v == '0')
       v++;
-   sd_t *s = NULL;
+   sd_val_t *s = NULL;
    const char *digits = v;
    if (isdigit (*v))
    {                            // Some initial digits
@@ -219,7 +219,7 @@ parse2 (const char *v, const char **ep, int *placesp)
    return s;
 }
 
-static sd_t *
+static sd_val_t *
 parse (const char *v)
 {
    return parse2 (v, NULL, NULL);
@@ -229,7 +229,7 @@ const char *
 stringdecimal_check (const char *v, int *placesp)
 {
    const char *e = NULL;
-   sd_t *s = parse2 (v, &e, placesp);
+   sd_val_t *s = parse2 (v, &e, placesp);
    if (!s)
       return NULL;
    freez (s);
@@ -237,7 +237,7 @@ stringdecimal_check (const char *v, int *placesp)
 }
 
 static char *
-output (sd_t * s)
+output (sd_val_t * s)
 {                               // Convert to a string (malloced)
    if (!s)
       return NULL;
@@ -295,8 +295,8 @@ debugout (const char *msg, ...)
    fprintf (stderr, "%s:", msg);
    va_list ap;
    va_start (ap, msg);
-   sd_t *s;
-   while ((s = va_arg (ap, sd_t *)))
+   sd_val_t *s;
+   while ((s = va_arg (ap, sd_val_t *)))
    {
       char *v = output (s);
       fprintf (stderr, " %s", v);
@@ -310,15 +310,15 @@ debugout (const char *msg, ...)
 #endif
 
 static char *
-output_free (sd_t * s, int n, ...)
-{                               // Convert to string and clean number of extra sd_t
+output_free (sd_val_t * s, int n, ...)
+{                               // Convert to string and clean number of extra sd_val_t
    char *r = output (s);
    freez (s);
    va_list ap;
    va_start (ap, n);
    while (n--)
    {
-      s = va_arg (ap, sd_t *);
+      s = va_arg (ap, sd_val_t *);
       freez (s);
    }
    va_end (ap);
@@ -328,7 +328,7 @@ output_free (sd_t * s, int n, ...)
 // Low level maths functions
 
 static int
-ucmp (sd_t * a, sd_t * b, int boffset)
+ucmp (sd_val_t * a, sd_val_t * b, int boffset)
 {                               // Unsigned compare (magnitude only), if a>b then 1, if a<b then -1, else 0 for equal
    if (!a)
       a = &zero;
@@ -365,8 +365,8 @@ ucmp (sd_t * a, sd_t * b, int boffset)
    return 0;
 }
 
-static sd_t *
-uadd (sd_t * a, sd_t * b, char neg, int boffset)
+static sd_val_t *
+uadd (sd_val_t * a, sd_val_t * b, char neg, int boffset)
 {                               // Unsigned add (i.e. final sign already set in r) and set in r if needed
    if (!a)
       a = &zero;
@@ -380,7 +380,7 @@ uadd (sd_t * a, sd_t * b, char neg, int boffset)
    int end = a->mag - a->sig;
    if (boffset + b->mag - b->sig < end)
       end = boffset + b->mag - b->sig;
-   sd_t *r = make (mag, mag - end);
+   sd_val_t *r = make (mag, mag - end);
    int c = 0;
    for (int p = end + 1; p <= mag; p++)
    {
@@ -402,8 +402,8 @@ uadd (sd_t * a, sd_t * b, char neg, int boffset)
    return norm (r, neg);
 }
 
-static sd_t *
-usub (sd_t * a, sd_t * b, char neg, int boffset)
+static sd_val_t *
+usub (sd_val_t * a, sd_val_t * b, char neg, int boffset)
 {                               // Unsigned sub (i.e. final sign already set in r) and set in r if needed, and assumes b<=a already
    if (!a)
       a = &zero;
@@ -416,7 +416,7 @@ usub (sd_t * a, sd_t * b, char neg, int boffset)
    int end = a->mag - a->sig;
    if (boffset + b->mag - b->sig < end)
       end = boffset + b->mag - b->sig;
-   sd_t *r = make (mag, mag - end);
+   sd_val_t *r = make (mag, mag - end);
    int c = 0;
    for (int p = end + 1; p <= mag; p++)
    {
@@ -439,7 +439,7 @@ usub (sd_t * a, sd_t * b, char neg, int boffset)
 }
 
 static void
-makebase (sd_t * r[9], sd_t * a)
+makebase (sd_val_t * r[9], sd_val_t * a)
 {                               // Make array of multiples of a, 1 to 9, used for multiply and divide
    r[0] = copy (a);
    for (int n = 1; n < 9; n++)
@@ -447,27 +447,27 @@ makebase (sd_t * r[9], sd_t * a)
 }
 
 static void
-free_base (sd_t * r[9])
+free_base (sd_val_t * r[9])
 {
    for (int n = 0; n < 9; n++)
       freez (r[n]);
 }
 
-static sd_t *
-umul (sd_t * a, sd_t * b, char neg)
+static sd_val_t *
+umul (sd_val_t * a, sd_val_t * b, char neg)
 {                               // Unsigned mul (i.e. final sign already set in r) and set in r if needed
    if (!a)
       a = &zero;
    if (!b)
       b = &zero;
    //debugout ("umul", a, b, NULL);
-   sd_t *base[9];
+   sd_val_t *base[9];
    makebase (base, b);
-   sd_t *r = NULL;
+   sd_val_t *r = NULL;
    for (int p = 0; p < a->sig; p++)
       if (a->d[p])
       {                         // Add
-         sd_t *sum = uadd (r, base[a->d[p] - 1], 0, a->mag - p);
+         sd_val_t *sum = uadd (r, base[a->d[p] - 1], 0, a->mag - p);
          if (sum)
          {
             freez (r);
@@ -478,8 +478,8 @@ umul (sd_t * a, sd_t * b, char neg)
    return norm (r, neg);
 }
 
-static sd_t *
-udiv (sd_t * a, sd_t * b, char neg, int maxplaces, char round, sd_t ** rem)
+static sd_val_t *
+udiv (sd_val_t * a, sd_val_t * b, char neg, int maxplaces, char round, sd_val_t ** rem)
 {                               // Unsigned div (i.e. final sign already set in r) and set in r if needed
    if (!a)
       a = &zero;
@@ -488,14 +488,14 @@ udiv (sd_t * a, sd_t * b, char neg, int maxplaces, char round, sd_t ** rem)
    //debugout ("udiv", a, b, NULL);
    if (!b->sig)
       return NULL;              // Divide by zero
-   sd_t *base[9];
+   sd_val_t *base[9];
    makebase (base, b);
    int mag = a->mag - b->mag;
    if (mag < -maxplaces)
       mag = -maxplaces;         // Limit to places
    int sig = mag + maxplaces + 1;       // Limit to places
-   sd_t *r = make (mag, sig);
-   sd_t *v = copy (a);
+   sd_val_t *r = make (mag, sig);
+   sd_val_t *v = copy (a);
 #ifdef DEBUG
    fprintf (stderr, "Divide %d->%d\n", mag, mag - sig + 1);
 #endif
@@ -507,7 +507,7 @@ udiv (sd_t * a, sd_t * b, char neg, int maxplaces, char round, sd_t ** rem)
       //debugout ("udiv rem", v, NULL);
       if (n)
       {
-         sd_t *s = usub (v, base[n - 1], 0, p);
+         sd_val_t *s = usub (v, base[n - 1], 0, p);
          if (s)
          {
             freez (v);
@@ -539,14 +539,14 @@ udiv (sd_t * a, sd_t * b, char neg, int maxplaces, char round, sd_t ** rem)
          if (rem)
          {                      // Adjust remainder, goes negative
             base[0]->mag += shift + 1;
-            sd_t *s = usub (base[0], v, 0, 0);
+            sd_val_t *s = usub (base[0], v, 0, 0);
             base[0]->mag -= shift + 1;
             freez (v);
             v = s;
             v->neg ^= 1;
          }
          // Adjust r
-         sd_t *s = uadd (r, &one, 0, r->mag - r->sig + 1);
+         sd_val_t *s = uadd (r, &one, 0, r->mag - r->sig + 1);
          freez (r);
          r = s;
       }
@@ -565,7 +565,7 @@ udiv (sd_t * a, sd_t * b, char neg, int maxplaces, char round, sd_t ** rem)
 }
 
 static int
-scmp (sd_t * a, sd_t * b)
+scmp (sd_val_t * a, sd_val_t * b)
 {
    if (!a)
       a = &zero;
@@ -581,13 +581,13 @@ scmp (sd_t * a, sd_t * b)
    return ucmp (a, b, 0);
 }
 
-static sd_t *
-sadd (sd_t * a, sd_t * b)
+static sd_val_t *
+sadd (sd_val_t * a, sd_val_t * b)
 {                               // Low level add
    debugout ("sadd", a, b, NULL);
    if (a->neg && !b->neg)
    {                            // Reverse subtract
-      sd_t *t = a;
+      sd_val_t *t = a;
       a = b;
       b = t;
    }
@@ -603,8 +603,8 @@ sadd (sd_t * a, sd_t * b)
    return uadd (a, b, 0, 0);
 }
 
-static sd_t *
-ssub (sd_t * a, sd_t * b)
+static sd_val_t *
+ssub (sd_val_t * a, sd_val_t * b)
 {
    debugout ("ssub", a, b, NULL);
    if (a->neg && !b->neg)
@@ -622,8 +622,8 @@ ssub (sd_t * a, sd_t * b)
    return usub (a, b, neg, 0);
 }
 
-static sd_t *
-smul (sd_t * a, sd_t * b)
+static sd_val_t *
+smul (sd_val_t * a, sd_val_t * b)
 {
    debugout ("smul", a, b, NULL);
    if ((a->neg && !b->neg) || (!a->neg && b->neg))
@@ -631,8 +631,8 @@ smul (sd_t * a, sd_t * b)
    return umul (a, b, 0);
 }
 
-static sd_t *
-sdiv (sd_t * a, sd_t * b, int maxplaces, char round, sd_t ** rem)
+static sd_val_t *
+sdiv (sd_val_t * a, sd_val_t * b, int maxplaces, char round, sd_val_t ** rem)
 {
    debugout ("sdiv", a, b, NULL);
    if ((a->neg && !b->neg) || (!a->neg && b->neg))
@@ -640,8 +640,8 @@ sdiv (sd_t * a, sd_t * b, int maxplaces, char round, sd_t ** rem)
    return udiv (a, b, 0, maxplaces, round, rem);
 }
 
-static sd_t *
-srnd (sd_t * a, int places, char round)
+static sd_val_t *
+srnd (sd_val_t * a, int places, char round)
 {
    if (!a)
       return NULL;
@@ -649,9 +649,9 @@ srnd (sd_t * a, int places, char round)
    int decimals = a->sig - a->mag - 1;
    if (decimals < 0)
       decimals = 0;
-   sd_t *z (void)
+   sd_val_t *z (void)
    {
-      sd_t *r = copy (&zero);
+      sd_val_t *r = copy (&zero);
       r->mag = -places;
       if (places > 0)
          r->mag--;
@@ -664,7 +664,7 @@ srnd (sd_t * a, int places, char round)
    if (decimals > places)
    {                            // more places, needs truncating
       int sig = a->sig - (decimals - places);
-      sd_t *r;
+      sd_val_t *r;
       if (sig <= 0)
       {
          r = z ();
@@ -713,7 +713,7 @@ srnd (sd_t * a, int places, char round)
          }
          if (up)
          {                      // Round up (away from 0)
-            sd_t *s = uadd (r, &one, 0, r->mag - r->sig + 1);
+            sd_val_t *s = uadd (r, &one, 0, r->mag - r->sig + 1);
             freez (r);
             r = s;
          }
@@ -726,7 +726,7 @@ srnd (sd_t * a, int places, char round)
       int sig = a->sig + (places - decimals);
       if (a->mag > 0)
          sig = a->mag + 1 + places;
-      sd_t *r = make (a->mag, sig);
+      sd_val_t *r = make (a->mag, sig);
       memcpy (r->d, a->d, a->sig);
       r->neg = a->neg;
       return r;
@@ -739,42 +739,42 @@ srnd (sd_t * a, int places, char round)
 char *
 stringdecimal_add (const char *a, const char *b)
 {                               // Simple add
-   sd_t *A = parse (a);
-   sd_t *B = parse (b);
-   sd_t *R = sadd (A, B);
+   sd_val_t *A = parse (a);
+   sd_val_t *B = parse (b);
+   sd_val_t *R = sadd (A, B);
    return output_free (R, 2, A, B);
 };
 
 char *
 stringdecimal_sub (const char *a, const char *b)
 {                               // Simple subtract
-   sd_t *A = parse (a);
-   sd_t *B = parse (b);
-   sd_t *R = ssub (A, B);
+   sd_val_t *A = parse (a);
+   sd_val_t *B = parse (b);
+   sd_val_t *R = ssub (A, B);
    return output_free (R, 2, A, B);
 };
 
 char *
 stringdecimal_mul (const char *a, const char *b)
 {                               // Simple multiply
-   sd_t *A = parse (a);
-   sd_t *B = parse (b);
-   sd_t *R = smul (A, B);
+   sd_val_t *A = parse (a);
+   sd_val_t *B = parse (b);
+   sd_val_t *R = smul (A, B);
    return output_free (R, 2, A, B);
 };
 
 char *
 stringdecimal_div (const char *a, const char *b, int maxdivide, char round, char **rem)
 {                               // Simple divide - to specified number of places, with remainder
-   sd_t *B = parse (b);
+   sd_val_t *B = parse (b);
    if (B && !B->sig)
    {
       freez (B);
       return NULL;              // Divide by zero
    }
-   sd_t *A = parse (a);
-   sd_t *REM = NULL;
-   sd_t *R = sdiv (A, B, maxdivide, round, &REM);
+   sd_val_t *A = parse (a);
+   sd_val_t *REM = NULL;
+   sd_val_t *R = sdiv (A, B, maxdivide, round, &REM);
    if (rem)
       *rem = output (REM);
    return output_free (R, 3, A, B, REM);
@@ -783,37 +783,362 @@ stringdecimal_div (const char *a, const char *b, int maxdivide, char round, char
 char *
 stringdecimal_rnd (const char *a, int places, char round)
 {                               // Round to specified number of places
-   sd_t *A = parse (a);
-   sd_t *R = srnd (A, places, round);
+   sd_val_t *A = parse (a);
+   sd_val_t *R = srnd (A, places, round);
    return output_free (R, 1, A);
 };
 
 int
 stringdecimal_cmp (const char *a, const char *b)
 {                               // Compare
-   sd_t *A = parse (a);
-   sd_t *B = parse (b);
+   sd_val_t *A = parse (a);
+   sd_val_t *B = parse (b);
    int r = scmp (A, B);
    freez (A);
    freez (B);
    return r;
 }
 
-// Parsing
-#include "xparse.c"
-typedef struct parse_value_s parse_value_t;
-struct parse_value_s
+// Low level
+struct sd_s
 {
-   sd_t *d;                     // Denominator
-   sd_t *n;                     // Numerator
+   sd_val_t *d;                 // Denominator
+   sd_val_t *n;                 // Numerator
    int places;
 };
 
+static sd_p
+sd_tidy (sd_p v)
+{                               // Check answer
+   if (v && v->d && v->d->neg)
+   {                            // Normalise sign
+      v->n->neg ^= 1;
+      v->d->neg = 0;
+   }
+   if (v && v->n && v->d && v->d->sig == 1 && v->d->d[0] == 1)
+   {                            // Power of 10 denominator
+      v->n->mag -= v->d->mag;
+      freez (v->d);
+   }
+   return v;
+}
+
+static sd_p
+sd_new (sd_p l, sd_p r)
+{                               // Basic details for binary operator
+   sd_p v = malloc (sizeof (*v));
+   assert (v);
+   v->places = 0;
+   if (l)
+      v->places = l->places;
+   if (r && r->places > v->places)
+      v->places = r->places;
+   v->n = NULL;
+   v->d = NULL;
+   return v;
+}
+
+static sd_p
+sd_cross (sd_p l, sd_p r, sd_val_t ** ap, sd_val_t ** bp)
+{                               // Cross multiply
+   *ap = *bp = NULL;
+   sd_p v = sd_new (l, r);
+   if (v)
+   {
+      if ((l->d || l->d) && scmp (l->d ? : &one, r->d ? : &one))
+      {                         // Multiply out numerators
+         *ap = smul (l->n, r->d ? : &one);
+         *bp = smul (r->n, l->d ? : &one);
+      }
+   }
+   return v;
+}
+
+sd_p
+sd_parse (const char *val)
+{
+   sd_p v = malloc (sizeof (*v));
+   assert (v);
+   v->n = parse2 (val, NULL, &v->places);
+   v->d = NULL;
+   return v;
+}
+
+sd_p
+sd_parse_f (char *val)
+{                               // Parse (free arg)
+   sd_p r = sd_parse (val);
+   freez (val);
+   return r;
+}
+
+void *
+sd_free (sd_p p)
+{                               // Free
+   if (!p)
+      return p;
+   freez (p->d);
+   freez (p->n);
+   freez (p);
+   return NULL;
+}
+
+int
+sd_places (sd_p p)
+{                               // Max places seen
+   if (!p)
+      return INT_MIN;
+   return p->places;
+}
+
+char *
+sd_output (sd_p p, int places, char round)
+{                               // Output
+   if (!p)
+      return NULL;
+   char *r = NULL;
+   if (p->d)
+      r = output_free (sdiv (p->n, p->d, places == INT_MAX ? p->places : places, round, NULL), 0);      // Simple divide to get answer
+   else
+      r = output (p->n);        // Last remaining operand is the answer
+   return r;
+}
+
+char *
+sd_output_f (sd_p p, int places, char round)
+{                               // Output free arg
+   char *r = sd_output (p, places, round);
+   sd_free (p);
+   return r;
+}
+
+void
+sd_neg (sd_p p)
+{                               // Negate
+   if (p && p->n->sig)
+      p->n->neg ^= 1;
+}
+
+void
+sd_inv (sd_p p)
+{                               // Reciprocal
+   sd_val_t *d = p->d;
+   if (!d)
+      d = copy (&one);
+   p->d = p->n;
+   p->n = d;
+}
+
+int
+sd_iszero (sd_p p)
+{                               // Is zero
+   return !p || !p->d->sig;
+}
+
+sd_p
+sd_add (sd_p l, sd_p r)
+{                               // Add
+   sd_val_t *a,
+    *b;
+   sd_p v = sd_cross (l, r, &a, &b);
+   if (v)
+   {
+      v->n = sadd (a ? : l->n, b ? : r->n);
+      if (l->d || r->d)
+      {
+         if (!scmp (l->d ? : &one, r->d ? : &one))
+            v->d = copy (l->d ? : &one);
+         else
+            v->d = smul (l->d ? : &one, r->d ? : &one);
+      }
+      freez (a);
+      freez (b);
+   }
+   return sd_tidy (v);
+};
+
+sd_p
+sd_add_ff (sd_p l, sd_p r)
+{                               // Add free all args
+   sd_p o = sd_add (l, r);
+   sd_free (l);
+   sd_free (r);
+   return o;
+};
+
+sd_p
+sd_add_fc (sd_p l, sd_p r)
+{                               // Add free first arg
+   sd_p o = sd_add (l, r);
+   sd_free (l);
+   return o;
+};
+
+sd_p
+sd_add_cf (sd_p l, sd_p r)
+{                               // Add free second arg
+   sd_p o = sd_add (l, r);
+   sd_free (r);
+   return o;
+};
+
+sd_p
+sd_sub (sd_p l, sd_p r)
+{                               // Subtract
+   r->n->neg ^= 1;
+   sd_p o = sd_add (l, r);
+   r->n->neg ^= 1;
+   return o;
+};
+
+sd_p
+sd_sub_ff (sd_p l, sd_p r)
+{                               // Subtract free all args
+   sd_p o = sd_sub (l, r);
+   sd_free (l);
+   sd_free (r);
+   return o;
+};
+
+sd_p
+sd_sub_fc (sd_p l, sd_p r)
+{                               // Subtract free first arg
+   sd_p o = sd_sub (l, r);
+   sd_free (l);
+   return o;
+};
+
+sd_p
+sd_sub_cf (sd_p l, sd_p r)
+{                               // Subtract free second arg
+   sd_p o = sd_sub (l, r);
+   sd_free (r);
+   return o;
+};
+
+sd_p
+sd_mul (sd_p l, sd_p r)
+{                               // Multiply
+   sd_p v = sd_new (l, r);
+   if (l->d || r->d)
+      v->d = smul (l->d ? : &one, r->d ? : &one);
+   v->n = smul (l->n, r->n);
+   return sd_tidy (v);
+};
+
+sd_p
+sd_mul_ff (sd_p l, sd_p r)
+{                               // Multiply free all args
+   sd_p o = sd_mul (l, r);
+   sd_free (l);
+   sd_free (r);
+   return o;
+};
+
+sd_p
+sd_mul_fc (sd_p l, sd_p r)
+{                               // Multiply free first arg
+   sd_p o = sd_mul (l, r);
+   sd_free (l);
+   return o;
+};
+
+sd_p
+sd_mul_cf (sd_p l, sd_p r)
+{                               // Multiply free second arg
+   sd_p o = sd_mul (l, r);
+   sd_free (r);
+   return o;
+};
+
+sd_p
+sd_div (sd_p l, sd_p r)
+{                               // Divide
+   if (!r->n->sig)
+      return NULL;
+   sd_p v = sd_new (l, r);
+   if (!l->d && !r->d)
+   {                            // Simple - making a new rational
+      v->n = copy (l->n);
+      v->d = copy (r->n);
+   } else
+   {                            // Cross divide
+      v->n = smul (l->n, r->d ? : &one);
+      v->d = smul (l->d ? : &one, r->n);
+   }
+   return sd_tidy (v);
+};
+
+sd_p
+sd_div_ff (sd_p l, sd_p r)
+{                               // Divide free all args
+   sd_p o = sd_div (l, r);
+   sd_free (l);
+   sd_free (r);
+   return o;
+};
+
+sd_p
+sd_div_fc (sd_p l, sd_p r)
+{                               // Divide free first arg
+   sd_p o = sd_div (l, r);
+   sd_free (l);
+   return o;
+};
+
+sd_p
+sd_div_cf (sd_p l, sd_p r)
+{                               // Divide free second arg
+   sd_p o = sd_div (l, r);
+   sd_free (r);
+   return o;
+};
+
+int
+sd_cmp (sd_p l, sd_p r)
+{                               // Compare
+   sd_val_t *a,
+    *b;
+   sd_p v = sd_cross (l, r, &a, &b);
+   int diff = scmp (a ? : l->n, b ? : r->n);
+   sd_free (v);
+   freez (a);
+   freez (b);
+   return diff;
+};
+
+int
+sd_cmp_ff (sd_p l, sd_p r)
+{                               // Compare free all args
+   int diff = sd_cmp (l, r);
+   sd_free (l);
+   sd_free (r);
+   return diff;
+};
+
+int
+sd_cmp_fc (sd_p l, sd_p r)
+{                               // Compare free first arg
+   int diff = sd_cmp (l, r);
+   sd_free (l);
+   return diff;
+};
+
+int
+sd_cmp_cf (sd_p l, sd_p r)
+{                               // Compare free second arg
+   int diff = sd_cmp (l, r);
+   sd_free (r);
+   return diff;
+};
+
+// Parsing
+#include "xparse.c"
 // Parse Support functions
 static void *
 parse_operand (void *context, const char *p, const char **end)
 {                               // Parse an operand, malloc value (or null if error), set end
-   parse_value_t *v = malloc (sizeof (*v));
+   sd_p v = malloc (sizeof (*v));
    assert (v);
    v->n = parse2 (p, end, &v->places);
    v->d = NULL;
@@ -824,7 +1149,7 @@ static void *
 parse_final (void *context, void *v)
 {                               // Final processing
    stringdecimal_context_t *C = context;
-   parse_value_t *V = v;
+   sd_p V = v;
    if (!V)
       return NULL;
    if (C->maxplacesp)
@@ -843,12 +1168,7 @@ parse_final (void *context, void *v)
 static void
 parse_dispose (void *context, void *v)
 {                               // Disposing of an operand
-   parse_value_t *V = v;
-   if (!V)
-      return;
-   freez (V->d);
-   freez (V->n);
-   freez (V);
+   sd_free (v);
 }
 
 static void
@@ -859,62 +1179,18 @@ parse_fail (void *context, const char *failure, const char *posn)
    C->posn = posn;
 }
 
-static parse_value_t *
-parse_tidy (parse_value_t * v)
-{                               // Check answer
-   if (v && v->n && v->d && v->d->sig == 1 && v->d->d[0] == 1)
-   {                            // Power of 10 denominator
-      if (v->d->neg)
-         v->n->neg ^= 1;
-      v->n->mag -= v->d->mag;
-      freez (v->d);
-   }
-   return v;
-}
-
-static parse_value_t *
-parse_bin (parse_value_t * l, parse_value_t * r)
-{                               // Basic details for binary operator
-   parse_value_t *v = malloc (sizeof (*v));
-   assert (v);
-   v->places = 0;
-   if (l)
-      v->places = l->places;
-   if (r && r->places > v->places)
-      v->places = r->places;
-   v->n = NULL;
-   v->d = NULL;
-   return v;
-}
-
-static parse_value_t *
-parse_bin_add (parse_value_t * l, parse_value_t * r, sd_t ** ap, sd_t ** bp)
-{
-   *ap = *bp = NULL;
-   parse_value_t *v = parse_bin (l, r);
-   if (v)
-   {
-      if ((l->d || l->d) && scmp (l->d ? : &one, r->d ? : &one))
-      {                         // Multiply out numerators
-         *ap = smul (l->n, r->d ? : &one);
-         *bp = smul (r->n, l->d ? : &one);
-      }
-   }
-   return v;
-}
-
 #define MATCH_LT 1
 #define MATCH_GT 2
 #define MATCH_EQ 4
 #define MATCH_NE 8
-static parse_value_t *
-parse_bin_cmp (parse_value_t * l, parse_value_t * r, int match)
+static sd_p
+parse_bin_cmp (sd_p l, sd_p r, int match)
 {
-   sd_t *a,
+   sd_val_t *a,
     *b;
-   parse_value_t *L = l,
-      *R = r,
-      *v = parse_bin_add (l, r, &a, &b);
+   sd_p L = l,
+      R = r,
+      v = sd_cross (l, r, &a, &b);
    int diff = scmp (a ? : L->n, b ? : R->n);
    if (((match & MATCH_LT) && diff < 0) ||
        ((match & MATCH_GT) && diff > 0) || ((match & MATCH_EQ) && diff == 0) || ((match & MATCH_NE) && diff != 0))
@@ -929,72 +1205,35 @@ parse_bin_cmp (parse_value_t * l, parse_value_t * r, int match)
 static void *
 parse_add (void *context, void *data, void *l, void *r)
 {
-   sd_t *a,
-    *b;
-   parse_value_t *L = l,
-      *R = r,
-      *v = parse_bin_add (l, r, &a, &b);
-   if (v)
-   {
-      v->n = sadd (a ? : L->n, b ? : R->n);
-      if (L->d || R->d)
-      {
-         if (!scmp (L->d ? : &one, R->d ? : &one))
-            v->d = copy (L->d ? : &one);
-         else
-            v->d = smul (L->d ? : &one, R->d ? : &one);
-      }
-      freez (a);
-      freez (b);
-   }
-   return parse_tidy (v);
+   return sd_add (l, r);
 }
 
 static void *
 parse_sub (void *context, void *data, void *l, void *r)
 {
-   parse_value_t *R = r;
-   R->n->neg ^= 1;
-   return parse_add (context, data, l, r);
+   return sd_sub (l, r);
 }
 
 static void *
 parse_div (void *context, void *data, void *l, void *r)
 {
    stringdecimal_context_t *C = context;
-   parse_value_t *L = l,
-      *R = r,
-      *v = parse_bin (l, r);
-   if (!R->n->sig)
+   sd_p o = sd_div (l, r);
+   if (!o)
       C->fail = "Divide by zero";
-   else if (!L->d && !R->d)
-   {                            // Simple - making a new rational
-      v->n = copy (L->n);
-      v->d = copy (R->n);
-   } else
-   {                            // Cross divide
-      v->n = smul (L->n, R->d ? : &one);
-      v->d = smul (L->d ? : &one, R->n);
-   }
-   return parse_tidy (v);
+   return o;
 }
 
 static void *
 parse_mul (void *context, void *data, void *l, void *r)
 {
-   parse_value_t *L = l,
-      *R = r,
-      *v = parse_bin (l, r);
-   if (L->d || R->d)
-      v->d = smul (L->d ? : &one, R->d ? : &one);
-   v->n = smul (L->n, R->n);
-   return parse_tidy (v);
+   return sd_mul (l, r);
 }
 
 static void *
 parse_neg (void *context, void *data, void *l, void *r)
 {
-   parse_value_t *R = r;
+   sd_p R = r;
    R->n->neg ^= 1;
    return r;
 }
@@ -1002,8 +1241,8 @@ parse_neg (void *context, void *data, void *l, void *r)
 static void *
 parse_not (void *context, void *data, void *l, void *r)
 {
-   parse_value_t *R = r,
-      *v = parse_bin (l, r);
+   sd_p R = r,
+      v = sd_new (l, r);
    v->n = copy (!R->n->sig ? &one : &zero);
    v->places = 0;
    return v;
@@ -1048,8 +1287,8 @@ parse_lt (void *context, void *data, void *l, void *r)
 static void *
 parse_and (void *context, void *data, void *l, void *r)
 {
-   parse_value_t *L = l,
-      *R = r;
+   sd_p L = l,
+      R = r;
    if (!L->n->sig)
       return L;                 // False
    return R;                    // Whatever second argument is
@@ -1058,8 +1297,8 @@ parse_and (void *context, void *data, void *l, void *r)
 static void *
 parse_or (void *context, void *data, void *l, void *r)
 {
-   parse_value_t *L = l,
-      *R = r;
+   sd_p L = l,
+      R = r;
    if (L->n->sig)
       return L;                 // True
    return R;                    // Whatever second argument is

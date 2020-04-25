@@ -56,6 +56,42 @@ int stringdecimal_cmp_cf (const char *a, char *b);      // Compare with free sec
 int stringdecimal_cmp_ff (char *a, char *b);    // Compare with free both args
 char *stringdecimal_eval_f (char *sum, int maxdivide, char round, int *maxplacesp);     // Eval with free sum
 
+// Low level functions allow construction of an expression using rational maths
+typedef struct sd_s sd_t;
+typedef sd_t *sd_p;
+
+sd_p sd_parse (const char *);   // Parse number to an sd_p
+sd_p sd_parse_f (char *);       // Parse number to an sd_p (free arg)
+void *sd_free (sd_p);           // Free sd_p
+char *sd_output (sd_p, int places, char round); // Output
+char *sd_output_f (sd_p, int places, char round);       // Output (free arg)
+int sd_places (sd_p);           // Max places of any operand so far
+int sd_iszero (sd_p);           // If zero value
+
+void sd_neg (sd_p);             // Negate
+void sd_inv (sd_p);             // Reciprocal
+sd_p sd_add (sd_p, sd_p);       // Add
+sd_p sd_add_ff (sd_p, sd_p);    // Add free all args
+sd_p sd_add_fc (sd_p, sd_p);    // Add free first arg
+sd_p sd_add_cf (sd_p, sd_p);    // Add free second arg
+sd_p sd_sub (sd_p, sd_p);       // Subtract
+sd_p sd_sub_ff (sd_p, sd_p);    // Subtract free all args
+sd_p sd_sub_fc (sd_p, sd_p);    // Subtract free first arg
+sd_p sd_sub_cf (sd_p, sd_p);    // Subtract free second arg
+sd_p sd_mul (sd_p, sd_p);       // Multiply
+sd_p sd_mul_ff (sd_p, sd_p);    // Multiply free all args
+sd_p sd_mul_fc (sd_p, sd_p);    // Multiply free first arg
+sd_p sd_mul_cf (sd_p, sd_p);    // Multiply free second arg
+sd_p sd_div (sd_p, sd_p);       // Divide
+sd_p sd_div_ff (sd_p, sd_p);    // Divide free all args
+sd_p sd_div_fc (sd_p, sd_p);    // Divide free first arg
+sd_p sd_div_cf (sd_p, sd_p);    // Divide free second arg
+int sd_cmp (sd_p, sd_p);        // Compare
+int sd_cmp_ff (sd_p, sd_p);     // Compare free all args
+int sd_cmp_fc (sd_p, sd_p);     // Compare free first arg
+int sd_cmp_cf (sd_p, sd_p);     // Compare free second arg
+
+
 // Using stringdecimal to build a higher layer parser
 #ifdef	XPARSE_H
 typedef struct stringdecimal_context_s stringdecimal_context_t;
