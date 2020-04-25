@@ -935,6 +935,12 @@ sd_iszero (sd_p p)
    return !p || !p->d->sig;
 }
 
+int
+sd_isneg (sd_p p)
+{                               // Is negative (denominator always positive)
+   return p && p->d->neg;
+}
+
 static void
 sd_int (sd_p p)
 {                               // Normalise to integers
@@ -1522,8 +1528,8 @@ main (int argc, const char *argv[])
          if (s[1] == 'x')
          {                      // Simple test of sd
             sd_p r = sd_div_ff (sd_parse ("1.00"), sd_parse ("3.1"));
-            fprintf (stderr, "places %d num %s den %s res %s\n", sd_places (r), sd_num (r), sd_den (r),sd_output(r,2,0));
-	    sd_free(r);
+            fprintf (stderr, "places %d num %s den %s res %s\n", sd_places (r), sd_num (r), sd_den (r), sd_output (r, 2, 0));
+            sd_free (r);
             continue;
          }
          if (s[1] == 'p')
