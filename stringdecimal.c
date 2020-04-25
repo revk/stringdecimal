@@ -912,21 +912,36 @@ sd_output_f (sd_p p, int places, char round)
    return r;
 }
 
-void
+sd_p
 sd_neg (sd_p p)
 {                               // Negate
-   if (p && p->n->sig)
+   if (!p)
+      return p;
+   if (p->n->sig)
       p->n->neg ^= 1;
+   return p;
 }
 
-void
+sd_p
 sd_inv (sd_p p)
 {                               // Reciprocal
+   if (!p)
+      return p;
    sd_val_t *d = p->d;
    if (!d)
       d = copy (&one);
    p->d = p->n;
    p->n = d;
+   return p;
+}
+
+sd_p
+sd_10 (sd_p p, int shift)
+{                               // Adjust by power of 10
+   if (!p)
+      return p;
+   p->n->mag += shift;
+   return p;
 }
 
 int

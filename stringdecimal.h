@@ -71,8 +71,10 @@ int sd_isneg (sd_p);            // If negative value
 char *sd_num (sd_p);            // Text of numerator (usually for debug)
 char *sd_dom (sd_p);            // Text of denominator (usually for debug)
 
-void sd_neg (sd_p);             // Negate
-void sd_inv (sd_p);             // Reciprocal
+sd_p sd_neg (sd_p);             // Negate (in place, returns arg)
+sd_p sd_inv (sd_p);             // Reciprocal (in place, returns arg)
+sd_p sd_10 (sd_p, int);         // Multiple by a power of 10 (in place, returns arg)
+
 sd_p sd_add (sd_p, sd_p);       // Add
 sd_p sd_add_ff (sd_p, sd_p);    // Add free all args
 sd_p sd_add_fc (sd_p, sd_p);    // Add free first arg
