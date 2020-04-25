@@ -67,6 +67,8 @@ char *sd_output (sd_p, int places, char round); // Output
 char *sd_output_f (sd_p, int places, char round);       // Output (free arg)
 int sd_places (sd_p);           // Max places of any operand so far
 int sd_iszero (sd_p);           // If zero value
+char *sd_num (sd_p);            // Text of numerator (usually for debug)
+char *sd_dom (sd_p);            // Text of denominator (usually for debug)
 
 void sd_neg (sd_p);             // Negate
 void sd_inv (sd_p);             // Reciprocal

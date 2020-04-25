@@ -935,6 +935,35 @@ sd_iszero (sd_p p)
    return !p || !p->d->sig;
 }
 
+static void
+sd_int (sd_p p)
+{                               // Normalise to integers
+   if (!p)
+      return;
+   int shift = 0,
+      s;
+   if (p->d && (s = p->d->sig - p->d->mag - 1) > shift)
+      shift = s;
+   if ((s = p->n->sig - p->n->mag - 1) > shift)
+      shift = s;
+   p->n->mag += shift;
+   p->d->mag += shift;
+}
+
+char *
+sd_num (sd_p p)
+{                               // Numerator as string
+   sd_int (p);
+   return output (p->n);
+}
+
+char *
+sd_den (sd_p p)
+{                               // Denominator as string
+   sd_int (p);
+   return output (p->d ? : &one);
+}
+
 sd_p
 sd_add (sd_p l, sd_p r)
 {                               // Add
@@ -1490,7 +1519,14 @@ main (int argc, const char *argv[])
       const char *s = argv[a];
       if (*s == '-' && isalpha (s[1]))
       {
-         if (*s == '-' && s[1] == 'p')
+         if (s[1] == 'x')
+         {                      // Simple test of sd
+            sd_p r = sd_div_ff (sd_parse ("1.00"), sd_parse ("3.1"));
+            fprintf (stderr, "places %d num %s den %s res %s\n", sd_places (r), sd_num (r), sd_den (r),sd_output(r,2,0));
+	    sd_free(r);
+            continue;
+         }
+         if (s[1] == 'p')
          {
             if (s[2])
             {
@@ -1500,12 +1536,12 @@ main (int argc, const char *argv[])
                rnd = 0;
             continue;
          }
-         if (*s == '-' && s[1] == 'd' && isdigit (s[2]))
+         if (s[1] == 'd' && isdigit (s[2]))
          {
             divplaces = atoi (s + 2);
             continue;
          }
-         if (*s == '-' && s[1] && strchr ("CFUTRB", toupper (s[1])) && !s[2])
+         if (s[1] && strchr ("CFUTRB", toupper (s[1])) && !s[2])
          {
             round = toupper (s[1]);
             rnd = 1;
