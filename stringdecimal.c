@@ -904,7 +904,7 @@ sd_output (sd_p p, int places, char round)
    else
    {
       sd_val_t *R = srnd (p->n, places == INT_MAX ? p->places : places, round);
-      r = output_free (R, 1, R);
+      r = output_free (R, 0);
    }
    return r;
 }
