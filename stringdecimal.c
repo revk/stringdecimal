@@ -969,6 +969,12 @@ sd_isneg (sd_p p)
    return p && p->n->neg;
 }
 
+int
+sd_ispos (sd_p p)
+{                               // Is positive (denominator always positive)
+   return p && p->n->sig && !p->n->neg;
+}
+
 static void
 sd_int (sd_p p)
 {                               // Normalise to integers
