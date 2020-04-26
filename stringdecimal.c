@@ -802,10 +802,12 @@ stringdecimal_cmp (const char *a, const char *b)
 // Low level
 struct sd_s
 {
-   sd_val_t *d;                 // Denominator
    sd_val_t *n;                 // Numerator
+   sd_val_t *d;                 // Denominator
    int places;
 };
+
+static struct sd_s sd_zero = { &zero };
 
 static sd_p
 sd_tidy (sd_p v)
@@ -900,7 +902,10 @@ sd_output (sd_p p, int places, char round)
    if (p->d)
       r = output_free (sdiv (p->n, p->d, places == INT_MAX ? p->places : places, round, NULL), 0);      // Simple divide to get answer
    else
-      r = output (p->n);        // Last remaining operand is the answer
+   {
+      sd_val_t *R = srnd (p->n, places == INT_MAX ? p->places : places, round);
+      r = output_free (R, 1, R);
+   }
    return r;
 }
 
@@ -919,6 +924,14 @@ sd_neg (sd_p p)
       return p;
    if (p->n->sig)
       p->n->neg ^= 1;
+   return p;
+}
+
+sd_p
+sd_abs (sd_p p)
+{                               // Absolute
+   if (p)
+      p->n->sig = 0;
    return p;
 }
 
@@ -988,6 +1001,10 @@ sd_den (sd_p p)
 sd_p
 sd_add (sd_p l, sd_p r)
 {                               // Add
+   if (!l)
+      l = &sd_zero;
+   if (!r)
+      r = &sd_zero;
    sd_val_t *a,
     *b;
    sd_p v = sd_cross (l, r, &a, &b);
@@ -1035,9 +1052,11 @@ sd_add_cf (sd_p l, sd_p r)
 sd_p
 sd_sub (sd_p l, sd_p r)
 {                               // Subtract
-   r->n->neg ^= 1;
+   if (r)
+      r->n->neg ^= 1;
    sd_p o = sd_add (l, r);
-   r->n->neg ^= 1;
+   if (r)
+      r->n->neg ^= 1;
    return o;
 };
 
@@ -1069,6 +1088,10 @@ sd_sub_cf (sd_p l, sd_p r)
 sd_p
 sd_mul (sd_p l, sd_p r)
 {                               // Multiply
+   if (!l)
+      l = &sd_zero;
+   if (!r)
+      r = &sd_zero;
    sd_p v = sd_new (l, r);
    if (l->d || r->d)
       v->d = smul (l->d ? : &one, r->d ? : &one);
@@ -1104,7 +1127,9 @@ sd_mul_cf (sd_p l, sd_p r)
 sd_p
 sd_div (sd_p l, sd_p r)
 {                               // Divide
-   if (!r->n->sig)
+   if (!l)
+      l = &sd_zero;
+   if (!r || !r->n || !r->n->sig)
       return NULL;
    sd_p v = sd_new (l, r);
    if (!l->d && !r->d)
@@ -1147,6 +1172,10 @@ sd_div_cf (sd_p l, sd_p r)
 int
 sd_cmp (sd_p l, sd_p r)
 {                               // Compare
+   if (!l)
+      l = &sd_zero;
+   if (!r)
+      r = &sd_zero;
    sd_val_t *a,
     *b;
    sd_p v = sd_cross (l, r, &a, &b);
