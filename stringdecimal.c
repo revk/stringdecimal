@@ -960,13 +960,13 @@ sd_10 (sd_p p, int shift)
 int
 sd_iszero (sd_p p)
 {                               // Is zero
-   return !p || !p->d->sig;
+   return !p || !p->n->sig;
 }
 
 int
 sd_isneg (sd_p p)
 {                               // Is negative (denominator always positive)
-   return p && p->d->neg;
+   return p && p->n->neg;
 }
 
 static void
