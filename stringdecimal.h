@@ -72,10 +72,10 @@ int sd_ispos (sd_p);            // If positive value
 char *sd_num (sd_p);            // Text of numerator (usually for debug)
 char *sd_dom (sd_p);            // Text of denominator (usually for debug)
 
-sd_p sd_neg_f (sd_p);           // Negate (in place, returns arg)
-sd_p sd_abs_f (sd_p);           // Absolute (in place, returns arg)
-sd_p sd_inv_f (sd_p);           // Reciprocal (in place, returns arg)
-sd_p sd_10_f (sd_p, int);       // Multiple by a power of 10 (in place, returns arg)
+sd_p sd_neg_i (sd_p);           // Negate (in place, returns arg)
+sd_p sd_abs_i (sd_p);           // Absolute (in place, returns arg)
+sd_p sd_inv_i (sd_p);           // Reciprocal (in place, returns arg)
+sd_p sd_10_i (sd_p, int);       // Multiple by a power of 10 (in place, returns arg)
 sd_p sd_neg (sd_p);             // Negate
 sd_p sd_abs (sd_p);             // Absolute
 sd_p sd_inv (sd_p);             // Reciprocal

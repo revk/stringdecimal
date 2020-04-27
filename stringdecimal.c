@@ -931,7 +931,7 @@ sd_output_f (sd_p p, int places, char round)
 }
 
 sd_p
-sd_neg_f (sd_p p)
+sd_neg_i (sd_p p)
 {                               // Negate (in situ)
    if (!p)
       return p;
@@ -943,11 +943,11 @@ sd_neg_f (sd_p p)
 sd_p
 sd_neg (sd_p p)
 {                               // Negate
-   return sd_neg_f (sd_copy (p));
+   return sd_neg_i (sd_copy (p));
 }
 
 sd_p
-sd_abs_f (sd_p p)
+sd_abs_i (sd_p p)
 {                               // Absolute (in situ)
    if (!p)
       return p;
@@ -958,11 +958,11 @@ sd_abs_f (sd_p p)
 sd_p
 sd_abs (sd_p p)
 {                               // Absolute
-   return sd_abs_f (sd_copy (p));
+   return sd_abs_i (sd_copy (p));
 }
 
 sd_p
-sd_inv_f (sd_p p)
+sd_inv_i (sd_p p)
 {                               // Reciprocal (in situ)
    if (!p)
       return p;
@@ -977,11 +977,11 @@ sd_inv_f (sd_p p)
 sd_p
 sd_inv (sd_p p)
 {                               // Reciprocal
-   return sd_inv_f (sd_copy (p));
+   return sd_inv_i (sd_copy (p));
 }
 
 sd_p
-sd_10_f (sd_p p, int shift)
+sd_10_i (sd_p p, int shift)
 {                               // Adjust by power of 10 (in situ)
    if (!p)
       return p;
@@ -992,7 +992,7 @@ sd_10_f (sd_p p, int shift)
 sd_p
 sd_10 (sd_p p, int shift)
 {                               // Adjust by power of 10
-   return sd_10_f (sd_copy (p),shift);
+   return sd_10_i (sd_copy (p),shift);
 }
 
 int
