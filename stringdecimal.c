@@ -828,15 +828,12 @@ sd_tidy (sd_p v)
 static sd_p
 sd_new (sd_p l, sd_p r)
 {                               // Basic details for binary operator
-   sd_p v = malloc (sizeof (*v));
+   sd_p v = calloc (1, sizeof (*v));
    assert (v);
-   v->places = 0;
    if (l)
       v->places = l->places;
    if (r && r->places > v->places)
       v->places = r->places;
-   v->n = NULL;
-   v->d = NULL;
    return v;
 }
 
@@ -857,9 +854,25 @@ sd_cross (sd_p l, sd_p r, sd_val_t ** ap, sd_val_t ** bp)
 }
 
 sd_p
+sd_copy (sd_p p)
+{                               // Copy (create if p is NULL)
+   sd_p v = calloc (1, sizeof (*v));
+   assert (v);
+   if (p)
+   {
+      v->places = p->places;
+      if (p->n)
+         v->n = copy (p->n);
+      if (p->d)
+         v->d = copy (p->d);
+   }
+   return v;
+}
+
+sd_p
 sd_parse (const char *val)
 {
-   sd_p v = malloc (sizeof (*v));
+   sd_p v = calloc (1, sizeof (*v));
    assert (v);
    v->n = parse2 (val, NULL, &v->places);
    v->d = NULL;
@@ -918,8 +931,8 @@ sd_output_f (sd_p p, int places, char round)
 }
 
 sd_p
-sd_neg (sd_p p)
-{                               // Negate
+sd_neg_f (sd_p p)
+{                               // Negate (in situ)
    if (!p)
       return p;
    if (p->n->sig)
@@ -928,16 +941,29 @@ sd_neg (sd_p p)
 }
 
 sd_p
-sd_abs (sd_p p)
-{                               // Absolute
-   if (p)
-      p->n->sig = 0;
+sd_neg (sd_p p)
+{                               // Negate
+   return sd_neg_f (sd_copy (p));
+}
+
+sd_p
+sd_abs_f (sd_p p)
+{                               // Absolute (in situ)
+   if (!p)
+      return p;
+   p->n->sig = 0;
    return p;
 }
 
 sd_p
-sd_inv (sd_p p)
-{                               // Reciprocal
+sd_abs (sd_p p)
+{                               // Absolute
+   return sd_abs_f (sd_copy (p));
+}
+
+sd_p
+sd_inv_f (sd_p p)
+{                               // Reciprocal (in situ)
    if (!p)
       return p;
    sd_val_t *d = p->d;
@@ -949,12 +975,24 @@ sd_inv (sd_p p)
 }
 
 sd_p
-sd_10 (sd_p p, int shift)
-{                               // Adjust by power of 10
+sd_inv (sd_p p)
+{                               // Reciprocal
+   return sd_inv_f (sd_copy (p));
+}
+
+sd_p
+sd_10_f (sd_p p, int shift)
+{                               // Adjust by power of 10 (in situ)
    if (!p)
       return p;
    p->n->mag += shift;
    return p;
+}
+
+sd_p
+sd_10 (sd_p p, int shift)
+{                               // Adjust by power of 10
+   return sd_10_f (sd_copy (p),shift);
 }
 
 int
@@ -1223,7 +1261,7 @@ sd_cmp_cf (sd_p l, sd_p r)
 static void *
 parse_operand (void *context, const char *p, const char **end)
 {                               // Parse an operand, malloc value (or null if error), set end
-   sd_p v = malloc (sizeof (*v));
+   sd_p v = calloc (1, sizeof (*v));
    assert (v);
    v->n = parse2 (p, end, &v->places);
    v->d = NULL;
