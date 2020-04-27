@@ -63,6 +63,9 @@ typedef sd_t *sd_p;
 sd_p sd_parse (const char *);   // Parse number to an sd_p
 sd_p sd_parse_f (char *);       // Parse number to an sd_p (free arg)
 void *sd_free (sd_p);           // Free sd_p
+sd_p sd_copy (sd_p p);		// Make copy
+sd_p sd_int(long long);		// Make from integer
+sd_p sd_float(long double);	// Make from float
 char *sd_output (sd_p, int places, char round); // Output
 char *sd_output_f (sd_p, int places, char round);       // Output (free arg)
 int sd_places (sd_p);           // Max places of any operand so far

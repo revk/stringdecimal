@@ -887,6 +887,20 @@ sd_parse_f (char *val)
    return r;
 }
 
+sd_p sd_int(long long v)
+{
+	char temp[40];
+	snprintf(temp,sizeof(temp),"%lld",v);
+	return sd_parse(temp);
+}
+
+sd_p sd_float(long double v)
+{
+	char temp[40];
+	snprintf(temp,sizeof(temp),"%32Le",v);
+	return sd_parse(temp);
+}
+
 void *
 sd_free (sd_p p)
 {                               // Free
@@ -1014,7 +1028,7 @@ sd_ispos (sd_p p)
 }
 
 static void
-sd_int (sd_p p)
+sd_rational (sd_p p)
 {                               // Normalise to integers
    if (!p)
       return;
@@ -1031,14 +1045,14 @@ sd_int (sd_p p)
 char *
 sd_num (sd_p p)
 {                               // Numerator as string
-   sd_int (p);
+   sd_rational (p);
    return output (p->n);
 }
 
 char *
 sd_den (sd_p p)
 {                               // Denominator as string
-   sd_int (p);
+   sd_rational (p);
    return output (p->d ? : &one);
 }
 
