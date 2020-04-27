@@ -1003,7 +1003,7 @@ sd_10_i (sd_p p, int shift)
 {                               // Adjust by power of 10 (in situ)
    if (!p)
       return p;
-   p->n->mag += shift;
+   p->n->mag -= shift;
    return p;
 }
 
