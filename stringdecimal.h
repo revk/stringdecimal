@@ -104,7 +104,10 @@ int sd_cmp (sd_p, sd_p);        // Compare
 int sd_cmp_ff (sd_p, sd_p);     // Compare free all args
 int sd_cmp_fc (sd_p, sd_p);     // Compare free first arg
 int sd_cmp_cf (sd_p, sd_p);     // Compare free second arg
-
+int sd_abs_cmp (sd_p, sd_p);    // Compare absolute values
+int sd_abs_cmp_ff (sd_p, sd_p); // Compare absolute values free all args
+int sd_abs_cmp_fc (sd_p, sd_p); // Compare absolute values free first arg
+int sd_abs_cmp_cf (sd_p, sd_p); // Compare absolute values free second arg
 
 // Using stringdecimal to build a higher layer parser
 #ifdef	XPARSE_H

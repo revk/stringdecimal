@@ -1232,6 +1232,48 @@ sd_div_cf (sd_p l, sd_p r)
 };
 
 int
+sd_abs_cmp (sd_p l, sd_p r)
+{                               // Compare absolute values
+   if (!l)
+      l = &sd_zero;
+   if (!r)
+      r = &sd_zero;
+   sd_val_t *a,
+    *b;
+   sd_p v = sd_cross (l, r, &a, &b);
+   int diff = ucmp (a ? : l->n, b ? : r->n, 0);
+   sd_free (v);
+   freez (a);
+   freez (b);
+   return diff;
+};
+
+int
+sd_abs_cmp_ff (sd_p l, sd_p r)
+{                               // Compare free all args
+   int diff = sd_abs_cmp (l, r);
+   sd_free (l);
+   sd_free (r);
+   return diff;
+};
+
+int
+sd_abs_cmp_fc (sd_p l, sd_p r)
+{                               // Compare free first arg
+   int diff = sd_abs_cmp (l, r);
+   sd_free (l);
+   return diff;
+};
+
+int
+sd_abs_cmp_cf (sd_p l, sd_p r)
+{                               // Compare free second arg
+   int diff = sd_abs_cmp (l, r);
+   sd_free (r);
+   return diff;
+};
+
+int
 sd_cmp (sd_p l, sd_p r)
 {                               // Compare
    if (!l)
