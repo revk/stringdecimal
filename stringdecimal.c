@@ -951,7 +951,7 @@ sd_abs_i (sd_p p)
 {                               // Absolute (in situ)
    if (!p)
       return p;
-   p->n->sig = 0;
+   p->n->neg = 0;
    return p;
 }
 
