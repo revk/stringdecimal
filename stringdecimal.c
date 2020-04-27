@@ -465,7 +465,7 @@ umul (sd_val_t * a, sd_val_t * b, char neg)
    //debugout ("umul", a, b, NULL);
    sd_val_t *base[9];
    makebase (base, b);
-   sd_val_t *r = NULL;
+   sd_val_t *r = copy(&zero);
    for (int p = 0; p < a->sig; p++)
       if (a->d[p])
       {                         // Add
