@@ -465,7 +465,7 @@ umul (sd_val_t * a, sd_val_t * b, char neg)
    //debugout ("umul", a, b, NULL);
    sd_val_t *base[9];
    makebase (base, b);
-   sd_val_t *r = copy(&zero);
+   sd_val_t *r = copy (&zero);
    for (int p = 0; p < a->sig; p++)
       if (a->d[p])
       {                         // Add
@@ -931,7 +931,7 @@ sd_output (sd_p p, int places, char round)
       return NULL;
    char *r = NULL;
    if (p->d)
-      r = output_free (sdiv (p->n, p->d, places == INT_MAX ? p->places : places, round, NULL), 0);      // Simple divide to get answer
+      r = output_free (srnd (sdiv (p->n, p->d, places == INT_MAX ? p->places : places, round, NULL), places == INT_MAX ? p->places : places, round), 0);        // Simple divide to get answer
    else
    {
       sd_val_t *R = srnd (p->n, places == INT_MAX ? p->places : places, round);
