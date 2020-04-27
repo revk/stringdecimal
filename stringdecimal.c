@@ -645,9 +645,9 @@ sdiv (sd_val_t * a, sd_val_t * b, int maxplaces, char round, sd_val_t ** rem)
 static sd_val_t *
 srnd (sd_val_t * a, int places, char round)
 {
+   debugout ("srnd", a, NULL);
    if (!a)
       return NULL;
-   debugout ("srnd", a, NULL);
    int decimals = a->sig - a->mag - 1;
    if (decimals < 0)
       decimals = 0;
