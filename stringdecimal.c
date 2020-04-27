@@ -71,6 +71,8 @@ make (int mag, int sig)
 static sd_val_t *
 copy (sd_val_t * a)
 {                               // Copy
+   if (!a)
+      return a;
    sd_val_t *r = make (a->mag, a->sig);
    r->neg = a->neg;
    if (a->sig)
@@ -887,18 +889,20 @@ sd_parse_f (char *val)
    return r;
 }
 
-sd_p sd_int(long long v)
+sd_p
+sd_int (long long v)
 {
-	char temp[40];
-	snprintf(temp,sizeof(temp),"%lld",v);
-	return sd_parse(temp);
+   char temp[40];
+   snprintf (temp, sizeof (temp), "%lld", v);
+   return sd_parse (temp);
 }
 
-sd_p sd_float(long double v)
+sd_p
+sd_float (long double v)
 {
-	char temp[40];
-	snprintf(temp,sizeof(temp),"%32Le",v);
-	return sd_parse(temp);
+   char temp[40];
+   snprintf (temp, sizeof (temp), "%32Le", v);
+   return sd_parse (temp);
 }
 
 void *
@@ -1006,7 +1010,7 @@ sd_10_i (sd_p p, int shift)
 sd_p
 sd_10 (sd_p p, int shift)
 {                               // Adjust by power of 10
-   return sd_10_i (sd_copy (p),shift);
+   return sd_10_i (sd_copy (p), shift);
 }
 
 int
