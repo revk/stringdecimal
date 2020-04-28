@@ -627,6 +627,10 @@ ssub (sd_val_t * a, sd_val_t * b)
 static sd_val_t *
 smul (sd_val_t * a, sd_val_t * b)
 {
+   if (!a)
+      a = &zero;
+   if (!b)
+      b = &zero;
    debugout ("smul", a, b, NULL);
    if ((a->neg && !b->neg) || (!a->neg && b->neg))
       return umul (a, b, 1);
@@ -636,6 +640,10 @@ smul (sd_val_t * a, sd_val_t * b)
 static sd_val_t *
 sdiv (sd_val_t * a, sd_val_t * b, int maxplaces, char round, sd_val_t ** rem)
 {
+   if (!a)
+      a = &zero;
+   if (!b)
+      b = &zero;
    debugout ("sdiv", a, b, NULL);
    if ((a->neg && !b->neg) || (!a->neg && b->neg))
       return udiv (a, b, 1, maxplaces, round, rem);
