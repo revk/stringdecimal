@@ -907,8 +907,8 @@ sd_int (long long v)
 sd_p
 sd_float (long double v)
 {
-   char temp[40];
-   snprintf (temp, sizeof (temp), "%32Le", v);
+   char temp[50];
+   snprintf (temp, sizeof (temp), "%.32Le", v);
    return sd_parse (temp);
 }
 
