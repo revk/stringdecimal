@@ -858,16 +858,15 @@ sd_cross (sd_p l, sd_p r, sd_val_t ** ap, sd_val_t ** bp)
 sd_p
 sd_copy (sd_p p)
 {                               // Copy (create if p is NULL)
+   if (!p)
+      p = &sd_zero;
    sd_p v = calloc (1, sizeof (*v));
    assert (v);
-   if (p)
-   {
-      v->places = p->places;
-      if (p->n)
-         v->n = copy (p->n);
-      if (p->d)
-         v->d = copy (p->d);
-   }
+   v->places = p->places;
+   if (p->n)
+      v->n = copy (p->n);
+   if (p->d)
+      v->d = copy (p->d);
    return v;
 }
 
