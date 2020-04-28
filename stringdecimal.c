@@ -928,7 +928,7 @@ char *
 sd_output (sd_p p, int places, char round)
 {                               // Output
    if (!p)
-      return NULL;
+      p = &sd_zero;
    char *r = NULL;
    if (p->d)
       r = output_free (srnd (sdiv (p->n, p->d, places == INT_MAX ? p->places : places, round, NULL), places == INT_MAX ? p->places : places, round), 0);        // Simple divide to get answer
