@@ -252,6 +252,8 @@ output (sd_val_t * s)
       len = s->sig + s->mag + 1;
    else
       len = s->mag + 1;
+   if (s->neg)
+      len++;
    char *d = malloc (len + 1);
    if (!d)
       errx (1, "malloc");
