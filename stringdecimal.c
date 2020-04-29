@@ -19,7 +19,9 @@
 // Functions have variants to free arguments
 
 #define _GNU_SOURCE             /* See feature_test_macros(7) */
+#ifdef	EVAL
 #include "xparse.h"
+#endif
 #include "stringdecimal.h"
 #include <stdio.h>
 #include <string.h>
@@ -1324,8 +1326,10 @@ sd_cmp_cf (sd_p l, sd_p r)
    return diff;
 };
 
+#ifdef	EVAL
 // Parsing
 #include "xparse.c"
+
 // Parse Support functions
 static void *
 parse_operand (void *context, const char *p, const char **end)
@@ -1539,6 +1543,7 @@ stringdecimal_eval (const char *sum, int maxdivide, char round, int *maxplacesp)
       assert (asprintf (&ret, "!!%s at %.*s", context.fail, 10, context.posn) >= 0);
    return ret;
 }
+#endif
 
 char *
 stringdecimal_add_cf (const char *a, char *b)
