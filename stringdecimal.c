@@ -1543,6 +1543,14 @@ stringdecimal_eval (const char *sum, int maxdivide, char round, int *maxplacesp)
       assert (asprintf (&ret, "!!%s at %.*s", context.fail, 10, context.posn) >= 0);
    return ret;
 }
+
+char *
+stringdecimal_eval_f (char *sum, int places, char round, int *maxplacesp)
+{                               // Eval and free
+   char *r = stringdecimal_eval (sum, places, round, maxplacesp);
+   freez (sum);
+   return r;
+}
 #endif
 
 char *
@@ -1661,15 +1669,6 @@ stringdecimal_cmp_ff (char *a, char *b)
    freez (b);
    return r;
 };
-
-char *
-stringdecimal_eval_f (char *sum, int places, char round, int *maxplacesp)
-{                               // Eval and free
-   char *r = stringdecimal_eval (sum, places, round, maxplacesp);
-   freez (sum);
-   return r;
-}
-
 
 #ifndef LIB
 // Test function main build
