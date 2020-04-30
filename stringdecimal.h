@@ -54,7 +54,6 @@ char *stringdecimal_rnd_f (char *a, int places, char round);    // Round to spec
 int stringdecimal_cmp_fc (char *a, const char *b);      // Compare with free first arg
 int stringdecimal_cmp_cf (const char *a, char *b);      // Compare with free second arg
 int stringdecimal_cmp_ff (char *a, char *b);    // Compare with free both args
-char *stringdecimal_eval_f (char *sum, int maxdivide, char round, int *maxplacesp);     // Eval with free sum
 
 // Low level functions allow construction of an expression using rational maths
 typedef struct sd_s sd_t;
@@ -109,16 +108,3 @@ int sd_abs_cmp_ff (sd_p, sd_p); // Compare absolute values free all args
 int sd_abs_cmp_fc (sd_p, sd_p); // Compare absolute values free first arg
 int sd_abs_cmp_cf (sd_p, sd_p); // Compare absolute values free second arg
 
-// Using stringdecimal to build a higher layer parser
-#ifdef	XPARSE_H
-typedef struct stringdecimal_context_s stringdecimal_context_t;
-struct stringdecimal_context_s
-{
-   int maxdivide;
-   char round;
-   int *maxplacesp;
-   const char *fail;
-   const char *posn;
-};
-extern xparse_config_t stringdecimal_xparse;
-#endif
