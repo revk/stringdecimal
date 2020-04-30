@@ -21,8 +21,10 @@
 #define _GNU_SOURCE             /* See feature_test_macros(7) */
 #ifdef	EVAL
 #include "xparse.h"
-#endif
+#include "stringdecimaleval.h"
+#else
 #include "stringdecimal.h"
+#endif
 #include <stdio.h>
 #include <string.h>
 #include <malloc.h>
