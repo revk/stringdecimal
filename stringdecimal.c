@@ -872,7 +872,7 @@ sd_cross (sd_p l, sd_p r, sd_val_t ** ap, sd_val_t ** bp)
 sd_p
 sd_copy (sd_p p)
 {                               // Copy (create if p is NULL)
-   if (!p)
+   if (!p || !p->n)
       p = &sd_zero;
    sd_p v = calloc (1, sizeof (*v));
    assert (v);
@@ -1014,7 +1014,7 @@ sd_inv (sd_p p)
 sd_p
 sd_10_i (sd_p p, int shift)
 {                               // Adjust by power of 10 (in situ)
-   if (!p)
+   if (!p || !p->n)
       return p;
    p->n->mag += shift;
    return p;
