@@ -1029,19 +1029,19 @@ sd_10 (sd_p p, int shift)
 int
 sd_iszero (sd_p p)
 {                               // Is zero
-   return !p || !p->n->sig;
+   return !p || !p->n || !p->n->sig;
 }
 
 int
 sd_isneg (sd_p p)
 {                               // Is negative (denominator always positive)
-   return p && p->n->neg;
+   return p && p->n && p->n->neg;
 }
 
 int
 sd_ispos (sd_p p)
 {                               // Is positive (denominator always positive)
-   return p && p->n->sig && !p->n->neg;
+   return p && p->n && p->n->sig && !p->n->neg;
 }
 
 static void
