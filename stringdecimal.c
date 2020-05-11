@@ -887,9 +887,14 @@ sd_copy (sd_p p)
 sd_p
 sd_parse (const char *val)
 {
+   int places = 0;
+   sd_val_t *n = parse2 (val, NULL, &places);;
+   if (!n)
+      return NULL;
    sd_p v = calloc (1, sizeof (*v));
    assert (v);
-   v->n = parse2 (val, NULL, &v->places);
+   v->places = places;
+   v->n = n;
    v->d = NULL;
    return v;
 }
