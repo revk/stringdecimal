@@ -107,4 +107,3 @@ int sd_abs_cmp (sd_p, sd_p);    // Compare absolute values
 int sd_abs_cmp_ff (sd_p, sd_p); // Compare absolute values free all args
 int sd_abs_cmp_fc (sd_p, sd_p); // Compare absolute values free first arg
 int sd_abs_cmp_cf (sd_p, sd_p); // Compare absolute values free second arg
-

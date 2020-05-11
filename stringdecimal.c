@@ -1127,10 +1127,10 @@ sd_add_cf (sd_p l, sd_p r)
 sd_p
 sd_sub (sd_p l, sd_p r)
 {                               // Subtract
-   if (r)
+   if (r && r->n)
       r->n->neg ^= 1;
    sd_p o = sd_add (l, r);
-   if (r)
+   if (r && r->n)
       r->n->neg ^= 1;
    return o;
 };
