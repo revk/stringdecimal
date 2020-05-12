@@ -167,6 +167,8 @@ parse2 (const char *v, const char **ep, int *placesp)
    } else if (*v == '.')
    {                            // No initial digits
       v++;
+      if (!isdigit (*v))
+         return NULL;
       int mag = -1,
          sig = 0,
          t = 0;
