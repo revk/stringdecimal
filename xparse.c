@@ -18,6 +18,8 @@
 #include <ctype.h>
 #include "xparse.h"
 
+//#define DEBUG
+
 // The parse function
 void *xparse(xparse_config_t * config, void *context, const char *sum, const char **end)
 {
@@ -28,6 +30,7 @@ void *xparse(xparse_config_t * config, void *context, const char *sum, const cha
    int operators = 0,
        operatormax = 0;
    struct operator_s {
+      const char *op;
       int level;
       int args;
       xparse_operate *func;
@@ -62,6 +65,9 @@ void *xparse(xparse_config_t * config, void *context, const char *sum, const cha
          fail = "Cannot handle more than 2 args at present";
          return;
       }
+#ifdef	DEBUG
+      warnx("Doing %s args=%d", operator[operators].op, args);
+#endif
       void *v = NULL;
       if (args == 1)
          v = operator[operators].func(context, operator[operators].data, NULL, operand[operands - 1]);
@@ -81,6 +87,9 @@ void *xparse(xparse_config_t * config, void *context, const char *sum, const cha
       addarg(v);
    }
    void addop(const xparse_op_t * op, int level, int args) {    // Add an operator
+#ifdef DEBUG
+      warnx("Adding %s level=%d args=%d", op->op, level, args);
+#endif
       if (args < 0)
          args = 0 - args;       // Used for prefix unary ops, don't run stack
       else
@@ -88,6 +97,7 @@ void *xparse(xparse_config_t * config, void *context, const char *sum, const cha
             operate();          // Clear stack of pending ops
       if (operators + 1 > operatormax)
          operator = realloc(operator, (operatormax += 10) * sizeof(*operator));
+      operator[operators].op = op->op;
       operator[operators].func = op->func;
       operator[operators].data = op->data;
       operator[operators].level = level;
@@ -157,7 +167,7 @@ void *xparse(xparse_config_t * config, void *context, const char *sum, const cha
       {
          if (*sum == ')')
          {
-		 sum++;
+            sum++;
             if (!level)
             {
                fail = "Too many close brackets";

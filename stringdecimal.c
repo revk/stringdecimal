@@ -68,7 +68,7 @@
 	u(Pi,1125899906842624LL)	\
 	u(Ei,1152921504606846976LL)	\
 
-// #define DEBUG
+//#define DEBUG
 
 // Support functions
 
@@ -85,6 +85,12 @@ static sd_val_t zero = { 0 };
 
 static sd_val_t one = { 0, 1, (char[])
    { 1 }
+};
+
+struct sd_s {
+   sd_val_t *n;                 // Numerator
+   sd_val_t *d;                 // Denominator
+   int places;                  // Max places seen
 };
 
 // Safe free and NULL value
@@ -339,8 +345,31 @@ void debugout(const char *msg, ...)
    va_end(ap);
    fprintf(stderr, "\n");
 }
+
+void sd_debugout(const char *msg, ...)
+{
+   fprintf(stderr, "%s:", msg);
+   va_list ap;
+   va_start(ap, msg);
+   sd_t *s;
+   while ((s = va_arg(ap, sd_t *)))
+   {
+      char *v = output(s->n);
+      fprintf(stderr, " %s", v);
+      freez(v);
+      if (s->d)
+      {
+         char *v = output(s->d);
+         fprintf(stderr, "/%s", v);
+         freez(v);
+      }
+   }
+   va_end(ap);
+   fprintf(stderr, "\n");
+}
 #else
 #define debugout(msg,...)
+#define sd_debugout(msg,...)
 #endif
 
 static char *output_free(sd_val_t * s, int n, ...)
@@ -834,13 +863,6 @@ int stringdecimal_cmp(const char *a, const char *b)
    return r;
 }
 
-// Low level
-struct sd_s {
-   sd_val_t *n;                 // Numerator
-   sd_val_t *d;                 // Denominator
-   int places;                  // Max places seen
-};
-
 static struct sd_s sd_zero = { &zero };
 
 static sd_p sd_tidy(sd_p v)
@@ -871,15 +893,14 @@ static sd_p sd_new(sd_p l, sd_p r)
 
 static sd_p sd_cross(sd_p l, sd_p r, sd_val_t ** ap, sd_val_t ** bp)
 {                               // Cross multiply
+   sd_debugout("sd_cross", l, r, NULL);
    *ap = *bp = NULL;
    sd_p v = sd_new(l, r);
-   if (v)
-   {
-      if ((l->d || l->d) && scmp(l->d ? : &one, r->d ? : &one))
-      {                         // Multiply out numerators
-         *ap = smul(l->n, r->d ? : &one);
-         *bp = smul(r->n, l->d ? : &one);
-      }
+   if ((l->d || r->d) && scmp(l->d ? : &one, r->d ? : &one))
+   {                            // Multiply out numerators
+      *ap = smul(l->n, r->d ? : &one);
+      *bp = smul(r->n, l->d ? : &one);
+      debugout("sd_crossed", *ap, *bp, NULL);
    }
    return v;
 }
@@ -1076,6 +1097,7 @@ sd_p sd_add(sd_p l, sd_p r)
       l = &sd_zero;
    if (!r)
       r = &sd_zero;
+   sd_debugout("sd_add", l, r, NULL);
    sd_val_t *a,
    *b;
    sd_p v = sd_cross(l, r, &a, &b);
@@ -1190,6 +1212,7 @@ sd_p sd_div(sd_p l, sd_p r)
       l = &sd_zero;
    if (!r || !r->n || !r->n->sig)
       return NULL;
+   sd_debugout("sd_div", l, r, NULL);
    sd_p v = sd_new(l, r);
    if (!l->d && !r->d)
    {                            // Simple - making a new rational
