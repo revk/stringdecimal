@@ -35,6 +35,39 @@
 #include <assert.h>
 #include <limits.h>
 
+#define	si		\
+	u(Y,24)		\
+	u(Z,21)		\
+	u(E,18)		\
+	u(P,15)		\
+	u(T,12)		\
+	u(G,9)		\
+	u(M,6)		\
+	u(k,3)		\
+	u(h,2)		\
+	u(da,1)		\
+	u(d,-1)		\
+	u(c,-2)		\
+	u(mc,-6)	\
+	u(m,-3)		\
+	u(μ,-6)		\
+	u(µ,-6)		\
+	u(u,-6)		\
+	u(n,-9)		\
+	u(p,-12)	\
+	u(f,-15)	\
+	u(a,-18)	\
+	u(z,-21)	\
+	u(y,-24)	\
+
+#define	ieee				\
+	u(Ki,1024L)			\
+	u(Mi,1048576L)			\
+	u(Gi,1073741824LL)		\
+	u(Ti,1099511627776LL)		\
+	u(Pi,1125899906842624LL)	\
+	u(Ei,1152921504606846976LL)	\
+
 // #define DEBUG
 
 // Support functions
@@ -195,8 +228,8 @@ static sd_val_t *parse2(const char *v, const char **ep, int *placesp)
          s->d[q++] = *digits - '0';
       digits++;
    }
-   if (*v == 'e' || *v == 'E')
-   {                            // Exponent
+   if ((*v == 'e' || *v == 'E')&&(v[1]=='+'||v[1]=='-'||isdigit(v[1])))
+   {                            // Exponent (may clash with E SI prefix if not careful)
       v++;
       int sign = 1,
           e = 0;
@@ -805,7 +838,7 @@ int stringdecimal_cmp(const char *a, const char *b)
 struct sd_s {
    sd_val_t *n;                 // Numerator
    sd_val_t *d;                 // Denominator
-   int places;
+   int places;			// Max places seen
 };
 
 static struct sd_s sd_zero = { &zero };
@@ -1334,6 +1367,17 @@ static sd_p parse_bin_cmp(sd_p l, sd_p r, int match)
 }
 
 // Parse Functions
+static void *parse_si(void *context, void *data, void *l, void *r)
+{ // SI prefix (suffix on number)
+	return sd_10_i(r,(long)data);
+}
+
+static void *parse_ieee(void *context, void *data, void *l, void *r)
+{ // IEEE prefix (suffix on number)
+	long n=(long)data;
+	return sd_mul_cf(r,sd_int(n));
+}
+
 static void *parse_add(void *context, void *data, void *l, void *r)
 {
    return sd_add(l, r);
@@ -1445,9 +1489,20 @@ static xparse_op_t parse_binary[] = {
    { NULL },
 };
 
+static xparse_op_t parse_post[] = {
+#define	u(p,n)	{ op:#p,level:9,func:parse_ieee,data:(void*)n},
+	ieee
+#undef u
+#define	u(p,n)	{ op:#p,level:9,func:parse_si,data:(void*)n},
+	si
+#undef u
+   { NULL },
+};
+
 // Parse Config (optionally public to allow building layers on top)
 xparse_config_t stringdecimal_xparse = {
  unary:parse_uniary,
+ post:parse_post,
  binary:parse_binary,
  operand:parse_operand,
  final:parse_final,
