@@ -228,7 +228,7 @@ static sd_val_t *parse2(const char *v, const char **ep, int *placesp)
          s->d[q++] = *digits - '0';
       digits++;
    }
-   if ((*v == 'e' || *v == 'E')&&(v[1]=='+'||v[1]=='-'||isdigit(v[1])))
+   if ((*v == 'e' || *v == 'E') && (v[1] == '+' || v[1] == '-' || isdigit(v[1])))
    {                            // Exponent (may clash with E SI prefix if not careful)
       v++;
       int sign = 1,
@@ -838,7 +838,7 @@ int stringdecimal_cmp(const char *a, const char *b)
 struct sd_s {
    sd_val_t *n;                 // Numerator
    sd_val_t *d;                 // Denominator
-   int places;			// Max places seen
+   int places;                  // Max places seen
 };
 
 static struct sd_s sd_zero = { &zero };
@@ -1368,14 +1368,14 @@ static sd_p parse_bin_cmp(sd_p l, sd_p r, int match)
 
 // Parse Functions
 static void *parse_si(void *context, void *data, void *l, void *r)
-{ // SI prefix (suffix on number)
-	return sd_10_i(r,(long)data);
+{                               // SI prefix (suffix on number)
+   return sd_10_i(r, (long) data);
 }
 
 static void *parse_ieee(void *context, void *data, void *l, void *r)
-{ // IEEE prefix (suffix on number)
-	long n=(long)data;
-	return sd_mul_cf(r,sd_int(n));
+{                               // IEEE prefix (suffix on number)
+   long n = (long) data;
+   return sd_mul_cf(r, sd_int(n));
 }
 
 static void *parse_add(void *context, void *data, void *l, void *r)
@@ -1491,10 +1491,10 @@ static xparse_op_t parse_binary[] = {
 
 static xparse_op_t parse_post[] = {
 #define	u(p,n)	{ op:#p,level:9,func:parse_ieee,data:(void*)n},
-	ieee
+   ieee
 #undef u
 #define	u(p,n)	{ op:#p,level:9,func:parse_si,data:(void*)n},
-	si
+       si
 #undef u
    { NULL },
 };

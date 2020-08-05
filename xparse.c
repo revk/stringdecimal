@@ -128,13 +128,14 @@ void *xparse(xparse_config_t * config, void *context, const char *sum, const cha
          // Pre unary operators
          int q = 0,
              l;
-         for (q = 0; config->unary[q].op; q++)
-            if ((l = comp(config->unary[q].op, sum)) || (l = comp(config->unary[q].op2, sum)))
-            {
-               sum += l;
-               addop(&config->unary[q], level + config->unary[q].level, -1);
-               break;
-            }
+         if (config->unary)
+            for (q = 0; config->unary[q].op; q++)
+               if ((l = comp(config->unary[q].op, sum)) || (l = comp(config->unary[q].op2, sum)))
+               {
+                  sum += l;
+                  addop(&config->unary[q], level + config->unary[q].level, -1);
+                  break;
+               }
          if (config->unary[q].op)
             continue;
          break;
@@ -170,13 +171,14 @@ void *xparse(xparse_config_t * config, void *context, const char *sum, const cha
          // Post unary operators
          int q = 0,
              l;
-         for (q = 0; config->post[q].op; q++)
-            if ((l = comp(config->post[q].op, sum)) || (l = comp(config->post[q].op2, sum)))
-            {
-               sum += l;
-               addop(&config->post[q], level + config->post[q].level, 1);
-               break;
-            }
+         if (config->post)
+            for (q = 0; config->post[q].op; q++)
+               if ((l = comp(config->post[q].op, sum)) || (l = comp(config->post[q].op2, sum)))
+               {
+                  sum += l;
+                  addop(&config->post[q], level + config->post[q].level, 1);
+                  break;
+               }
          if (config->post[q].op)
             continue;
          break;
@@ -186,13 +188,14 @@ void *xparse(xparse_config_t * config, void *context, const char *sum, const cha
       // Operator
       int q = 0,
           l;
-      for (q = 0; config->binary[q].op; q++)
-         if ((l = comp(config->binary[q].op, sum)) || (l = comp(config->binary[q].op2, sum)))
-         {
-            sum += l;
-            addop(&config->binary[q], level + config->binary[q].level, 2);
-            break;
-         }
+      if (config->binary)
+         for (q = 0; config->binary[q].op; q++)
+            if ((l = comp(config->binary[q].op, sum)) || (l = comp(config->binary[q].op2, sum)))
+            {
+               sum += l;
+               addop(&config->binary[q], level + config->binary[q].level, 2);
+               break;
+            }
       if (config->binary[q].op)
          continue;
       if (!end || level)
