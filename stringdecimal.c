@@ -170,17 +170,13 @@ static sd_val_t *parse2(const char *v, const char **ep, int *placesp)
       int d = 0,
           p = 0,
           t = 0;
-      while (1)
+      while (isdigit(*v))
       {
-         if (isdigit(*v))
-         {
-            if (*v == '0')
-               t++;             // count trailing zeros
-            else
-               t = 0;
-            d++;
-         } else if (*v != ',')
-            break;
+         if (*v == '0')
+            t++;                // count trailing zeros
+         else
+            t = 0;
+         d++;
          v++;
       }
       if (*v == '.')
