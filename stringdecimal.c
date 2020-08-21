@@ -633,6 +633,10 @@ static int scmp(sd_val_t * a, sd_val_t * b)
 
 static sd_val_t *sadd(sd_val_t * a, sd_val_t * b)
 {                               // Low level add
+   if (!a)
+      a = &zero;
+   if (!b)
+      b = &zero;
    debugout("sadd", a, b, NULL);
    if (a->neg && !b->neg)
    {                            // Reverse subtract
@@ -654,6 +658,10 @@ static sd_val_t *sadd(sd_val_t * a, sd_val_t * b)
 
 static sd_val_t *ssub(sd_val_t * a, sd_val_t * b)
 {
+   if (!a)
+      a = &zero;
+   if (!b)
+      b = &zero;
    debugout("ssub", a, b, NULL);
    if (a->neg && !b->neg)
       return uadd(a, b, 1, 0);
