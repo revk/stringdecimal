@@ -224,8 +224,9 @@ void *xparse(xparse_config_t * config, void *context, const char *sum, const cha
    void *v = NULL;
    if (!fail && operands == 1)
       v = config->final(context, operand[0]);
-   while (operands)
-      config->dispose(context, operand[--operands]);
+   while (operands--)
+      if (operand[operands] != v)
+         config->dispose(context, operand[operands]);
    if (operand)
       free(operand);
    if (operator)
