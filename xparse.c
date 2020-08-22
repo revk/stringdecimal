@@ -199,7 +199,11 @@ void *xparse(xparse_config_t * config, void *context, const char *sum, const cha
          break;
       }
       if (!*sum || (config->eol && (unsigned char) *sum < ' '))
+      {
+         while (sum > was && isspace(sum[-1]))
+            sum--;
          break;                 // clean exit after last operand
+      }
       // Operator
       int q = 0,
           l;
@@ -217,6 +221,8 @@ void *xparse(xparse_config_t * config, void *context, const char *sum, const cha
       }
       if (!end || level)
          fail = "Missing/unknown operator";
+      while (sum > was && isspace(sum[-1]))
+         sum--;
       break;
    }
    while (!fail && operators)
