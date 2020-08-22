@@ -49,6 +49,7 @@ struct xparse_config_s {
    xparse_final *final;         // final process operand
    xparse_free *dispose;        // Dispose of an operand
    xparse_fail *fail;           // Failure report
+   unsigned char eol:1;	// Stop at end of line
 };
 
 // The parse function

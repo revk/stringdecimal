@@ -130,7 +130,7 @@ void *xparse(xparse_config_t * config, void *context, const char *sum, const cha
             sum++;
             continue;
          }
-         if (isspace(*sum))
+         if (isspace(*sum) && (!config->eol || (unsigned char) *sum >= ' '))
          {
             sum++;
             continue;
@@ -176,7 +176,7 @@ void *xparse(xparse_config_t * config, void *context, const char *sum, const cha
             level -= 10;
             continue;
          }
-         if (isspace(*sum))
+         if (isspace(*sum) && (!config->eol || (unsigned char) *sum >= ' '))
          {
             sum++;
             continue;
@@ -198,7 +198,7 @@ void *xparse(xparse_config_t * config, void *context, const char *sum, const cha
          }
          break;
       }
-      if (!*sum)
+      if (!*sum || (config->eol && (unsigned char) *sum < ' '))
          break;                 // clean exit after last operand
       // Operator
       int q = 0,
