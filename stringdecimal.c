@@ -979,16 +979,16 @@ char *sd_output_rat(sd_p p)
 {
    if (!p)
       return NULL;
-   char *d = output(p->d);
-   if (!d)
-      return NULL;
    char *n = output(p->n);
    if (!n)
-      return d;                 // Simple
+      return NULL;
+   char *d = output(p->d);
+   if (!d)
+      return n;                 // Simple
    char *q = malloc(strlen(d) + 1 + strlen(n) + 1);
    if (!q)
       errx(1, "malloc");
-   sprintf(q, "%s/%s", d, n);
+   sprintf(q, "%s/%s", n, d);
    freez(d);
    freez(n);
    return q;
