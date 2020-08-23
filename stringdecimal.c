@@ -975,6 +975,25 @@ int sd_places(sd_p p)
    return p->places;
 }
 
+char *sd_output_rat(sd_p p)
+{
+   if (!p)
+      return NULL;
+   char *d = output(p->d);
+   if (!d)
+      return NULL;
+   char *n = output(p->n);
+   if (!n)
+      return d;                 // Simple
+   char *q = malloc(strlen(d) + 1 + strlen(n) + 1);
+   if (!q)
+      errx(1, "malloc");
+   sprintf(q, "%s/%s", d, n);
+   freez(d);
+   freez(n);
+   return q;
+}
+
 char *sd_output(sd_p p, int places, char round)
 {                               // Output
    if (!p)
