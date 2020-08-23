@@ -976,7 +976,7 @@ int sd_places(sd_p p)
 }
 
 char *sd_output_rat(sd_p p)
-{
+{                               // Rational output
    if (!p)
       return NULL;
    char *n = output(p->n);
@@ -985,10 +985,10 @@ char *sd_output_rat(sd_p p)
    char *d = output(p->d);
    if (!d)
       return n;                 // Simple
-   char *q = malloc(strlen(d) + 1 + strlen(n) + 1);
+   char *q = malloc(1 + strlen(d) + 1 + strlen(n) + 1 + 1);
    if (!q)
       errx(1, "malloc");
-   sprintf(q, "%s/%s", n, d);
+   sprintf(q, "(%s/%s)", n, d);
    freez(d);
    freez(n);
    return q;
