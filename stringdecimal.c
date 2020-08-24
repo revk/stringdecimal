@@ -87,9 +87,7 @@ static sd_val_t one = { 0, 1, (char[])
    { 1 }
 };
 
-static sd_val_t two = { 0, 1, (char[])
-   { 2 }
-};
+//static sd_val_t two = { 0, 1, (char[]) { 2 } };
 
 struct sd_s {
    sd_val_t *n;                 // Numerator
@@ -995,15 +993,6 @@ char *sd_output_rat(sd_p p)
    freez(r);
    if (o)
       return o;                 // Simple integer
-   while (p->n->sig && p->d->sig && (p->n->sig < p->n->mag || !(p->n->d[p->n->sig - 1] & 1)) && (p->d->sig < p->d->mag || !(p->d->d[p->d->sig - 1] & 1)))
-   {                            // The simple factor?
-      sd_val_t *n = sdiv(p->n, &two, 0, 0, NULL);
-      sd_val_t *d = sdiv(p->d, &two, 0, 0, NULL);
-      freez(p->n);
-      freez(p->d);
-      p->n = n;
-      p->d = d;
-   }
    char *n = output(p->n);
    char *d = output(p->d);
    char *q = malloc(1 + strlen(d) + 1 + strlen(n) + 1 + 1);
