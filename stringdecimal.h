@@ -37,7 +37,7 @@ int stringdecimal_cmp(const char *a, const char *b);    // Compare. -1 if a<b, 1
 const char *stringdecimal_check(const char *, int *);   // Check if a is number, return first non number after, else NULL if not valid, sets number of decimal places
 char *stringdecimal_eval(const char *sum, int maxdivide, char round, int *maxplacesp);  // Eval sum using brackets, +, -, *, /
 // Eval will return max decimal places found in any arg at maxplacesp
-// Eval will limit final divide to maxdivide (set to INT_MAX to use the calculated maximum number of places seen in args)
+// Eval will limit final divide to maxdivide (set to INT_MAX to use the calculated maximum number of places seen in args, or INT_MIN to guess a sensible max places)
 
 // Variations with freeing
 char *stringdecimal_add_cf(const char *a, char *b);     // Simple add with free second arg

@@ -6,7 +6,7 @@
 char *stringdecimal_eval(const char *sum, int maxdivide, char round, int *maxplacesp);  // Eval sum using brackets, +, -, *, /
 char *stringdecimal_eval_f(char *sum, int places, char round, int *maxplacesp); // and free sum
 // Eval will return max decimal places found in any arg at maxplacesp
-// Eval will limit final divide to maxdivide (set to INT_MAX to use the calculated maximum number of places seen in args)
+// Eval will limit final divide to maxdivide (set to INT_MAX to use the calculated maximum number of places seen in args, or INT_MIN to guess a sensible number of places)
 
 // Using stringdecimal to build a higher layer parser
 #ifdef	XPARSE_H

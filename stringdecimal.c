@@ -1009,12 +1009,21 @@ char *sd_output(sd_p p, int places, char round)
    if (!p)
       p = &sd_zero;
    char *r = NULL;
-   if (p->d)
-      r = output_free(srnd(sdiv(p->n, p->d, places == INT_MAX ? p->places : places, round, NULL), places == INT_MAX ? p->places : places, round), 0);   // Simple divide to get answer
-   else
+   if (places == INT_MIN)
+   {                            // Guess number of places
+      p = sd_copy(p);
+      sd_rational(p);
+      r = output_free(sdiv(p->n, p->d, p->d->mag + 2, round, NULL), 0);
+      sd_free(p);
+   } else
    {
-      sd_val_t *R = srnd(p->n, places == INT_MAX ? p->places : places, round);
-      r = output_free(R, 0);
+      if (p->d)
+         r = output_free(srnd(sdiv(p->n, p->d, places == INT_MAX ? p->places : places, round, NULL), places == INT_MAX ? p->places : places, round), 0);        // Simple divide to get answer
+      else
+      {
+         sd_val_t *R = srnd(p->n, places == INT_MAX ? p->places : places, round);
+         r = output_free(R, 0);
+      }
    }
    return r;
 }
@@ -1400,13 +1409,20 @@ static void *parse_final(void *context, void *v)
    if (C->maxplacesp)
       *(C->maxplacesp) = V->places;
    char *r = NULL;
-   if (V->d)
-   {
-      r = output_free(sdiv(V->n, V->d, C->maxdivide == INT_MAX ? V->places : C->maxdivide, C->round, NULL), 0); // Simple divide to get answer
-      if (!r)
-         C->fail = "Division failure";
+   if (C->maxdivide == INT_MIN)
+   {                            // Guess places
+      sd_rational(V);
+      r = output_free(sdiv(V->n, V->d, V->d->mag + 2, C->round, NULL), 0);      // Simple divide to get answer
    } else
-      r = output(V->n);         // Last remaining operand is the answer
+   {
+      if (V->d)
+      {
+         r = output_free(sdiv(V->n, V->d, C->maxdivide == INT_MAX ? V->places : C->maxdivide, C->round, NULL), 0);      // Simple divide to get answer
+         if (!r)
+            C->fail = "Division failure";
+      } else
+         r = output(V->n);      // Last remaining operand is the answer
+   }
    return r;                    // A string
 }
 
@@ -1725,7 +1741,7 @@ int stringdecimal_cmp_ff(char *a, char *b)
 int main(int argc, const char *argv[])
 {
    int roundplaces = 2;
-   int divplaces = INT_MAX;     // Use number of places seen
+   int divplaces = INT_MIN;     // Use number of places seen
    char round = 0;
    char rnd = 0;
    if (argc <= 1)
@@ -1765,7 +1781,7 @@ int main(int argc, const char *argv[])
          }
          errx(1, "Unknown arg %s", s);
       }
-      char *res = stringdecimal_eval(s, (divplaces == INT_MAX && rnd) ? roundplaces : divplaces, round, NULL);
+      char *res = stringdecimal_eval(s, (divplaces == INT_MIN && rnd) ? roundplaces : divplaces, round, NULL);
       if (rnd)
          res = stringdecimal_rnd_f(res, roundplaces, round);
       if (res)
