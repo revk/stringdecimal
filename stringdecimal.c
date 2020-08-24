@@ -988,7 +988,7 @@ char *sd_output_rat(sd_p p)
    sd_val_t *r = sdiv(p->n, p->d, 0, 0, &rem);
    char *o = NULL;
    if (!rem->sig)
-      o=output(r); // No remainder, so integer
+      o = output(r);            // No remainder, so integer
    freez(rem);
    freez(r);
    if (o)
@@ -1100,14 +1100,14 @@ int sd_ispos(sd_p p)
 
 static void sd_rational(sd_p p)
 {                               // Normalise to integers
-   if (!p)
+   if (!p || !p->n)
       return;
-   int shift = 0,
-       s;
+   int s,
+    shift = p->n->sig - p->n->mag - 1;
    if (p->d && (s = p->d->sig - p->d->mag - 1) > shift)
       shift = s;
-   if ((s = p->n->sig - p->n->mag - 1) > shift)
-      shift = s;
+   if (!shift)
+      return;
    p->n->mag += shift;
    p->d->mag += shift;
 }
