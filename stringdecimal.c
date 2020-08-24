@@ -93,6 +93,8 @@ struct sd_s {
    int places;                  // Max places seen
 };
 
+static void sd_rational(sd_p p);
+
 // Safe free and NULL value
 #define freez(x)	do{if(x)free(x);x=NULL;}while(0)
 
@@ -977,14 +979,22 @@ int sd_places(sd_p p)
 
 char *sd_output_rat(sd_p p)
 {                               // Rational output
-   if (!p)
+   if (!p || !p->n)
       return NULL;
+   if (!p->d)
+      return output(p->n);      // Not rational
+   sd_rational(p);              // Normalise to integers
+   sd_val_t *rem;
+   sd_val_t *r = sdiv(p->n, p->d, 0, 0, &rem);
+   char *o = NULL;
+   if (!rem->sig)
+      o=output(r); // No remainder, so integer
+   freez(rem);
+   freez(r);
+   if (o)
+      return o;                 // Simple integer
    char *n = output(p->n);
-   if (!n)
-      return NULL;
    char *d = output(p->d);
-   if (!d)
-      return n;                 // Simple
    char *q = malloc(1 + strlen(d) + 1 + strlen(n) + 1 + 1);
    if (!q)
       errx(1, "malloc");
