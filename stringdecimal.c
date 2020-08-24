@@ -68,7 +68,7 @@
 	u(Pi,1125899906842624LL)	\
 	u(Ei,1152921504606846976LL)	\
 
-#define DEBUG
+//#define DEBUG
 
 // Support functions
 
