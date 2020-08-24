@@ -1544,12 +1544,9 @@ static void *parse_or(void *context, void *data, void **a)
 
 static void *parse_cond(void *context, void *data, void **a)
 {
-   sd_p C = a[0],
-       L = a[1],
-       R = a[2];
-   if (sd_iszero(C))
-      return L;
-   return R;
+   if (sd_iszero(a[0]))
+      return a[1];
+   return a[2];
 }
 
 // List of functions
