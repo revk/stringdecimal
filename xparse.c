@@ -256,7 +256,7 @@ void *xparse(xparse_config_t * config, void *context, const char *sum, const cha
             {
                while (operators && (operator[operators - 1].level > level + config->ternary[q].level || (operator[operators - 1].level == level + config->ternary[q].level && operator[operators - 1].args == 3)))
                   operate();    // Clear stack of pending ops
-               if (operators && operator[operators - 1].op == config->ternary[q].op && operator[operators - 1].args == 0)
+               if (operators && operator[operators - 1].op == config->ternary[q].op && operator[operators - 1].args == 0 && operator[operators - 1].level == level + config->ternary[q].level)
                {                // matches
 #ifdef DEBUG
                   warnx("Making op %s ternary", operator[operators - 1].op);
