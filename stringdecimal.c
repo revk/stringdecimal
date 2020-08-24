@@ -995,7 +995,7 @@ char *sd_output_rat(sd_p p)
    freez(r);
    if (o)
       return o;                 // Simple integer
-   while (p->n->sig && p->d->sig && !(p->n->d[p->n->sig - 1] & 1) && !(p->d->d[p->d->sig - 1] & 1))
+   while (p->n->sig && p->d->sig && (p->n->sig < p->n->mag || !(p->n->d[p->n->sig - 1] & 1)) && (p->d->sig > p->d->mag || !(p->d->d[p->d->sig - 1] & 1)))
    {                            // The simple factor?
       sd_val_t *n = sdiv(p->n, &two, 0, 0, NULL);
       sd_val_t *d = sdiv(p->d, &two, 0, 0, NULL);
