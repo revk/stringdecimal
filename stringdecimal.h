@@ -20,54 +20,61 @@
 //
 // Add, Sub, Mul all work to necessary places
 // Div works to specified number of places, specified rounding rule, and can return remainder value
+typedef enum {
+   STRINGDECIMAL_ROUND_TRUNCATE = 'T',  // Towards zero
+   STRINGDECIMAL_ROUND_UP = 'U',        // Away from zero
+   STRINGDECIMAL_ROUND_FLOOR = 'F',     // Towards -ve
+   STRINGDECIMAL_ROUND_CEILING = 'C',   // Towards +ve
+   STRINGDECIMAL_ROUND_ROUND = 'R',     // Away from zero if 0.5 or more
+   STRINGDECIMAL_ROUND_BANKING = 'B',   // Away from zero if above 0.5, or 0.5 exactly and goes to even
+} sd_round_t;
+typedef struct sd_opt_s sd_opt_t;
+struct sd_opt_s {
+   sd_round_t round;            // Type of rounding
+   int places;                  // Number of places
+   unsigned char nocomma:1;     // Do not allow comma when parsing numbers
+};
 
-#define	STRINGDECIMAL_ROUND_TRUNCATE	'T'     // Towards zero
-#define	STRINGDECIMAL_ROUND_UP		'U'     // Away from zero
-#define	STRINGDECIMAL_ROUND_FLOOR	'F'     // Towards -ve
-#define	STRINGDECIMAL_ROUND_CEILING	'C'     // Towards +ve
-#define	STRINGDECIMAL_ROUND_ROUND	'R'     // Away from zero if 0.5 or more
-#define	STRINGDECIMAL_ROUND_BANKING	'B'     // Away from zero if above 0.5, or 0.5 exactly and goes to even
-
-char *stringdecimal_add(const char *a, const char *b);  // Simple add
-char *stringdecimal_sub(const char *a, const char *b);  // Simple subtract
-char *stringdecimal_mul(const char *a, const char *b);  // Simple multiply
-char *stringdecimal_div(const char *a, const char *b, int maxplaces, char round, char **rem);   // Simple divide - to specified number of places, with remainder
-char *stringdecimal_rnd(const char *a, int places, char round); // Round to specified number of places
-int stringdecimal_cmp(const char *a, const char *b);    // Compare. -1 if a<b, 1 if a>b, 0 if a==b
-const char *stringdecimal_check(const char *, int *);   // Check if a is number, return first non number after, else NULL if not valid, sets number of decimal places
-char *stringdecimal_eval(const char *sum, int maxdivide, char round, int *maxplacesp);  // Eval sum using brackets, +, -, *, /
+char *stringdecimal_add(const char *a, const char *b, const sd_opt_t *);        // Simple add
+char *stringdecimal_sub(const char *a, const char *b, const sd_opt_t *);        // Simple subtract
+char *stringdecimal_mul(const char *a, const char *b, const sd_opt_t *);        // Simple multiply
+char *stringdecimal_div(const char *a, const char *b, char **rem, const sd_opt_t *);    // Simple divide - to specified number of places, with remainder
+char *stringdecimal_rnd(const char *a, const sd_opt_t *);       // Round to specified number of places
+int stringdecimal_cmp(const char *a, const char *b, const sd_opt_t *);  // Compare. -1 if a<b, 1 if a>b, 0 if a==b
+const char *stringdecimal_check(const char *, int *, const sd_opt_t *); // Check if a is number, return first non number after, else NULL if not valid, sets number of decimal places
+char *stringdecimal_eval(const char *sum, int *maxplacesp, const sd_opt_t *);   // Eval sum using brackets, +, -, *, /
 // Eval will return max decimal places found in any arg at maxplacesp
 // Eval will limit final divide to maxdivide (set to INT_MAX to use the calculated maximum number of places seen in args, or INT_MIN to guess a sensible max places)
 
 // Variations with freeing
-char *stringdecimal_add_cf(const char *a, char *b);     // Simple add with free second arg
-char *stringdecimal_add_ff(char *a, char *b);   // Simple add with free both args
-char *stringdecimal_sub_fc(char *a, const char *b);     // Simple subtract with free first arg
-char *stringdecimal_sub_cf(const char *a, char *b);     // Simple subtract with free second arg
-char *stringdecimal_sub_ff(char *a, char *b);   // Simple subtract with fere both args
-char *stringdecimal_mul_cf(const char *a, char *b);     // Simple multiply with second arg
-char *stringdecimal_mul_ff(char *a, char *b);   // Simple multiply with free both args
-char *stringdecimal_div_fc(char *a, const char *b, int maxdivide, char round, char **rem);      // Simple divide with free first arg
-char *stringdecimal_div_cf(const char *a, char *b, int maxdivide, char round, char **rem);      // Simple divide with free second arg
-char *stringdecimal_div_ff(char *a, char *b, int maxdivide, char round, char **rem);    // Simple divide with free both args
-char *stringdecimal_rnd_f(char *a, int places, char round);     // Round to specified number of places with free arg
-int stringdecimal_cmp_fc(char *a, const char *b);       // Compare with free first arg
-int stringdecimal_cmp_cf(const char *a, char *b);       // Compare with free second arg
-int stringdecimal_cmp_ff(char *a, char *b);     // Compare with free both args
+char *stringdecimal_add_cf(const char *a, char *b, const sd_opt_t *);   // Simple add with free second arg
+char *stringdecimal_add_ff(char *a, char *b, const sd_opt_t *); // Simple add with free both args
+char *stringdecimal_sub_fc(char *a, const char *b, const sd_opt_t *);   // Simple subtract with free first arg
+char *stringdecimal_sub_cf(const char *a, char *b, const sd_opt_t *);   // Simple subtract with free second arg
+char *stringdecimal_sub_ff(char *a, char *b, const sd_opt_t *); // Simple subtract with fere both args
+char *stringdecimal_mul_cf(const char *a, char *b, const sd_opt_t *);   // Simple multiply with second arg
+char *stringdecimal_mul_ff(char *a, char *b, const sd_opt_t *); // Simple multiply with free both args
+char *stringdecimal_div_fc(char *a, const char *b, char **rem, const sd_opt_t *);       // Simple divide with free first arg
+char *stringdecimal_div_cf(const char *a, char *b, char **rem, const sd_opt_t *);       // Simple divide with free second arg
+char *stringdecimal_div_ff(char *a, char *b, char **rem, const sd_opt_t *);     // Simple divide with free both args
+char *stringdecimal_rnd_f(char *a, const sd_opt_t *);   // Round to specified number of places with free arg
+int stringdecimal_cmp_fc(char *a, const char *b, const sd_opt_t *);     // Compare with free first arg
+int stringdecimal_cmp_cf(const char *a, char *b, const sd_opt_t *);     // Compare with free second arg
+int stringdecimal_cmp_ff(char *a, char *b, const sd_opt_t *);   // Compare with free both args
 
 // Low level functions allow construction of an expression using rational maths
 typedef struct sd_s sd_t;
 typedef sd_t *sd_p;
 
-sd_p sd_parse(const char *);    // Parse number to an sd_p
-sd_p sd_parse_f(char *);        // Parse number to an sd_p (free arg)
+sd_p sd_parse(const char *, const sd_opt_t *);  // Parse number to an sd_p
+sd_p sd_parse_f(char *, const sd_opt_t *);      // Parse number to an sd_p (free arg)
 void *sd_free(sd_p);            // Free sd_p
 sd_p sd_copy(sd_p p);           // Make copy
 sd_p sd_int(long long);         // Make from integer
 sd_p sd_float(long double);     // Make from float
-char *sd_output_rat(sd_p);      // Output as number or (number/number)
-char *sd_output(sd_p, int places, char round);  // Output
-char *sd_output_f(sd_p, int places, char round);        // Output (free arg)
+char *sd_output_rat(sd_p, const sd_opt_t *);    // Output as number or (number/number)
+char *sd_output(sd_p, const sd_opt_t *);        // Output
+char *sd_output_f(sd_p, const sd_opt_t *);      // Output (free arg)
 int sd_places(sd_p);            // Max places of any operand so far
 int sd_iszero(sd_p);            // If zero value
 int sd_isneg(sd_p);             // If negative value
