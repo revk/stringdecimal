@@ -171,16 +171,26 @@ void *xparse(xparse_config_t * config, void *context, const char *sum, const cha
          }
          break;
       }
-      // Operand
       const char *was = sum;
-      void *v = config->operand(context, sum, &sum);
-      if (!v || sum == was)
-      {
-         fail = "Missing operand";
-         break;
+      if (config->ternary)
+         for (int q = 0; config->ternary[q].op; q++)
+            if (comp(config->ternary[q].op2, sum))
+            {
+               was = NULL;
+               addarg(NULL, "missing", 0);
+               break;
+            }
+      if (was)
+      {                         // Operand
+         void *v = config->operand(context, sum, &sum);
+         if (!v || sum == was)
+         {
+            fail = "Missing operand";
+            break;
+         }
+         // Add the operand
+         addarg(v, was, sum - was);
       }
-      // Add the operand
-      addarg(v, was, sum - was);
       // Postfix operators and close brackets
       while (1)
       {
