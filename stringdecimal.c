@@ -1443,103 +1443,113 @@ static sd_p parse_bin_cmp(sd_p l, sd_p r, int match)
 }
 
 // Parse Functions
-static void *parse_si(void *context, void *data, void *l, void *r)
+static void *parse_si(void *context, void *data, void **a)
 {                               // SI prefix (suffix on number)
-   return sd_10_i(r, (long) data);
+   return sd_10_i(*a, (long) data);
 }
 
-static void *parse_ieee(void *context, void *data, void *l, void *r)
+static void *parse_ieee(void *context, void *data, void **a)
 {                               // IEEE prefix (suffix on number)
    long n = (long) data;
-   return sd_mul_cf(r, sd_int(n));
+   return sd_mul_cf(*a, sd_int(n));
 }
 
-static void *parse_add(void *context, void *data, void *l, void *r)
+static void *parse_add(void *context, void *data, void **a)
 {
-   return sd_add(l, r);
+   return sd_add(a[0], a[1]);
 }
 
-static void *parse_sub(void *context, void *data, void *l, void *r)
+static void *parse_sub(void *context, void *data, void **a)
 {
-   return sd_sub(l, r);
+   return sd_sub(a[0], a[1]);
 }
 
-static void *parse_div(void *context, void *data, void *l, void *r)
+static void *parse_div(void *context, void *data, void **a)
 {
    stringdecimal_context_t *C = context;
-   sd_p o = sd_div(l, r);
+   sd_p o = sd_div(a[0], a[1]);
    if (!o)
       C->fail = "Divide by zero";
    return o;
 }
 
-static void *parse_mul(void *context, void *data, void *l, void *r)
+static void *parse_mul(void *context, void *data, void **a)
 {
-   return sd_mul(l, r);
+   return sd_mul(a[0], a[1]);
 }
 
-static void *parse_neg(void *context, void *data, void *l, void *r)
+static void *parse_neg(void *context, void *data, void **a)
 {
-   sd_p R = r;
-   R->n->neg ^= 1;
-   return r;
+   sd_p A = *a;
+   A->n->neg ^= 1;
+   return A;
 }
 
-static void *parse_not(void *context, void *data, void *l, void *r)
+static void *parse_not(void *context, void *data, void **a)
 {
-   sd_p R = r,
-       v = sd_new(l, r);
-   v->n = copy(!R->n->sig ? &one : &zero);
+   sd_p A = *a;
+   sd_p v = sd_new(A, NULL);
+   v->n = copy(!A->n->sig ? &one : &zero);
    v->places = 0;
    return v;
 }
 
-static void *parse_eq(void *context, void *data, void *l, void *r)
+static void *parse_eq(void *context, void *data, void **a)
 {
-   return parse_bin_cmp(l, r, MATCH_EQ);
+   return parse_bin_cmp(a[0], a[1], MATCH_EQ);
 }
 
-static void *parse_ne(void *context, void *data, void *l, void *r)
+static void *parse_ne(void *context, void *data, void **a)
 {
-   return parse_bin_cmp(l, r, MATCH_NE);
+   return parse_bin_cmp(a[0], a[1], MATCH_NE);
 }
 
-static void *parse_gt(void *context, void *data, void *l, void *r)
+static void *parse_gt(void *context, void *data, void **a)
 {
-   return parse_bin_cmp(l, r, MATCH_GT);
+   return parse_bin_cmp(a[0], a[1], MATCH_GT);
 }
 
-static void *parse_ge(void *context, void *data, void *l, void *r)
+static void *parse_ge(void *context, void *data, void **a)
 {
-   return parse_bin_cmp(l, r, MATCH_EQ | MATCH_GT);
+   return parse_bin_cmp(a[0], a[1], MATCH_EQ | MATCH_GT);
 }
 
-static void *parse_le(void *context, void *data, void *l, void *r)
+static void *parse_le(void *context, void *data, void **a)
 {
-   return parse_bin_cmp(l, r, MATCH_EQ | MATCH_LT);
+   return parse_bin_cmp(a[0], a[1], MATCH_EQ | MATCH_LT);
 }
 
-static void *parse_lt(void *context, void *data, void *l, void *r)
+static void *parse_lt(void *context, void *data, void **a)
 {
-   return parse_bin_cmp(l, r, MATCH_LT);
+   return parse_bin_cmp(a[0], a[1], MATCH_LT);
 }
 
-static void *parse_and(void *context, void *data, void *l, void *r)
+static void *parse_and(void *context, void *data, void **a)
 {
-   sd_p L = l,
-       R = r;
+   sd_p L = a[0],
+       R = a[1];
    if (!L->n->sig)
       return L;                 // False
    return R;                    // Whatever second argument is
 }
 
-static void *parse_or(void *context, void *data, void *l, void *r)
+static void *parse_or(void *context, void *data, void **a)
 {
-   sd_p L = l,
-       R = r;
+   sd_p L = a[0],
+       R = a[1];
    if (L->n->sig)
       return L;                 // True
    return R;                    // Whatever second argument is
+}
+
+static void *parse_cond(void *context, void *data, void **a)
+{
+   sd_p C = a[0],
+       L = a[1],
+       R = a[2];
+   if (sd_iszero(C))
+      return L;
+   return R;
 }
 
 // List of functions
@@ -1550,18 +1560,23 @@ static xparse_op_t parse_uniary[] = {
 };
 
 static xparse_op_t parse_binary[] = {
- { op: "+", level: 5, func:parse_add },
- { op: "-", op2: "−", level: 5, func:parse_sub },
- { op: "/", op2: "÷", level: 6, func:parse_div },
- { op: "*", op2: "×", level: 6, func:parse_mul },
- { op: "==", op2: "=", level: 3, func:parse_eq },
- { op: ">=", op2: "≥", level: 3, func:parse_ge },
- { op: "<=", op2: "≤", level: 3, func:parse_le },
- { op: "!=", op2: "≠", level: 3, func:parse_ne },
- { op: ">", op2: "≰", level: 3, func:parse_gt },
- { op: "<", op2: "≱", level: 3, func:parse_lt },
- { op: "&&", op2: "∧", level: 2, func:parse_and },
- { op: "||", op2: "∨", level: 1, func:parse_or },
+ { op: "/", op2: "÷", level: 7, func:parse_div },
+ { op: "*", op2: "×", level: 7, func:parse_mul },
+ { op: "+", level: 6, func:parse_add },
+ { op: "-", op2: "−", level: 6, func:parse_sub },
+ { op: "==", op2: "=", level: 5, func:parse_eq },
+ { op: ">=", op2: "≥", level: 5, func:parse_ge },
+ { op: "<=", op2: "≤", level: 5, func:parse_le },
+ { op: "!=", op2: "≠", level: 5, func:parse_ne },
+ { op: ">", op2: "≰", level: 5, func:parse_gt },
+ { op: "<", op2: "≱", level: 5, func:parse_lt },
+ { op: "&&", op2: "∧", level: 4, func:parse_and },
+ { op: "||", op2: "∨", level: 3, func:parse_or },
+   { NULL },
+};
+
+static xparse_op_t parse_ternary[] = {
+ { op: "?", op2: ":", level: 1, func:parse_cond },
    { NULL },
 };
 
@@ -1580,6 +1595,7 @@ xparse_config_t stringdecimal_xparse = {
  unary:parse_uniary,
  post:parse_post,
  binary:parse_binary,
+ ternary:parse_ternary,
  operand:parse_operand,
  final:parse_final,
  dispose:parse_dispose,

@@ -19,7 +19,7 @@
 
 // The operators take one or two args and return a result.
 // The result must be malloced or one of the input args. The args should be left intact and are freed as needed later.
-typedef void *xparse_operate(void *context, void *data, void *l, void *r);      // For unary prefix operators l is NULL
+typedef void *xparse_operate(void *context, void *data, void **);
 // Parse operand
 typedef void *xparse_operand(void *context, const char *p, const char **end);   // Parse an operand, malloc value (or null if error), set end
 // Final processing
@@ -45,6 +45,7 @@ struct xparse_config_s {
    xparse_op_t *unary;          // pre unary operators
    xparse_op_t *post;           // post unary operators
    xparse_op_t *binary;         // binary operators
+   xparse_op_t *ternary;        // ternary operators
    xparse_operand *operand;     // operand parse
    xparse_final *final;         // final process operand
    xparse_free *dispose;        // Dispose of an operand
