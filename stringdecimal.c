@@ -18,6 +18,8 @@
 // Functions return malloced string answers (or NULL for error)
 // Functions have variants to free arguments
 
+#define	EXTRAPLACES	3       // Guess places for INT_MIN (sets max digits for final divide, plus denominator magnitude)
+
 #define _GNU_SOURCE             /* See feature_test_macros(7) */
 #ifdef	EVAL
 #include "xparse.h"
@@ -1013,7 +1015,7 @@ char *sd_output(sd_p p, int places, char round)
    {                            // Guess number of places
       p = sd_copy(p);
       sd_rational(p);
-      r = output_free(sdiv(p->n, p->d, p->d->mag + 2, round, NULL), 0);
+      r = output_free(sdiv(p->n, p->d, p->d->mag + EXTRAPLACES, round, NULL), 0);
       sd_free(p);
    } else
    {
@@ -1412,7 +1414,7 @@ static void *parse_final(void *context, void *v)
    if (C->maxdivide == INT_MIN)
    {                            // Guess places
       sd_rational(V);
-      r = output_free(sdiv(V->n, V->d, V->d->mag + 2, C->round, NULL), 0);      // Simple divide to get answer
+      r = output_free(sdiv(V->n, V->d, V->d->mag + EXTRAPLACES, C->round, NULL), 0);    // Simple divide to get answer
    } else
    {
       if (V->d)
