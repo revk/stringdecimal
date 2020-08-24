@@ -68,7 +68,7 @@
 	u(Pi,1125899906842624LL)	\
 	u(Ei,1152921504606846976LL)	\
 
-//#define DEBUG
+#define DEBUG
 
 // Support functions
 
@@ -1200,10 +1200,26 @@ sd_p sd_mul(sd_p l, sd_p r)
       l = &sd_zero;
    if (!r)
       r = &sd_zero;
+   sd_debugout("sd_mul", l, r, NULL);
    sd_p v = sd_new(l, r);
-   if (l->d || r->d)
-      v->d = smul(l->d ? : &one, r->d ? : &one);
-   v->n = smul(l->n, r->n);
+   if (r->d && !scmp(l->n, r->d))
+   {                            // Cancel out
+      v->n = copy(r->n);
+      v->d = copy(l->d);
+      if (l->n->neg)
+         v->n->neg ^= 1;
+   } else if (l->d && !scmp(r->n, l->d))
+   {                            // Cancel out
+      v->n = copy(l->n);
+      v->d = copy(r->d);
+      if (r->n->neg)
+         v->n->neg ^= 1;
+   } else
+   {                            // Multiple
+      if (l->d || r->d)
+         v->d = smul(l->d ? : &one, r->d ? : &one);
+      v->n = smul(l->n, r->n);
+   }
    return sd_tidy(v);
 };
 
@@ -1242,9 +1258,13 @@ sd_p sd_div(sd_p l, sd_p r)
       v->n = copy(l->n);
       v->d = copy(r->n);
    } else
-   {                            // Cross divide
-      v->n = smul(l->n, r->d ? : &one);
-      v->d = smul(l->d ? : &one, r->n);
+   {                            // Flip and multiply 
+      sd_val_t *t = r->n;
+      r->n = r->d ? : copy(&one);
+      r->d = t;
+      r->n->neg = r->d->neg;
+      r->d->neg = 0;
+      return sd_mul(l, r);
    }
    return sd_tidy(v);
 };
