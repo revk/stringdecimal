@@ -95,7 +95,7 @@ void *xparse(xparse_config_t * config, void *context, const char *sum, const cha
 #ifdef DEBUG
          free(opval[operands]);
 #endif
-         if (operand[operands] != v)
+         if (operand[operands] && operand[operands] != v)
             config->dispose(context, operand[operands]);
       }
       if (!v)
@@ -291,7 +291,7 @@ void *xparse(xparse_config_t * config, void *context, const char *sum, const cha
    if (!fail && operands == 1)
       v = config->final(context, operand[0]);
    while (operands--)
-      if (operand[operands] != v)
+      if (operand[operands] && operand[operands] != v)
          config->dispose(context, operand[operands]);
    if (operand)
       free(operand);
