@@ -981,8 +981,6 @@ char *sd_output_rat(sd_p p)
 {                               // Rational output
    if (!p || !p->n)
       return NULL;
-   if (!p->d)
-      return output(p->n);      // Not rational
    sd_rational(p);              // Normalise to integers
    sd_val_t *rem;
    sd_val_t *r = sdiv(p->n, p->d, 0, 0, &rem);
@@ -1102,12 +1100,12 @@ static void sd_rational(sd_p p)
 {                               // Normalise to integers
    if (!p || !p->n)
       return;
+   if (!p->d)
+      p->d = copy(&one);
    int s,
     shift = p->n->sig - p->n->mag - 1;
-   if (p->d && (s = p->d->sig - p->d->mag - 1) > shift)
+   if ((s = p->d->sig - p->d->mag - 1) > shift)
       shift = s;
-   if (!shift)
-      return;
    p->n->mag += shift;
    p->d->mag += shift;
 }
