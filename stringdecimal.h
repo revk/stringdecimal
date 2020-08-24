@@ -20,6 +20,8 @@
 //
 // Add, Sub, Mul all work to necessary places
 // Div works to specified number of places, specified rounding rule, and can return remainder value
+#ifndef	STRINGDECIMAL_H
+#define	STRINGDECIMAL_H
 typedef enum {
    STRINGDECIMAL_ROUND_TRUNCATE = 'T',  // Towards zero
    STRINGDECIMAL_ROUND_UP = 'U',        // Away from zero
@@ -115,3 +117,4 @@ int sd_abs_cmp(sd_p, sd_p);     // Compare absolute values
 int sd_abs_cmp_ff(sd_p, sd_p);  // Compare absolute values free all args
 int sd_abs_cmp_fc(sd_p, sd_p);  // Compare absolute values free first arg
 int sd_abs_cmp_cf(sd_p, sd_p);  // Compare absolute values free second arg
+#endif
