@@ -72,7 +72,7 @@
 
 //#define DEBUG
 
-const sd_opt_t default_opts = { round: 'B', places:0,nocomma:0 };
+const sd_opt_t default_opts = { round: 'B', places: 0, nocomma:0 };
 
 // Support functions
 
@@ -187,7 +187,8 @@ static sd_val_t *parse2(const char *v, const char **ep, int *placesp, const sd_o
             v++;
             continue;
          }
-	 if(!isdigit(*v))break;
+         if (!isdigit(*v))
+            break;
          if (*v == '0')
             t++;                // count trailing zeros
          else
@@ -1055,9 +1056,23 @@ char *sd_output(sd_p p, const sd_opt_t * o)
    return r;
 }
 
+char *sd_outputp(sd_p p, int places)
+{
+ const sd_opt_t O = { places:places };
+   return sd_output(p, &O);
+}
+
 char *sd_output_f(sd_p p, const sd_opt_t * o)
 {                               // Output free arg
    char *r = sd_output(p, o);
+   sd_free(p);
+   return r;
+}
+
+char *sd_outputp_f(sd_p p, int places)
+{
+ const sd_opt_t O = { places:places };
+   char *r = sd_output(p, &O);
    sd_free(p);
    return r;
 }

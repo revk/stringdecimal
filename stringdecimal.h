@@ -77,6 +77,8 @@ sd_p sd_float(long double);     // Make from float
 char *sd_output_rat(sd_p, const sd_opt_t *);    // Output as number or (number/number)
 char *sd_output(sd_p, const sd_opt_t *);        // Output
 char *sd_output_f(sd_p, const sd_opt_t *);      // Output (free arg)
+char *sd_outputp(sd_p, int places);        // Output
+char *sd_outputp_f(sd_p, int places);      // Output (free arg)
 int sd_places(sd_p);            // Max places of any operand so far
 int sd_iszero(sd_p);            // If zero value
 int sd_isneg(sd_p);             // If negative value
