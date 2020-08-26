@@ -962,9 +962,21 @@ sd_p sd_parse(const char *val, const sd_opt_t * o)
    return v;
 }
 
+sd_p sd_parses(const char *val)
+{
+   return sd_parse(val, &default_opts);
+}
+
 sd_p sd_parse_f(char *val, const sd_opt_t * o)
 {                               // Parse (free arg)
    sd_p r = sd_parse(val, o);
+   freez(val);
+   return r;
+}
+
+sd_p sd_parses_f(char *val)
+{                               // Parse (free arg)
+   sd_p r = sd_parses(val);
    freez(val);
    return r;
 }
@@ -1071,8 +1083,7 @@ char *sd_output_f(sd_p p, const sd_opt_t * o)
 
 char *sd_outputp_f(sd_p p, int places)
 {
- const sd_opt_t O = { places:places };
-   char *r = sd_output(p, &O);
+   char *r = sd_outputp(p, places);
    sd_free(p);
    return r;
 }

@@ -69,7 +69,9 @@ typedef struct sd_s sd_t;
 typedef sd_t *sd_p;
 
 sd_p sd_parse(const char *, const sd_opt_t *);  // Parse number to an sd_p
+sd_p sd_parses(const char *);   // Simple parse
 sd_p sd_parse_f(char *, const sd_opt_t *);      // Parse number to an sd_p (free arg)
+sd_p sd_parses_f(char *);       // Simple parse(free arg)
 void *sd_free(sd_p);            // Free sd_p
 sd_p sd_copy(sd_p p);           // Make copy
 sd_p sd_int(long long);         // Make from integer
@@ -77,8 +79,8 @@ sd_p sd_float(long double);     // Make from float
 char *sd_output_rat(sd_p, const sd_opt_t *);    // Output as number or (number/number)
 char *sd_output(sd_p, const sd_opt_t *);        // Output
 char *sd_output_f(sd_p, const sd_opt_t *);      // Output (free arg)
-char *sd_outputp(sd_p, int places);        // Output
-char *sd_outputp_f(sd_p, int places);      // Output (free arg)
+char *sd_outputp(sd_p, int places);     // Output
+char *sd_outputp_f(sd_p, int places);   // Output (free arg)
 int sd_places(sd_p);            // Max places of any operand so far
 int sd_iszero(sd_p);            // If zero value
 int sd_isneg(sd_p);             // If negative value
