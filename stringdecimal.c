@@ -1621,31 +1621,39 @@ static void *parse_cond(void *context, void *data, void **a)
    return a[2];
 }
 
-// List of functions
+// List of functions - as pre C operator precedence with comma as 1, and postfix as 15
 static xparse_op_t parse_uniary[] = {
- { op: "-", level: 9, func:parse_neg },
- { op: "!", op2: "¬", level: 1, func:parse_not },
+   // Postfix would be 15
+ { op: "-", level: 14, func:parse_neg },
+ { op: "!", op2: "¬", level: 14, func:parse_not },
    { NULL },
 };
 
 static xparse_op_t parse_binary[] = {
- { op: "/", op2: "÷", level: 7, func:parse_div },
- { op: "*", op2: "×", level: 7, func:parse_mul },
- { op: "+", level: 6, func:parse_add },
- { op: "-", op2: "−", level: 6, func:parse_sub },
- { op: "==", op2: "=", level: 5, func:parse_eq },
- { op: ">=", op2: "≥", level: 5, func:parse_ge },
- { op: "<=", op2: "≤", level: 5, func:parse_le },
- { op: "!=", op2: "≠", level: 5, func:parse_ne },
- { op: ">", op2: "≰", level: 5, func:parse_gt },
- { op: "<", op2: "≱", level: 5, func:parse_lt },
- { op: "&&", op2: "∧", level: 3, func:parse_and },
- { op: "||", op2: "∨", level: 2, func:parse_or },
+ { op: "/", op2: "÷", level: 13, func:parse_div },
+ { op: "*", op2: "×", level: 13, func:parse_mul },
+   // % would be 14, we should add that
+ { op: "+", level: 12, func:parse_add },
+ { op: "-", op2: "−", level: 12, func:parse_sub },
+   // Shift would be 11
+ { op: ">=", op2: "≥", level: 10, func:parse_ge },
+ { op: "<=", op2: "≤", level: 10, func:parse_le },
+ { op: "!=", op2: "≠", level: 10, func:parse_ne },
+ { op: ">", op2: "≰", level: 10, func:parse_gt },
+ { op: "<", op2: "≱", level: 10, func:parse_lt },
+ { op: "==", op2: "=", level: 9, func:parse_eq },
+   // & would be 8
+   // ^ would be 7
+   // | would be 6
+ { op: "&&", op2: "∧", level: 5, func:parse_and },
+ { op: "||", op2: "∨", level: 4, func:parse_or },
    { NULL },
 };
 
 static xparse_op_t parse_ternary[] = {
- { op: "?", op2: ":", level: 1, func:parse_cond },
+ { op: "?", op2: ":", level: 3, func:parse_cond },
+   // Assignment would be 2
+   // Comma would be 1
    { NULL },
 };
 

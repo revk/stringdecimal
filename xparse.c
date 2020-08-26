@@ -145,7 +145,7 @@ void *xparse(xparse_config_t * config, void *context, const char *sum, const cha
       {
          if (*sum == '(')
          {
-            level += 10;
+            level += 20;
             sum++;
             continue;
          }
@@ -202,7 +202,7 @@ void *xparse(xparse_config_t * config, void *context, const char *sum, const cha
                fail = "Too many close brackets";
                break;
             }
-            level -= 10;
+            level -= 20;
             continue;
          }
          if (isspace(*sum) && (!config->eol || (unsigned char) *sum >= ' '))
