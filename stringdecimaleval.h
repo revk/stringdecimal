@@ -13,6 +13,7 @@ char *stringdecimal_eval_f(char *sum, int *maxplacesp, const sd_opt_t *);       
 typedef struct stringdecimal_context_s stringdecimal_context_t;
 struct stringdecimal_context_s {
    int maxdivide;
+   int extraplaces;
    sd_round_t round;
    int *maxplacesp;
    const char *fail;

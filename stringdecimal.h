@@ -34,6 +34,7 @@ typedef struct sd_opt_s sd_opt_t;
 struct sd_opt_s {
    sd_round_t round;            // Type of rounding
    int places;                  // Number of places
+   int extraplaces;             // Extra places used for divide when places is INT_MIN
    unsigned char nocomma:1;     // Do not allow comma when parsing numbers
 };
 

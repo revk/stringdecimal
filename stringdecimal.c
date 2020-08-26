@@ -18,8 +18,6 @@
 // Functions return malloced string answers (or NULL for error)
 // Functions have variants to free arguments
 
-#define	EXTRAPLACES	3       // Guess places for INT_MIN (sets max digits for final divide, plus denominator magnitude)
-
 #define _GNU_SOURCE             /* See feature_test_macros(7) */
 #ifdef	EVAL
 #include "xparse.h"
@@ -72,7 +70,7 @@
 
 //#define DEBUG
 
-const sd_opt_t default_opts = { round: 'B', places: 0, nocomma:0 };
+const sd_opt_t default_opts = { round: 'B', places: 0, extraplaces: 3, nocomma:0 };
 
 // Support functions
 
@@ -1049,7 +1047,8 @@ char *sd_output(sd_p p, const sd_opt_t * o)
       p = sd_copy(p);
       sd_rational(p);
       sd_opt_t O = *o;
-      O.places = p->d->mag + EXTRAPLACES;
+      if (O.places == INT_MIN)
+         O.places = p->d->mag + O.extraplaces;
       r = output_free(sdiv(p->n, p->d, &O, NULL), 0);
       sd_free(p);
    } else
@@ -1449,7 +1448,7 @@ static void *parse_operand(void *context, const char *p, const char **end)
    stringdecimal_context_t *C = context;
    sd_p v = calloc(1, sizeof(*v));
    assert(v);
- sd_opt_t O = { nocomma:C->nocomma };
+ sd_opt_t O = { nocomma: C->nocomma, extraplaces:C->extraplaces };
    v->n = parse2(p, end, &v->places, &O);
    v->d = NULL;
    return v;
@@ -1467,7 +1466,7 @@ static void *parse_final(void *context, void *v)
    if (C->maxdivide == INT_MIN)
    {                            // Guess places
       sd_rational(V);
-    sd_opt_t O = { places: V->d->mag + EXTRAPLACES, round:C->round };
+    sd_opt_t O = { places: V->d->mag + C->extraplaces, round:C->round };
       r = output_free(sdiv(V->n, V->d, &O, NULL), 0);   // Simple divide to get answer
    } else
    {
@@ -1675,7 +1674,7 @@ xparse_config_t stringdecimal_xparse = {
 // Parse
 char *stringdecimal_eval(const char *sum, int *maxplacesp, const sd_opt_t * o)
 {
- stringdecimal_context_t context = { maxdivide: o->places, round: o->round, maxplacesp: maxplacesp, nocomma:o->nocomma };
+ stringdecimal_context_t context = { maxdivide: o->places, round: o->round, maxplacesp: maxplacesp, nocomma: o->nocomma, extraplaces:o->extraplaces };
    char *ret = xparse(&stringdecimal_xparse, &context, sum, NULL);
    if (!ret)
       assert(asprintf(&ret, "!!%s at %.*s", context.fail, 10, context.posn) >= 0);
@@ -1811,7 +1810,7 @@ int main(int argc, const char *argv[])
          if (s[1] == 'x')
          {                      // Simple test of sd
             sd_p r = sd_div_ff(sd_parse("1.00", NULL), sd_parse("3.1", NULL));
-          sd_opt_t O = { places:2 };
+          sd_opt_t O = { places: 2, extraplaces: 3, places:INT_MIN };
             fprintf(stderr, "places %d num %s den %s res %s\n", sd_places(r), sd_num(r), sd_den(r), sd_output(r, &O));
             sd_free(r);
             continue;
@@ -1839,11 +1838,11 @@ int main(int argc, const char *argv[])
          }
          errx(1, "Unknown arg %s", s);
       }
-    sd_opt_t O = { places: (divplaces == INT_MIN && rnd) ? roundplaces : divplaces, round:round };
+    sd_opt_t O = { places: (divplaces == INT_MIN && rnd) ? roundplaces : divplaces, round: round, extraplaces:3 };
       char *res = stringdecimal_eval(s, NULL, &O);
       if (rnd)
       {
-       sd_opt_t O = { places: roundplaces, round:round };
+       sd_opt_t O = { places: roundplaces, round: round, extraplaces:3 };
          res = stringdecimal_rnd_f(res, &O);
       }
       if (res)
