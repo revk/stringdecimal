@@ -1614,7 +1614,7 @@ static void *parse_cond(void *context, void *data, void **a)
 // List of functions
 static xparse_op_t parse_uniary[] = {
  { op: "-", level: 9, func:parse_neg },
- { op: "!", op2: "¬", level: 9, func:parse_not },
+ { op: "!", op2: "¬", level: 1, func:parse_not },
    { NULL },
 };
 
@@ -1629,8 +1629,8 @@ static xparse_op_t parse_binary[] = {
  { op: "!=", op2: "≠", level: 5, func:parse_ne },
  { op: ">", op2: "≰", level: 5, func:parse_gt },
  { op: "<", op2: "≱", level: 5, func:parse_lt },
- { op: "&&", op2: "∧", level: 4, func:parse_and },
- { op: "||", op2: "∨", level: 3, func:parse_or },
+ { op: "&&", op2: "∧", level: 3, func:parse_and },
+ { op: "||", op2: "∨", level: 2, func:parse_or },
    { NULL },
 };
 
