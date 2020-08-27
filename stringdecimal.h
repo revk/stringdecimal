@@ -31,6 +31,8 @@ typedef enum {
    STRINGDECIMAL_ROUND_BANKING = 'B',   // Away from zero if above 0.5, or 0.5 exactly and goes to even
 } sd_round_t;
 
+// https://www.revk.uk/2020/08/pseudo-c-using-cpp.html
+
 typedef struct {
    sd_round_t round;            // Type of rounding
    int places;                  // Number of places
