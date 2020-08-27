@@ -133,6 +133,7 @@ sd_p sd_int(long long);         // Make from integer
 sd_p sd_float(long double);     // Make from float
 char *sd_output_opts(sd_output_opts_t);
 #define	sd_output(...)		sd_output_opts((sd_output_opts_t){__VA_ARGS__})
+#define	sd_output_f(...)		sd_output_opts((sd_output_opts_t){__VA_ARGS__,a_free:1})
 int sd_places(sd_p);            // Max places of any operand so far
 int sd_iszero(sd_p);            // If zero value
 int sd_isneg(sd_p);             // If negative value
