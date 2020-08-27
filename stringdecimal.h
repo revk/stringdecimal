@@ -118,6 +118,13 @@ const char *stringdecimal_check_opts(stringdecimal_places_t);
 typedef struct sd_s sd_t;
 typedef sd_t *sd_p;
 
+#define	sd_parse(...)		sd_parse_opts((stringdecimal_places_t){__VA_ARGS__})
+#define	sd_parse_f(...)		sd_parse_opts((stringdecimal_places_t){__VA_ARGS__,a_free:1})
+void *sd_free(sd_p);            // Free sd_p
+sd_p sd_copy(sd_p p);           // Make copy
+sd_p sd_int(long long);         // Make from integer
+sd_p sd_float(long double);     // Make from float
+
 typedef struct {
    sd_p p;
     sd_opts                     //
@@ -125,15 +132,10 @@ typedef struct {
    unsigned rational:1;
 } sd_output_opts_t;
 sd_p sd_parse_opts(stringdecimal_places_t);
-#define	sd_parse(...)		sd_parse_opts((stringdecimal_places_t){__VA_ARGS__})
-#define	sd_parse_f(...)		sd_parse_opts((stringdecimal_places_t){__VA_ARGS__,p_free:1})
-void *sd_free(sd_p);            // Free sd_p
-sd_p sd_copy(sd_p p);           // Make copy
-sd_p sd_int(long long);         // Make from integer
-sd_p sd_float(long double);     // Make from float
 char *sd_output_opts(sd_output_opts_t);
 #define	sd_output(...)		sd_output_opts((sd_output_opts_t){__VA_ARGS__})
 #define	sd_output_f(...)		sd_output_opts((sd_output_opts_t){__VA_ARGS__,a_free:1})
+
 int sd_places(sd_p);            // Max places of any operand so far
 int sd_iszero(sd_p);            // If zero value
 int sd_isneg(sd_p);             // If negative value
