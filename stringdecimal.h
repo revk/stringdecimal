@@ -134,7 +134,7 @@ typedef struct {
 sd_p sd_parse_opts(stringdecimal_places_t);
 char *sd_output_opts(sd_output_opts_t);
 #define	sd_output(...)		sd_output_opts((sd_output_opts_t){__VA_ARGS__})
-#define	sd_output_f(...)		sd_output_opts((sd_output_opts_t){__VA_ARGS__,a_free:1})
+#define	sd_output_f(...)		sd_output_opts((sd_output_opts_t){__VA_ARGS__,p_free:1})
 
 int sd_places(sd_p);            // Max places of any operand so far
 int sd_iszero(sd_p);            // If zero value
