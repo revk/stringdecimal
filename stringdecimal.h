@@ -120,8 +120,9 @@ typedef sd_t *sd_p;
 
 typedef struct {
    sd_p p;
-   sd_opts unsigned char a_free:1;
-   unsigned rat:1;
+    sd_opts                     //
+   unsigned char a_free:1;
+   unsigned rational:1;
 } sd_output_opts_t;
 sd_p sd_parse_opts(stringdecimal_places_t);
 #define	sd_parse(...)		sd_parse_opts((stringdecimal_places_t){__VA_ARGS__})

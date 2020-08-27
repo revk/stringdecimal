@@ -1014,7 +1014,7 @@ char *sd_output_opts(sd_output_opts_t o)
 {                               // Output
    if (!o.p)
       o.p = &sd_zero;
-   if (o.rat)
+   if (o.rational)
    {                            // rational mode
       sd_rational(o.p);         // Normalise to integers
       sd_val_t *rem;
