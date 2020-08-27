@@ -1034,6 +1034,8 @@ char *sd_output_opts(sd_output_opts_t o)
       sprintf(q, "(%s/%s)", n, d);
       freez(d);
       freez(n);
+      if (o.p_free)
+         sd_free(o.p);
       return q;
 
    }
@@ -1057,6 +1059,8 @@ char *sd_output_opts(sd_output_opts_t o)
       else
          r = output_free(srnd(o.p->n, places, o.round), 0);
    }
+   if (o.p_free)
+      sd_free(o.p);
    return r;
 }
 

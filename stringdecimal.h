@@ -121,12 +121,12 @@ typedef sd_t *sd_p;
 typedef struct {
    sd_p p;
     sd_opts                     //
-   unsigned char a_free:1;
+   unsigned char p_free:1;
    unsigned rational:1;
 } sd_output_opts_t;
 sd_p sd_parse_opts(stringdecimal_places_t);
 #define	sd_parse(...)		sd_parse_opts((stringdecimal_places_t){__VA_ARGS__})
-#define	sd_parse_f(...)		sd_parse_opts((stringdecimal_places_t){__VA_ARGS__,a_free:1})
+#define	sd_parse_f(...)		sd_parse_opts((stringdecimal_places_t){__VA_ARGS__,p_free:1})
 void *sd_free(sd_p);            // Free sd_p
 sd_p sd_copy(sd_p p);           // Make copy
 sd_p sd_int(long long);         // Make from integer
