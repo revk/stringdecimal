@@ -1179,18 +1179,6 @@ static void sd_rational(sd_p p)
    p->d->mag += shift;
 }
 
-char *sd_num(sd_p p)
-{                               // Numerator as string
-   sd_rational(p);
-   return output(p->n);
-}
-
-char *sd_den(sd_p p)
-{                               // Denominator as string
-   sd_rational(p);
-   return output(p->d ? : &one);
-}
-
 sd_p sd_add(sd_p l, sd_p r)
 {                               // Add
    if (!l)
