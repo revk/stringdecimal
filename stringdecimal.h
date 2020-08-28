@@ -14,129 +14,144 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-// Value strings are optional minus sign, digits, option decimal place plus digits, any precision
-// Functions return malloced string answers (or NULL for error)
-// Functions have variants to free arguments
-//
-// Add, Sub, Mul all work to necessary places
-// Div works to specified number of places, specified rounding rule, and can return remainder value
 #ifndef	STRINGDECIMAL_H
 #define	STRINGDECIMAL_H
-typedef enum {
-   STRINGDECIMAL_ROUND_TRUNCATE = 'T',  // Towards zero
-   STRINGDECIMAL_ROUND_UP = 'U',        // Away from zero
-   STRINGDECIMAL_ROUND_FLOOR = 'F',     // Towards -ve
-   STRINGDECIMAL_ROUND_CEILING = 'C',   // Towards +ve
-   STRINGDECIMAL_ROUND_ROUND = 'R',     // Away from zero if 0.5 or more
-   STRINGDECIMAL_ROUND_BANKING = 'B',   // Away from zero if above 0.5, or 0.5 exactly and goes to even
-} sd_round_t;
 
+// Perform basic decimal maths with arbitrary precision
+// This library has two sets of functions.
+//
+// stringdecimal_* calls process strings containing a number and return a malloc'd string with the answer
+// e.g. strindecimal_add("1","2") returns strdup("3")
+// The _*fc, _*cf, _*ff, _f functions free one or both arguments
+//
+// sd_* calls allow processing of the sd_p type.
+// You can convert string to sd_p with sd_parse
+// You can convert sd_p to string with sd_output
+//
+// Note that these library calls have C++ style, even though they are C code.
+// e.g. sd_output(v) outputs v with defaults, but sd_output(v,round:'F') does floor rounding, etc
 // https://www.revk.uk/2020/08/pseudo-c-using-cpp.html
 
-typedef struct {
-   sd_round_t round;            // Type of rounding
-   int places;                  // Number of places
-   int extraplaces;             // Extra places used for divide when places is INT_MIN
-   unsigned char nocomma:1;     // Do not allow comma when parsing numbers
-} sd_opt_t;
+// Rounding options
 
-#define	sd_copy_opts(o)	round:o.round,extraplaces:o.extraplaces,nocomma:o.nocomma
-#define	sd_opts			\
-	sd_field(int,places)	\
-	sd_field(sd_round_t,round)	\
-	sd_field(int,extraplaces)	\
-	sd_flag(nocomma)		\
+typedef enum {
+   // Default (i.e. round:0) is 'B'
+   SD_ROUND_TRUNCATE = 'T',     // Towards zero
+   SD_ROUND_UP = 'U',           // Away from zero
+   SD_ROUND_FLOOR = 'F',        // Towards -ve
+   SD_ROUND_CEILING = 'C',      // Towards +ve
+   SD_ROUND_ROUND = 'R',        // Away from zero if 0.5 or more
+   SD_ROUND_BANKING = 'B',      // Away from zero if above 0.5, or 0.5 exactly and goes to even
+} sd_round_t;
 
+// Padding options (used with "places" argument)
+typedef enum {
+   // Default, (i.e. format:0 and places:0 is '+' and 3 places, format:0 and places:non 0 is '=')
+   SD_FORMAT_LIMIT = '-',       // Use as many places as necessary, limiting division, no padding 0's
+   // places: sets the maximum for division, but more places may be used if not division
+   SD_FORMAT_EXACT = '=',       // Include padding 0's as needed to specified number of places
+   // places: sets the exact number of places, used for money, for example
+   SD_FORMAT_EXTRA = '+',       // Try to use enough places even for division, no padding
+   // places: is added to a guess of number of places for division
+   SD_FORMAT_MAX = '>',         // Use as many places as necessary, limited to max places seen in args
+   // places: is added to the max places seen
+   SD_FORMAT_RATIONAL = '/',    // Output as integer or integer/integer, places is not used
+} sd_format_t;
 
-#define	sd_field(t,v) t v;
-#define	sd_flag(v) unsigned char v:1;
-typedef struct {                // String / string opts
+typedef struct {                // Binary stringdecimal operationns
    const char *a;
    const char *b;
-    sd_opts                     //
+   int places;
+   sd_format_t format;
+   sd_round_t round;
+   unsigned char nocomma:1;
    unsigned char a_free:1;
    unsigned char b_free:1;
-} sd_opts_ss_t;
-typedef struct {                // String / string opts
-   char *a;
-    sd_opts                     //
+} stringdecimal_binary_t;
+typedef struct {                // Unary stringdecimal operations
+   const char *a;
+   int places;
+   sd_format_t format;
+   sd_round_t round;
+   unsigned char nocomma:1;
    unsigned char a_free:1;
-} sd_opts_s_t;
+} stringdecimal_unary_t;
+typedef struct {                // Division stringdecimal operation
+   const char *a;
+   const char *b;
+   int places;
+   sd_format_t format;
+   sd_round_t round;
+   char **remainder;
+   unsigned char nocomma:1;
+   unsigned char a_free:1;
+   unsigned char b_free:1;
+} stringdecimal_div_t;
 
 // These _cf, _fc, _ff options free one or both args
 // The stringdecimal functions are high level
 
-char *stringdecimal_add_opts(sd_opts_ss_t);
-#define	stringdecimal_add(...)		stringdecimal_add_opts((sd_opts_ss_t){__VA_ARGS__})
-#define	stringdecimal_add_cf(...)	stringdecimal_add_opts((sd_opts_ss_t){__VA_ARGS__,b_free:1})
-#define	stringdecimal_add_fc(...)	stringdecimal_add_opts((sd_opts_ss_t){__VA_ARGS__,a_free:1})
-#define	stringdecimal_add_ff(...)	stringdecimal_add_opts((sd_opts_ss_t){__VA_ARGS__,a_free:1,b_free:1})
-char *stringdecimal_sub_opts(sd_opts_ss_t);
-#define	stringdecimal_sub(...)		stringdecimal_sub_opts((sd_opts_ss_t){__VA_ARGS__})
-#define	stringdecimal_sub_cf(...)	stringdecimal_sub_opts((sd_opts_ss_t){__VA_ARGS__,b_free:1})
-#define	stringdecimal_sub_fc(...)	stringdecimal_sub_opts((sd_opts_ss_t){__VA_ARGS__,a_free:1})
-#define	stringdecimal_sub_ff(...)	stringdecimal_sub_opts((sd_opts_ss_t){__VA_ARGS__,a_free:1,b_free:1})
-char *stringdecimal_mul_opts(sd_opts_ss_t);
-#define	stringdecimal_mul(...)		stringdecimal_mul_opts((sd_opts_ss_t){__VA_ARGS__})
-#define	stringdecimal_mul_cf(...)	stringdecimal_mul_opts((sd_opts_ss_t){__VA_ARGS__,b_free:1})
-#define	stringdecimal_mul_fc(...)	stringdecimal_mul_opts((sd_opts_ss_t){__VA_ARGS__,a_free:1})
-#define	stringdecimal_mul_ff(...)	stringdecimal_mul_opts((sd_opts_ss_t){__VA_ARGS__,a_free:1,b_free:1})
-
-typedef struct {
-   const char *a;
-   const char *b;
-   char **remp;
-    sd_opts                     //
-   unsigned char a_free:1;
-   unsigned char b_free:1;
-} stringdecimal_div_t;
+char *stringdecimal_add_opts(stringdecimal_binary_t);
+#define	stringdecimal_add(...)		stringdecimal_add_opts((stringdecimal_binary_t){__VA_ARGS__})
+#define	stringdecimal_add_cf(...)	stringdecimal_add_opts((stringdecimal_binary_t){__VA_ARGS__,b_free:1})
+#define	stringdecimal_add_fc(...)	stringdecimal_add_opts((stringdecimal_binary_t){__VA_ARGS__,a_free:1})
+#define	stringdecimal_add_ff(...)	stringdecimal_add_opts((stringdecimal_binary_t){__VA_ARGS__,a_free:1,b_free:1})
+char *stringdecimal_sub_opts(stringdecimal_binary_t);
+#define	stringdecimal_sub(...)		stringdecimal_sub_opts((stringdecimal_binary_t){__VA_ARGS__})
+#define	stringdecimal_sub_cf(...)	stringdecimal_sub_opts((stringdecimal_binary_t){__VA_ARGS__,b_free:1})
+#define	stringdecimal_sub_fc(...)	stringdecimal_sub_opts((stringdecimal_binary_t){__VA_ARGS__,a_free:1})
+#define	stringdecimal_sub_ff(...)	stringdecimal_sub_opts((stringdecimal_binary_t){__VA_ARGS__,a_free:1,b_free:1})
+char *stringdecimal_mul_opts(stringdecimal_binary_t);
+#define	stringdecimal_mul(...)		stringdecimal_mul_opts((stringdecimal_binary_t){__VA_ARGS__})
+#define	stringdecimal_mul_cf(...)	stringdecimal_mul_opts((stringdecimal_binary_t){__VA_ARGS__,b_free:1})
+#define	stringdecimal_mul_fc(...)	stringdecimal_mul_opts((stringdecimal_binary_t){__VA_ARGS__,a_free:1})
+#define	stringdecimal_mul_ff(...)	stringdecimal_mul_opts((stringdecimal_binary_t){__VA_ARGS__,a_free:1,b_free:1})
 char *stringdecimal_div_opts(stringdecimal_div_t);
-#define	stringdecimal_div(...)		stringdecimal_div_opts((sd_opts_ss_t){__VA_ARGS__})
-#define	stringdecimal_div_cf(...)	stringdecimal_div_opts((sd_opts_ss_t){__VA_ARGS__,b_free:1})
-#define	stringdecimal_div_fc(...)	stringdecimal_div_opts((sd_opts_ss_t){__VA_ARGS__,a_free:1})
-#define	stringdecimal_div_ff(...)	stringdecimal_div_opts((sd_opts_ss_t){__VA_ARGS__,a_free:1,b_free:1})
-
-char *stringdecimal_rnd_opts(sd_opts_s_t);
-#define	stringdecimal_rnd(...)		stringdecimal_rnd_opts((sd_opts_s_t){__VA_ARGS__})
-#define	stringdecimal_rnd_f(...)	stringdecimal_rnd_opts((sd_opts_s_t){__VA_ARGS__,a_free:1})
-
-int stringdecimal_cmp_opts(sd_opts_ss_t);
-#define stringdecimal_cmp(...)          stringdecimal_cmp_opts((sd_opts_ss_t){__VA_ARGS__})
-#define stringdecimal_cmp_cf(...)       stringdecimal_cmp_opts((sd_opts_ss_t){__VA_ARGS__,b_free:1})
-#define stringdecimal_cmp_fc(...)       stringdecimal_cmp_opts((sd_opts_ss_t){__VA_ARGS__,a_free:1})
-#define stringdecimal_cmp_ff(...)       stringdecimal_cmp_opts((sd_opts_ss_t){__VA_ARGS__,a_free:1,b_free:1})
-
-typedef struct {
-   const char *a;
-   int *placesp;
-    sd_opts                     //
-   unsigned char a_free:1;
-} stringdecimal_places_t;
-const char *stringdecimal_check_opts(stringdecimal_places_t);
-#define	stringdecimal_check(...)	stringdecimal_check_opts((stringdecimal_places_t){__VA_ARGS__})
-#define	stringdecimal_check_f(...)	stringdecimal_check_opts((stringdecimal_places_t){__VA_ARGS__,a_free:1})
+#define	stringdecimal_div(...)		stringdecimal_div_opts((stringdecimal_binary_t){__VA_ARGS__})
+#define	stringdecimal_div_cf(...)	stringdecimal_div_opts((stringdecimal_binary_t){__VA_ARGS__,b_free:1})
+#define	stringdecimal_div_fc(...)	stringdecimal_div_opts((stringdecimal_binary_t){__VA_ARGS__,a_free:1})
+#define	stringdecimal_div_ff(...)	stringdecimal_div_opts((stringdecimal_binary_t){__VA_ARGS__,a_free:1,b_free:1})
+char *stringdecimal_rnd_opts(stringdecimal_unary_t);
+#define	stringdecimal_rnd(...)		stringdecimal_rnd_opts((stringdecimal_unary_t){__VA_ARGS__})
+#define	stringdecimal_rnd_f(...)	stringdecimal_rnd_opts((stringdecimal_unary_t){__VA_ARGS__,a_free:1})
+int stringdecimal_cmp_opts(stringdecimal_binary_t);     // Return -ve, 0, or +ve
+#define stringdecimal_cmp(...)          stringdecimal_cmp_opts((stringdecimal_binary_t){__VA_ARGS__})
+#define stringdecimal_cmp_cf(...)       stringdecimal_cmp_opts((stringdecimal_binary_t){__VA_ARGS__,b_free:1})
+#define stringdecimal_cmp_fc(...)       stringdecimal_cmp_opts((stringdecimal_binary_t){__VA_ARGS__,a_free:1})
+#define stringdecimal_cmp_ff(...)       stringdecimal_cmp_opts((stringdecimal_binary_t){__VA_ARGS__,a_free:1,b_free:1})
 
 // Low level functions allow construction of an expression using rational maths
 typedef struct sd_s sd_t;
 typedef sd_t *sd_p;
 
-#define	sd_parse(...)		sd_parse_opts((stringdecimal_places_t){__VA_ARGS__})
-#define	sd_parse_f(...)		sd_parse_opts((stringdecimal_places_t){__VA_ARGS__,a_free:1})
+typedef struct {                // Parse options
+   const char *a;
+   const char **end;
+   unsigned char a_free:1;
+   unsigned char nocomma:1;
+} sd_parse_t;
+typedef struct {                // Output options
+   sd_p p;
+   int places;
+   sd_format_t format;
+   sd_round_t round;
+   unsigned char p_free:1;
+} sd_output_opts_t;
+
 void *sd_free(sd_p);            // Free sd_p
 sd_p sd_copy(sd_p p);           // Make copy
 sd_p sd_int(long long);         // Make from integer
 sd_p sd_float(long double);     // Make from float
 
-typedef struct {
-   sd_p p;
-    sd_opts                     //
-   unsigned char p_free:1;
-   unsigned rational:1;
-} sd_output_opts_t;
-sd_p sd_parse_opts(stringdecimal_places_t);
-char *sd_output_opts(sd_output_opts_t);
+sd_p sd_parse_opts(sd_parse_t);
+#define	sd_parse(...)		sd_parse_opts((sd_parse_t){__VA_ARGS__})
+#define	sd_parse_f(...)		sd_parse_opts((sd_parse_t){__VA_ARGS__,a_free:1})
+char *sd_output_opts(sd_output_opts_t); // Malloc'd output
 #define	sd_output(...)		sd_output_opts((sd_output_opts_t){__VA_ARGS__})
 #define	sd_output_f(...)		sd_output_opts((sd_output_opts_t){__VA_ARGS__,p_free:1})
+const char *sd_check_opts(sd_parse_t);  // Returns NULL if not valid, else returns next character after parsed number
+#define	sd_check(...)	sd_check_opts((sd_parse_t){__VA_ARGS__})
+#define	sd_check_f(...)	sd_check_opts((sd_parse_t){__VA_ARGS__,a_free:1})
 
 int sd_places(sd_p);            // Max places of any operand so far
 int sd_iszero(sd_p);            // If zero value

@@ -1,14 +1,16 @@
 # stringdecimal
 
-Simple library that does basic decimal maths to any precision on C strings.
+This library provides simple arbitrary precision decimal maths.
 
-See stringdecimal.h for the various calls available. String answers are malloced, and functions exist to free the arguments used, making it simple to do a series of sums if you wish.
+There are two levels, the stringdecimal\_\*() functions work on strings, and return a malloc'd string, and the sd\_\*() functions work on an internal sd\_p type.
+
+There are options to control output formatting and rounding.
+
+See stringdecimal.h for the various calls available.
 
 This includes functions for add, subtract, multiply, compare, divide and rounding.
 
-Whilst add, subtract, and multiple always work to whatever precision is needed, division takes a number of decimal places to limit the result. Allows various common rounding algorithms, including (default) bankers rounding.
-
-A general purpose "eval" function in the stringdecimaleval.o variant parses sums using +, -, ÷, ×, (, and ) to produce an answer. ASCII/alternative versions /, \*, also work. Internally this uses rational numbers if you have any division other than by a power of 10, so only does the one division at the end to specified limit of decimal places. Hence 1000/7*7 is 1, not 994 or some other "nearly 1" answer. It also understands operator precisdence, so 1+2\*3 is 7, not 9.
+A general purpose "eval" function in the stringdecimaleval.o variant parses sums using +, -, ÷, ×, (, and ) to produce an answer. ASCII/alternative versions /, \*, also work. Internally this uses rational numbers if you have any division other than by a power of 10, so only does the one division at the end to specified limit of decimal places. Hence 1000/7\*7 is 1, not 994 or some other "nearly 1" answer. It also understands operator precedence, so 1+2\*3 is 7, not 9.
 
 Additional comparison operators return 1 for true and 0 for false: <, >, ≤, ≥, =, ≠. ASCII/alternative versions >=, <=, !=, == also work.
 
@@ -18,4 +20,8 @@ The code actually includes a general expression parse which allows extensions on
 
 And yes, it will happily (if you have the memory) work out 1e1000000000+1 if you ask it to.
 
-A set of sd_... functions provide a means to perform low level rational maths a step at a time.
+Note that these library calls have C++ style, even though they are C code. This allows additional options to be added later with no change to calling code.
+
+e.g. sd\_output(v) outputs v with defaults, but sd\_output(v,round:'F') does floor rounding, etc
+
+See https://www.revk.uk/2020/08/pseudo-c-using-cpp.html

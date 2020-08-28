@@ -148,16 +148,17 @@ static sd_val_t *norm(sd_val_t * s, char neg)
 
 typedef struct {
    const char *v;
-   const char **ep;
+   const char **end;
    int *placesp;
- sd_opts} sd_parse_t;
-#define	parse(...)	parse_opts((sd_parse_t){__VA_ARGS__})
-static sd_val_t *parse_opts(sd_parse_t o)
+   unsigned char nocomma:1;
+} parse_t;
+#define	parse(...)	parse_opts((parse_t){__VA_ARGS__})
+static sd_val_t *parse_opts(parse_t o)
 {                               // Parse in to s, and return next character
    if (!o.v)
       return NULL;
-   if (o.ep)
-      *o.ep = o.v;
+   if (o.end)
+      *o.end = o.v;
    if (o.placesp)
       *o.placesp = 0;
    int places = 0;              // count places
@@ -263,8 +264,8 @@ static sd_val_t *parse_opts(sd_parse_t o)
          e = e * 10 + *o.v++ - '0';
       s->mag += e * sign;
    }
-   if (o.ep)
-      *o.ep = o.v;              // End of parsing
+   if (o.end)
+      *o.end = o.v;             // End of parsing
    if (!s->sig)
       s->mag = 0;               // Zero
    else
@@ -274,13 +275,15 @@ static sd_val_t *parse_opts(sd_parse_t o)
    return s;
 }
 
-const char *stringdecimal_check_opts(stringdecimal_places_t o)
+const char *sd_check_opts(sd_parse_t o)
 {
    const char *e = NULL;
- sd_val_t *s = parse(o.a, ep: &e, placesp:o.placesp, sd_copy_opts(o));
+ sd_val_t *s = parse(o.a, end: &e, nocomma:o.nocomma);
    if (!s)
       return NULL;
    freez(s);
+   if (o.end)
+      *o.end = e;
    if (o.a_free)
       freez(o.a);
    return e;
@@ -567,7 +570,7 @@ static sd_val_t *udiv(sd_val_t * a, sd_val_t * b, char neg, sd_val_t ** rem, int
    for (int p = mag; p > mag - sig; p--)
    {
       int n = 0;
-      while (n < 9 && ucmp(v, base[n], p) > 0)
+      while (n < 9 && ucmp(v, base[n], p) >= 0)
          n++;
       //debugout ("udiv rem", v, NULL);
       if (n)
@@ -583,23 +586,25 @@ static sd_val_t *udiv(sd_val_t * a, sd_val_t * b, char neg, sd_val_t ** rem, int
       if (!v->sig)
          break;
    }
-   if (round != STRINGDECIMAL_ROUND_TRUNCATE && v->sig)
+   if (round != SD_ROUND_TRUNCATE && v->sig)
    {                            // Rounding
       if (!round)
-         round = STRINGDECIMAL_ROUND_BANKING;   // Default
+         round = SD_ROUND_BANKING;      // Default
       if (neg)
       {                         // reverse logic for +/-
-         if (round == STRINGDECIMAL_ROUND_FLOOR)
-            round = STRINGDECIMAL_ROUND_CEILING;
-         else if (round == STRINGDECIMAL_ROUND_CEILING)
-            round = STRINGDECIMAL_ROUND_FLOOR;
+         if (round == SD_ROUND_FLOOR)
+            round = SD_ROUND_CEILING;
+         else if (round == SD_ROUND_CEILING)
+            round = SD_ROUND_FLOOR;
       }
       int shift = mag - sig;
       int diff = ucmp(v, base[4], shift);
-      if (((round == STRINGDECIMAL_ROUND_UP || round == STRINGDECIMAL_ROUND_CEILING) && v->sig) // Round up anyway
-          || (round == STRINGDECIMAL_ROUND_ROUND && diff >= 0)  // Round 0.5 and above up
-          || (round == STRINGDECIMAL_ROUND_BANKING && diff > 0) // Round up
-          || (round == STRINGDECIMAL_ROUND_BANKING && !diff && (r->d[r->sig - 1] & 1)))
+      if (round == SD_ROUND_UP || // Round up
+		      round == SD_ROUND_CEILING       // Round up
+          || (round == SD_ROUND_ROUND && diff >= 0)     // Round up if 0.5 and above up
+          || (round == SD_ROUND_BANKING && diff > 0)    // Round up if above 0.5
+          || (round == SD_ROUND_BANKING && !diff && (r->d[r->sig - 1] & 1)) // Round up if 0.5 and odd previous digit
+	  )
       {                         // Add one
          if (rem)
          {                      // Adjust remainder, goes negative
@@ -752,30 +757,30 @@ static sd_val_t *srnd(sd_val_t * a, int places, sd_round_t round)
          r = make(a->mag, sig);
          memcpy(r->d, a->d, sig);
       }
-      if (round != STRINGDECIMAL_ROUND_TRUNCATE)
+      if (round != SD_ROUND_TRUNCATE)
       {
          int p = sig;
          char up = 0;
          if (!round)
-            round = STRINGDECIMAL_ROUND_BANKING;
+            round = SD_ROUND_BANKING;
          if (a->neg)
          {                      // reverse logic for +/-
-            if (round == STRINGDECIMAL_ROUND_FLOOR)
-               round = STRINGDECIMAL_ROUND_CEILING;
-            else if (round == STRINGDECIMAL_ROUND_CEILING)
-               round = STRINGDECIMAL_ROUND_FLOOR;
+            if (round == SD_ROUND_FLOOR)
+               round = SD_ROUND_CEILING;
+            else if (round == SD_ROUND_CEILING)
+               round = SD_ROUND_FLOOR;
          }
-         if (round == STRINGDECIMAL_ROUND_CEILING || round == STRINGDECIMAL_ROUND_UP)
+         if (round == SD_ROUND_CEILING || round == SD_ROUND_UP)
          {                      // Up (away from zero) if not exact
             while (p < a->sig && !a->d[p])
                p++;
             if (p < a->sig)
                up = 1;          // not exact
-         } else if (round == STRINGDECIMAL_ROUND_ROUND && a->d[p] >= 5) // Up if .5 or above
+         } else if (round == SD_ROUND_ROUND && a->d[p] >= 5)    // Up if .5 or above
             up = 1;
-         else if (round == STRINGDECIMAL_ROUND_BANKING && a->d[p] > 5)
+         else if (round == SD_ROUND_BANKING && a->d[p] > 5)
             up = 1;             // Up as more than .5
-         else if (round == STRINGDECIMAL_ROUND_BANKING && a->d[p] == 5)
+         else if (round == SD_ROUND_BANKING && a->d[p] == 5)
          {                      // Bankers, check exactly .5
             p++;
             while (p < a->sig && !a->d[p])
@@ -824,10 +829,10 @@ static sd_val_t *srnd(sd_val_t * a, int places, sd_round_t round)
 
 // Maths string functions
 
-char *stringdecimal_add_opts(sd_opts_ss_t o)
+char *stringdecimal_add_opts(stringdecimal_binary_t o)
 {                               // Simple add
-   sd_val_t *A = parse(o.a, sd_copy_opts(o));
-   sd_val_t *B = parse(o.b, sd_copy_opts(o));
+ sd_val_t *A = parse(o.a, nocomma:o.nocomma);
+ sd_val_t *B = parse(o.b, nocomma:o.nocomma);
    sd_val_t *R = sadd(A, B);
    char *ret = output_free(R, 2, A, B);
    if (o.a_free)
@@ -837,10 +842,10 @@ char *stringdecimal_add_opts(sd_opts_ss_t o)
    return ret;
 };
 
-char *stringdecimal_sub_opts(sd_opts_ss_t o)
+char *stringdecimal_sub_opts(stringdecimal_binary_t o)
 {                               // Simple subtract
-   sd_val_t *A = parse(o.a, sd_copy_opts(o));
-   sd_val_t *B = parse(o.b, sd_copy_opts(o));
+ sd_val_t *A = parse(o.a, nocomma:o.nocomma);
+ sd_val_t *B = parse(o.b, nocomma:o.nocomma);
    sd_val_t *R = ssub(A, B);
    char *ret = output_free(R, 2, A, B);
    if (o.a_free)
@@ -850,10 +855,10 @@ char *stringdecimal_sub_opts(sd_opts_ss_t o)
    return ret;
 };
 
-char *stringdecimal_mul_opts(sd_opts_ss_t o)
+char *stringdecimal_mul_opts(stringdecimal_binary_t o)
 {                               // Simple multiply
-   sd_val_t *A = parse(o.a, sd_copy_opts(o));
-   sd_val_t *B = parse(o.b, sd_copy_opts(o));
+ sd_val_t *A = parse(o.a, nocomma:o.nocomma);
+ sd_val_t *B = parse(o.b, nocomma:o.nocomma);
    sd_val_t *R = smul(A, B);
    char *ret = output_free(R, 2, A, B);
    if (o.a_free)
@@ -865,17 +870,17 @@ char *stringdecimal_mul_opts(sd_opts_ss_t o)
 
 char *stringdecimal_div_opts(stringdecimal_div_t o)
 {                               // Simple divide - to specified number of places, with remainder
-   sd_val_t *B = parse(o.b, sd_copy_opts(o));
+ sd_val_t *B = parse(o.b, nocomma:o.nocomma);
    if (B && !B->sig)
    {
       freez(B);
       return NULL;              // Divide by zero
    }
-   sd_val_t *A = parse(o.a, sd_copy_opts(o));
+ sd_val_t *A = parse(o.a, nocomma:o.nocomma);
    sd_val_t *REM = NULL;
    sd_val_t *R = sdiv(A, B, &REM, o.places, o.round);
-   if (o.remp)
-      *o.remp = output(REM);
+   if (o.remainder)
+      *o.remainder = output(REM);
    if (o.a_free)
       freez(o.a);
    if (o.b_free)
@@ -883,9 +888,9 @@ char *stringdecimal_div_opts(stringdecimal_div_t o)
    return output_free(R, 3, A, B, REM);
 };
 
-char *stringdecimal_rnd_opts(sd_opts_s_t o)
+char *stringdecimal_rnd_opts(stringdecimal_unary_t o)
 {                               // Round to specified number of places
-   sd_val_t *A = parse(o.a, sd_copy_opts(o));
+ sd_val_t *A = parse(o.a, nocomma:o.nocomma);
    sd_val_t *R = srnd(A, o.places, o.round);
    char *ret = output_free(R, 1, A);
    if (o.a_free)
@@ -893,10 +898,10 @@ char *stringdecimal_rnd_opts(sd_opts_s_t o)
    return ret;
 };
 
-int stringdecimal_cmp_opts(sd_opts_ss_t o)
+int stringdecimal_cmp_opts(stringdecimal_binary_t o)
 {                               // Compare
-   sd_val_t *A = parse(o.a, sd_copy_opts(o));
-   sd_val_t *B = parse(o.b, sd_copy_opts(o));
+ sd_val_t *A = parse(o.a, nocomma:o.nocomma);
+ sd_val_t *B = parse(o.b, nocomma:o.nocomma);
    int r = scmp(A, B);
    freez(A);
    freez(B);
@@ -963,10 +968,10 @@ sd_p sd_copy(sd_p p)
    return v;
 }
 
-sd_p sd_parse_opts(stringdecimal_places_t o)
+sd_p sd_parse_opts(sd_parse_t o)
 {
    int places = 0;
- sd_val_t *n = parse(o.a, placesp:&places, sd_copy_opts(o));
+ sd_val_t *n = parse(o.a, placesp: &places, nocomma:o.nocomma);
    if (!n)
       return NULL;
    sd_p v = calloc(1, sizeof(*v));
@@ -1014,50 +1019,68 @@ char *sd_output_opts(sd_output_opts_t o)
 {                               // Output
    if (!o.p)
       o.p = &sd_zero;
-   if (o.rational)
-   {                            // rational mode
-      sd_rational(o.p);         // Normalise to integers
-      sd_val_t *rem;
-      sd_val_t *r = sdiv(o.p->n, o.p->d, &rem, o.places, o.round);
-      char *v = NULL;
-      if (!rem->sig)
-         v = output(r);         // No remainder, so integer
-      freez(rem);
-      freez(r);
-      if (v)
-         return v;              // Simple integer
-      char *n = output(o.p->n);
-      char *d = output(o.p->d);
-      char *q = malloc(1 + strlen(d) + 1 + strlen(n) + 1 + 1);
-      if (!q)
-         errx(1, "malloc");
-      sprintf(q, "(%s/%s)", n, d);
-      freez(d);
-      freez(n);
-      if (o.p_free)
-         sd_free(o.p);
-      return q;
-
+   if (!o.format)
+   {                            // Defaults
+      if (!o.places)
+      {
+         o.format = SD_FORMAT_EXTRA;    // Extra for divide
+         o.places = 3;
+      } else
+         o.format = SD_FORMAT_EXACT;    // Exact places
    }
    char *r = NULL;
-   if (o.places == INT_MIN)
-   {                            // Guess number of places
-      o.p = sd_copy(o.p);
-      sd_rational(o.p);
-      int places = o.places;
-      if (places == INT_MIN)
-         places = o.p->d->mag + o.extraplaces;
-      r = output_free(sdiv(o.p->n, o.p->d, NULL, places, o.round), 0);
-      sd_free(o.p);
-   } else
+   switch (o.format)
    {
-      int places = o.places;
-      if (places == INT_MAX)
-         places = o.p->places;
+   case SD_FORMAT_RATIONAL:    // Rational
+      {                         // rational mode
+         sd_p rat = sd_copy(o.p);
+         sd_rational(rat);      // Normalise to integers
+         sd_val_t *rem=NULL;
+         sd_val_t *res = sdiv(rat->n, rat->d, &rem, 0, SD_ROUND_TRUNCATE);
+         if (!rem->sig)
+            r = output(res);    // No remainder, so integer
+         freez(rem);
+         freez(res);
+         if (!r)
+         {                      // Rational
+            char *n = output(rat->n);
+            char *d = output(rat->d);
+            if (asprintf(&r, "(%s/%s)", n, d) < 0)
+               errx(1, "malloc");
+            freez(d);
+            freez(n);
+         }
+         sd_free(rat);
+      }
+      break;
+   case SD_FORMAT_LIMIT:
       if (o.p->d)
-         r = output_free(srnd(sdiv(o.p->n, o.p->d, NULL, places, o.round), places, o.round), 0);        // Simple divide to get answer
+         r = output_free(sdiv(o.p->n, o.p->d, NULL, o.places, o.round), 0);
       else
-         r = output_free(srnd(o.p->n, places, o.round), 0);
+         return output(o.p->n);
+      break;
+   case SD_FORMAT_EXACT:
+      if (o.p->d)
+         r = output_free(srnd(sdiv(o.p->n, o.p->d, NULL, o.places, o.round), o.places, o.round), 0);
+      else
+         r = output_free(srnd(o.p->n, o.places, o.round), 0);
+      break;
+   case SD_FORMAT_EXTRA:
+      if (o.p->d)
+      {
+         sd_p rat = sd_copy(o.p);
+         sd_rational(rat);
+         r = output_free(sdiv(rat->n, rat->d, NULL, rat->d->mag + o.places , o.round), 0);
+         sd_free(rat);
+      } else
+         return output(o.p->n);
+      break;
+   case SD_FORMAT_MAX:
+      if (o.p->d)
+         r = output_free(sdiv(o.p->n, o.p->d, NULL, o.p->places + o.places , o.round), 0);
+       else
+         return output(o.p->n);
+      break;
    }
    if (o.p_free)
       sd_free(o.p);
@@ -1425,7 +1448,7 @@ static void *parse_operand(void *context, const char *p, const char **end)
    stringdecimal_context_t *C = context;
    sd_p v = calloc(1, sizeof(*v));
    assert(v);
- v->n = parse(p, ep: end, placesp:&v->places, sd_copy_opts((*C)));
+ v->n = parse(p, end: end, placesp: &v->places, nocomma:C->nocomma);
    v->d = NULL;
    return v;
 }
@@ -1433,27 +1456,12 @@ static void *parse_operand(void *context, const char *p, const char **end)
 static void *parse_final(void *context, void *v)
 {                               // Final processing
    stringdecimal_context_t *C = context;
+   if (C->raw)
+      return v;
    sd_p V = v;
    if (!V)
       return NULL;
-   if (C->maxplacesp)
-      *(C->maxplacesp) = V->places;
-   char *r = NULL;
-   if (C->maxdivide == INT_MIN)
-   {                            // Guess places
-      sd_rational(V);
-      r = output_free(sdiv(V->n, V->d, NULL, V->d->mag + C->extraplaces, C->round), 0); // Simple divide to get answer
-   } else
-   {
-      if (V->d)
-      {
-         r = output_free(sdiv(V->n, V->d, NULL, C->maxdivide == INT_MAX ? V->places : C->maxdivide, C->round), 0);      // Simple divide to get answer
-         if (!r)
-            C->fail = "Division failure";
-      } else
-         r = output(V->n);      // Last remaining operand is the answer
-   }
-   return r;                    // A string
+ return sd_output(V, places: V->places, places: C->places, format: C->format, round:C->round);
 }
 
 static void parse_dispose(void *context, void *v)
@@ -1654,9 +1662,9 @@ xparse_config_t stringdecimal_xparse = {
 };
 
 // Parse
-char *stringdecimal_eval_opts(stringdecimal_places_t o)
+char *stringdecimal_eval_opts(stringdecimal_unary_t o)
 {
- stringdecimal_context_t context = { maxdivide:o.places, sd_copy_opts(o) };
+ stringdecimal_context_t context = { places: o.places, format: o.format, round: o.round, nocomma:o.nocomma };
    char *ret = xparse(&stringdecimal_xparse, &context, o.a, NULL);
    if (!ret)
       assert(asprintf(&ret, "!!%s at %.*s", context.fail, 10, context.posn) >= 0);
@@ -1668,52 +1676,34 @@ char *stringdecimal_eval_opts(stringdecimal_places_t o)
 // Test function main build
 int main(int argc, const char *argv[])
 {
-   int roundplaces = 2;
-   int divplaces = INT_MIN;     // Use number of places seen
+	int places=0;
    char round = 0;
-   char rnd = 0;
+   char format=0;
    if (argc <= 1)
-      errx(1, "-p<places> to round, -d<places> to limit division, -c/-f/-u/-t/-r/-b to set rounding type (default b)");
+      errx(1, "-p<places>, -f<format>, -r<round>");
    for (int a = 1; a < argc; a++)
    {
       const char *s = argv[a];
       if (*s == '-' && isalpha(s[1]))
       {
-         if (s[1] == 'x')
-         {                      // Simple test of sd
-            sd_p r = sd_div_ff(sd_parse("1.00", NULL), sd_parse("3.1", NULL));
-          fprintf(stderr, "places %d num %s den %s res %s\n", sd_places(r), sd_num(r), sd_den(r), sd_output(r, places: 2, extraplaces: 3, places:INT_MIN));
-            sd_free(r);
-            continue;
-         }
          if (s[1] == 'p')
          {
-            if (s[2])
-            {
-               roundplaces = atoi(s + 2);
-               rnd = 1;
-            } else
-               rnd = 0;
+               places = atoi(s + 2);
             continue;
          }
-         if (s[1] == 'd' && isdigit(s[2]))
+         if (s[1] == 'r')
          {
-            divplaces = atoi(s + 2);
+		 round=s[2];
             continue;
          }
-         if (s[1] && strchr("CFUTRB", toupper(s[1])) && !s[2])
+         if (s[1] == 'f')
          {
-            round = toupper(s[1]);
-            rnd = 1;
+		 format=s[2];
             continue;
          }
          errx(1, "Unknown arg %s", s);
       }
-    char *res = stringdecimal_eval(s, places: (divplaces == INT_MIN && rnd) ? roundplaces : divplaces, round: round, extraplaces:3);
-      if (rnd)
-      {
-       res = stringdecimal_rnd_f(res, places: roundplaces, round: round, extraplaces:3);
-      }
+    char *res = stringdecimal_eval(s,places:places,format:format,round:round);
       if (res)
          printf("%s\n", res);
       freez(res);
