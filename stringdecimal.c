@@ -1674,6 +1674,8 @@ char *stringdecimal_eval_opts(stringdecimal_unary_t o)
    char *ret = xparse(&stringdecimal_xparse, &context, o.a, NULL);
    if (!ret)
       assert(asprintf(&ret, "!!%s at %.*s", context.fail, 10, context.posn) >= 0);
+   if (o.a_free)
+      freez(o.a);
    return ret;
 }
 #endif
