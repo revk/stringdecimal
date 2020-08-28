@@ -44,7 +44,7 @@ typedef enum {
    SD_ROUND_BANKING = 'B',      // Away from zero if above 0.5, or 0.5 exactly and goes to even
 } sd_round_t;
 
-// Padding options (used with "places" argument)
+// Decimal places formatting options (used with "places" argument)
 typedef enum {
    // Default, (i.e. format:0 and places:0 is '+' and 3 places, format:0 and places:non 0 is '=')
    SD_FORMAT_LIMIT = '-',       // Use as many places as necessary, limiting division, no padding 0's
