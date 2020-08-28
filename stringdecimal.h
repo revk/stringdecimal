@@ -55,6 +55,8 @@ typedef enum {
    // places: is added to a guess of number of places for division
    SD_FORMAT_MAX = '>',         // Use as many places as necessary, limited to max places seen in args
    // places: is added to the max places seen
+   SD_FORMAT_INPUT = '*',       // Round to the max places seen in the args
+   // places: is added to the max places seen
    SD_FORMAT_RATIONAL = '/',    // Output as integer or integer/integer, places is not used
 } sd_format_t;
 

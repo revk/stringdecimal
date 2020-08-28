@@ -599,12 +599,12 @@ static sd_val_t *udiv(sd_val_t * a, sd_val_t * b, char neg, sd_val_t ** rem, int
       }
       int shift = mag - sig;
       int diff = ucmp(v, base[4], shift);
-      if (round == SD_ROUND_UP || // Round up
-		      round == SD_ROUND_CEILING       // Round up
+      if (round == SD_ROUND_UP ||       // Round up
+          round == SD_ROUND_CEILING     // Round up
           || (round == SD_ROUND_ROUND && diff >= 0)     // Round up if 0.5 and above up
           || (round == SD_ROUND_BANKING && diff > 0)    // Round up if above 0.5
-          || (round == SD_ROUND_BANKING && !diff && (r->d[r->sig - 1] & 1)) // Round up if 0.5 and odd previous digit
-	  )
+          || (round == SD_ROUND_BANKING && !diff && (r->d[r->sig - 1] & 1))     // Round up if 0.5 and odd previous digit
+          )
       {                         // Add one
          if (rem)
          {                      // Adjust remainder, goes negative
@@ -1035,7 +1035,7 @@ char *sd_output_opts(sd_output_opts_t o)
       {                         // rational mode
          sd_p rat = sd_copy(o.p);
          sd_rational(rat);      // Normalise to integers
-         sd_val_t *rem=NULL;
+         sd_val_t *rem = NULL;
          sd_val_t *res = sdiv(rat->n, rat->d, &rem, 0, SD_ROUND_TRUNCATE);
          if (!rem->sig)
             r = output(res);    // No remainder, so integer
@@ -1065,20 +1065,26 @@ char *sd_output_opts(sd_output_opts_t o)
       else
          r = output_free(srnd(o.p->n, o.places, o.round), 0);
       break;
+   case SD_FORMAT_INPUT:
+      if (o.p->d)
+         r = output_free(srnd(sdiv(o.p->n, o.p->d, NULL, o.p->places + o.places, o.round), o.places, o.round), 0);
+      else
+         r = output_free(srnd(o.p->n, o.p->places + o.places, o.round), 0);
+      break;
    case SD_FORMAT_EXTRA:
       if (o.p->d)
       {
          sd_p rat = sd_copy(o.p);
          sd_rational(rat);
-         r = output_free(sdiv(rat->n, rat->d, NULL, rat->d->mag + o.places , o.round), 0);
+         r = output_free(sdiv(rat->n, rat->d, NULL, rat->d->mag + o.places, o.round), 0);
          sd_free(rat);
       } else
          return output(o.p->n);
       break;
    case SD_FORMAT_MAX:
       if (o.p->d)
-         r = output_free(sdiv(o.p->n, o.p->d, NULL, o.p->places + o.places , o.round), 0);
-       else
+         r = output_free(sdiv(o.p->n, o.p->d, NULL, o.p->places + o.places, o.round), 0);
+      else
          return output(o.p->n);
       break;
    }
@@ -1676,9 +1682,9 @@ char *stringdecimal_eval_opts(stringdecimal_unary_t o)
 // Test function main build
 int main(int argc, const char *argv[])
 {
-	int places=0;
+   int places = 0;
    char round = 0;
-   char format=0;
+   char format = 0;
    if (argc <= 1)
       errx(1, "-p<places>, -f<format>, -r<round>");
    for (int a = 1; a < argc; a++)
@@ -1688,22 +1694,22 @@ int main(int argc, const char *argv[])
       {
          if (s[1] == 'p')
          {
-               places = atoi(s + 2);
+            places = atoi(s + 2);
             continue;
          }
          if (s[1] == 'r')
          {
-		 round=s[2];
+            round = s[2];
             continue;
          }
          if (s[1] == 'f')
          {
-		 format=s[2];
+            format = s[2];
             continue;
          }
          errx(1, "Unknown arg %s", s);
       }
-    char *res = stringdecimal_eval(s,places:places,format:format,round:round);
+    char *res = stringdecimal_eval(s, places: places, format: format, round:round);
       if (res)
          printf("%s\n", res);
       freez(res);
