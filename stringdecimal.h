@@ -60,34 +60,34 @@ typedef enum {
    SD_FORMAT_RATIONAL = '/',    // Output as integer or integer/integer, places is not used
 } sd_format_t;
 
-typedef struct {                // Binary stringdecimal operationns
-   const char *a;
-   const char *b;
-   int places;
-   sd_format_t format;
-   sd_round_t round;
-   unsigned char nocomma:1;
-   unsigned char a_free:1;
-   unsigned char b_free:1;
+typedef struct {                // Binary stringdecimal operations
+   const char *a;		// First argument
+   const char *b;		// Second argument
+   int places;			// Number of places
+   sd_format_t format;		// Decimal places formatting
+   sd_round_t round;		// Rounding
+   unsigned char nocomma:1;	// Do not allow commas when parsing
+   unsigned char a_free:1;	// Free first argument
+   unsigned char b_free:1;	// Free second argument
 } stringdecimal_binary_t;
 typedef struct {                // Unary stringdecimal operations
-   const char *a;
-   int places;
-   sd_format_t format;
-   sd_round_t round;
-   unsigned char nocomma:1;
-   unsigned char a_free:1;
+   const char *a;		// Argument
+   int places;			// Number of places
+   sd_format_t format;		// Decimal places formatting
+   sd_round_t round;		// Rounding
+   unsigned char nocomma:1;	// Do not allow commas when parsing
+   unsigned char a_free:1;	// Free argument
 } stringdecimal_unary_t;
 typedef struct {                // Division stringdecimal operation
-   const char *a;
-   const char *b;
-   int places;
-   sd_format_t format;
-   sd_round_t round;
-   char **remainder;
-   unsigned char nocomma:1;
-   unsigned char a_free:1;
-   unsigned char b_free:1;
+   const char *a;		// First argument
+   const char *b;		// Second argument
+   int places;			// Number of places
+   sd_format_t format;		// Decimal places formatting
+   sd_round_t round;		// Rounding
+   char **remainder;		// Store remainder value
+   unsigned char nocomma:1;	// Do not allow commas when parsing
+   unsigned char a_free:1;	// Free first argument
+   unsigned char b_free:1;	// Free second argument
 } stringdecimal_div_t;
 
 // These _cf, _fc, _ff options free one or both args
@@ -127,17 +127,17 @@ typedef struct sd_s sd_t;
 typedef sd_t *sd_p;
 
 typedef struct {                // Parse options
-   const char *a;
-   const char **end;
-   unsigned char a_free:1;
-   unsigned char nocomma:1;
+   const char *a;		// Argument string
+   const char **end;		// Where to store pointer for next character after parsed value
+   unsigned char nocomma:1;	// Do not allow commas when parsing
+   unsigned char a_free:1;	// Free argument
 } sd_parse_t;
 typedef struct {                // Output options
-   sd_p p;
-   int places;
-   sd_format_t format;
-   sd_round_t round;
-   unsigned char p_free:1;
+   sd_p p;			// Argument
+   int places;			// Number of places
+   sd_format_t format;		// Decimal places formatting
+   sd_round_t round;		// Rounding
+   unsigned char p_free:1;	// Free argument
 } sd_output_opts_t;
 
 void *sd_free(sd_p);            // Free sd_p
