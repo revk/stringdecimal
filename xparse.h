@@ -30,14 +30,18 @@ typedef void xparse_free(void *context, void *v);
 typedef void xparse_fail(void *context, const char *failure, const char *posn);
 
 // The operator list - operators that are a subset of another must be later in the list
-typedef struct xparse_op_s xparse_op_t;
-struct xparse_op_s {
+typedef struct {
    const char *op;              // Final entry should have NULL here, else this is the operator name
    const char *op2;             // Alternative operator name, e.g. unicode version
    char level;                  // Operator precedence 0-9
    xparse_operate *func;        // Function to do operation
    void *data;                  // Passed to xparse_operate
-};
+} xparse_op_t;
+
+typedef struct {
+   const char *f;               // Operand mapping table
+   const char *t;
+} xparse_map_t;
 
 // This is the top level config
 typedef struct xparse_config_s xparse_config_t;
@@ -50,10 +54,14 @@ struct xparse_config_s {
    xparse_final *final;         // final process operand
    xparse_free *dispose;        // Dispose of an operand
    xparse_fail *fail;           // Failure report
+   xparse_map_t *map;           // Operand mapping
    unsigned char eol:1;         // Stop at end of line
 };
 
 // The parse function
 void *xparse(xparse_config_t * config, void *context, const char *sum, const char **end);
+
+extern const char *xparse_sub[];
+extern const char *xparse_sup[];
 
 #endif

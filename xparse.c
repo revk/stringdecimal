@@ -18,6 +18,9 @@
 #include <ctype.h>
 #include "xparse.h"
 
+const char *xparse_sub[10] = { "₀", "₁", "₂", "₃", "₄", "₅", "₆", "₇", "₈", "₉" };
+const char *xparse_sup[11] = { "⁰", "¹", "²", "³", "⁴", "⁵", "⁶", "⁷", "⁸", "⁹"};
+
 //#define DEBUG
 
 // The parse function
@@ -109,7 +112,7 @@ void *xparse(xparse_config_t * config, void *context, const char *sum, const cha
       if (args < 0)
          args = 0 - args;       // Used for prefix unary ops, don't run stack
       else
-         while (!fail&&operators && operator[operators - 1].level >= level && operator[operators - 1].args)
+         while (!fail && operators && operator[operators - 1].level >= level && operator[operators - 1].args)
             operate();          // Clear stack of pending ops
       if (operators + 1 > operatormax)
          operator = realloc(operator, (operatormax += 10) * sizeof(*operator));
@@ -134,9 +137,19 @@ void *xparse(xparse_config_t * config, void *context, const char *sum, const cha
       return 0;
    }
    const char *posn = sum;
-   while (*sum && !fail)
+   const char *back = NULL;
+   const char *isback(void) {   // Back link
+      if (*sum || !back)
+         return sum;
+      sum = back;
+      back = NULL;
+      return sum;
+   }
+   while (!fail)
    {
-      posn = sum;
+      posn = back ? : sum;
+      if (!*isback())
+         break;
       // Prefix operators and open brackets
       if (*sum == '!' && sum[1] == '!')
       {
@@ -145,6 +158,19 @@ void *xparse(xparse_config_t * config, void *context, const char *sum, const cha
       }
       while (1)
       {
+         if (!*isback())
+            break;
+         if (!back && config->map)
+         {
+            int l;
+            for (int q = 0; config->map[q].f; q++)
+               if ((l = comp(config->map[q].f, sum)))
+               {
+                  back = sum + l;
+                  sum = config->map[q].t;
+                  break;
+               }
+         }
          if (*sum == '(')
          {
             level += 20;
@@ -196,6 +222,8 @@ void *xparse(xparse_config_t * config, void *context, const char *sum, const cha
       // Postfix operators and close brackets
       while (1)
       {
+         if (!*isback())
+            break;
          if (*sum == ')')
          {
             sum++;
@@ -229,7 +257,7 @@ void *xparse(xparse_config_t * config, void *context, const char *sum, const cha
          }
          break;
       }
-      if (!*sum || (config->eol && (unsigned char) *sum < ' '))
+      if (!*isback() || (config->eol && (unsigned char) *sum < ' '))
       {
          while (sum > was && isspace(sum[-1]))
             sum--;
@@ -238,6 +266,14 @@ void *xparse(xparse_config_t * config, void *context, const char *sum, const cha
       // Operator
       int q = 0,
           l;
+      if (!back)
+         for (q = 0; q < sizeof(xparse_sup)/sizeof(*xparse_sup); q++)
+            if ((l = comp(xparse_sup[q], sum)))
+            {
+               back = sum;
+               sum = "^";       // Implied power operator
+               break;
+            }
       if (config->binary)
       {
          for (q = 0; config->binary[q].op; q++)
@@ -266,7 +302,7 @@ void *xparse(xparse_config_t * config, void *context, const char *sum, const cha
          for (q = 0; config->ternary[q].op; q++)
             if ((l = comp(config->ternary[q].op2, sum)))
             {
-               while (!fail&&operators && (operator[operators - 1].level > level + config->ternary[q].level || (operator[operators - 1].level == level + config->ternary[q].level && operator[operators - 1].args == 3)))
+               while (!fail && operators && (operator[operators - 1].level > level + config->ternary[q].level || (operator[operators - 1].level == level + config->ternary[q].level && operator[operators - 1].args == 3)))
                   operate();    // Clear stack of pending ops
                if (operators && operator[operators - 1].op == config->ternary[q].op && operator[operators - 1].args == 0 && operator[operators - 1].level == level + config->ternary[q].level)
                {                // matches

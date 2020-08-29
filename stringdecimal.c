@@ -38,6 +38,8 @@
 char sd_comma = ',';
 char sd_point = '.';
 
+static const char *sup[10] = { "⁰", "¹", "²", "³", "⁴", "⁵", "⁶", "⁷", "⁸", "⁹" };
+
 #define	si		\
 	u(Y,24)		\
 	u(Z,21)		\
@@ -164,6 +166,37 @@ typedef struct {
 #define	parse(...)	parse_opts((parse_t){__VA_ARGS__})
 static sd_val_t *parse_opts(parse_t o)
 {                               // Parse in to s, and return next character
+   int comp(const char *a, const char *b) {
+      if (!a || !b)
+         return 0;
+      int l = 0;
+      while (a[l] && b[l] && a[l] == b[l])
+         l++;
+      if (!a[l])
+         return l;
+      return 0;
+   }
+   char numeric = 0;
+   int getdigit(const char *p, const char **pp) {
+      if (numeric >= 0 && isdigit(*p))
+      {
+         if (pp)
+            (*pp) = p + 1;
+         numeric = 1;           // Only expecting digits now
+         return *p - '0';
+      }
+      if (numeric > 0)
+         return -1;             // Looking for numbers only
+      for (int q = 0, l; q < 10; q++)
+         if ((l = comp(sup[q], p)))
+         {
+            if (pp)
+               *pp = p + l;
+            numeric = -1;
+            return q;
+         }
+      return -1;
+   }
    if (!o.v)
       return NULL;
    if (o.end)
@@ -179,72 +212,73 @@ static sd_val_t *parse_opts(parse_t o)
       neg ^= 1;                 // negative
       o.v++;
    }
-   if (!isdigit(*o.v) && *o.v != sd_point)
+   if (getdigit(o.v, NULL) < 0 && *o.v != sd_point)
       return NULL;              // Unexpected, we do allow leading dot
-   while (*o.v == '0')
-      o.v++;
+   while (!getdigit(o.v, NULL))
+      getdigit(o.v, &o.v);
    sd_val_t *s = NULL;
    const char *digits = o.v;
-   if (isdigit(*o.v))
+   if (getdigit(o.v, NULL) >= 0)
    {                            // Some initial digits
       int d = 0,
           p = 0,
           t = 0;
       while (*o.v)
       {
-         if (!o.nocomma && sd_comma && *o.v == sd_comma && isdigit(o.v[1]) && isdigit(o.v[2]) && isdigit(o.v[3]) && !isdigit(o.v[4]))
-         {                      // Skip valid commands in numbers
+         const char *q = o.v;
+         if (!o.nocomma && sd_comma && *q++ == sd_comma && getdigit(q, &q) >= 0 && getdigit(q, &q) >= 0 && getdigit(q, &q) >= 0 && getdigit(q, &q) < 0)
+         {                      // Skip valid commas in numbers
             o.v++;
             continue;
          }
-         if (!isdigit(*o.v))
+         int v;
+         if ((v = getdigit(o.v, &o.v)) < 0)
             break;
-         if (*o.v == '0')
+         if (!v)
             t++;                // count trailing zeros
          else
             t = 0;
          d++;
-         o.v++;
       }
       if (*o.v == sd_point)
       {
          o.v++;
-         while (isdigit(*o.v))
+         int v;
+         while ((v = getdigit(o.v, &o.v)) >= 0)
          {
             places++;
-            if (*o.v == '0')
+            if (!v)
                t++;             // count trailing zeros
             else
                t = 0;
             p++;
-            o.v++;
          }
       }
       s = make(d - 1, d + p - t);
    } else if (*o.v == sd_point)
    {                            // No initial digits
       o.v++;
-      if (!isdigit(*o.v))
+      if (getdigit(o.v, NULL) < 0)
          return NULL;
       int mag = -1,
           sig = 0,
           t = 0;
-      while (*o.v == '0')
+      while (!getdigit(o.v, NULL))
       {
+         getdigit(o.v, &o.v);
          places++;
          mag--;
-         o.v++;
       }
       digits = o.v;
-      while (isdigit(*o.v))
+      int v;
+      while ((v = getdigit(o.v, &o.v)) >= 0)
       {
          places++;
-         if (*o.v == '0')
+         if (!v)
             t++;                // count trailing zeros
          else
             t = 0;
          sig++;
-         o.v++;
       }
       s = make(mag, sig - t);
    } else
@@ -253,11 +287,13 @@ static sd_val_t *parse_opts(parse_t o)
    int q = 0;
    while (*digits && q < s->sig)
    {
-      if (isdigit(*digits))
-         s->d[q++] = *digits - '0';
-      digits++;
+      int v = getdigit(digits, &digits);
+      if (v >= 0)
+         s->d[q++] = v;
+      else
+         digits++;              // Advance over non digits, e.g. comma, point
    }
-   if ((*o.v == 'e' || *o.v == 'E') && (o.v[1] == '+' || o.v[1] == '-' || isdigit(o.v[1])))
+   if ((*o.v == 'e' || *o.v == 'E') && (((o.v[1] == '+' || o.v[1] == '-') && getdigit(o.v + 2, NULL) >= 0) || getdigit(o.v + 1, NULL) >= 0))
    {                            // Exponent (may clash with E SI prefix if not careful)
       o.v++;
       int sign = 1,
@@ -269,8 +305,9 @@ static sd_val_t *parse_opts(parse_t o)
          o.v++;
          sign = -1;
       }
-      while (isdigit(*o.v))
-         e = e * 10 + *o.v++ - '0';
+      int v;
+      while ((v = getdigit(o.v, &o.v)) >= 0)
+         e = e * 10 + v;        // Only advances if digit
       s->mag += e * sign;
    }
    if (o.end)
@@ -1560,7 +1597,6 @@ int sd_cmp_cf(sd_p l, sd_p r)
 #ifdef	EVAL
 // Parsing
 #include "xparse.c"
-
 // Parse Support functions
 static void *parse_operand(void *context, const char *p, const char **end)
 {                               // Parse an operand, malloc value (or null if error), set end
@@ -1780,6 +1816,30 @@ static xparse_op_t parse_ternary[] = {
    { NULL },
 };
 
+static xparse_map_t parse_map[] = {
+   { "¼", "(1/4)" },
+   { "½", "(1/2)" },
+   { "¾", "(3/4)" },
+   { "⅐", "(1/7)" },
+   { "⅑", "(1/9)" },
+   { "⅒", "(1/10)" },
+   { "⅓", "(1/3)" },
+   { "⅔", "(2/3)" },
+   { "⅕", "(1/5)" },
+   { "⅖", "(2/5)" },
+   { "⅗", "(3/5)" },
+   { "⅘", "(4/5)" },
+   { "⅙", "(1/6)" },
+   { "⅚", "(5/6)" },
+   { "⅛", "(1/8)" },
+   { "⅜", "(3/8)" },
+   { "⅝", "(5/8)" },
+   { "⅞", "(7/8)" },
+   { "⅟", "1/" },
+   { "↉", "(0/3)" },
+   { NULL },
+};
+
 static xparse_op_t parse_post[] = {
 #define	u(p,n)	{ op:#p,level:9,func:parse_ieee,data:(void*)n},
    ieee
@@ -1800,6 +1860,7 @@ xparse_config_t stringdecimal_xparse = {
  final:parse_final,
  dispose:parse_dispose,
  fail:parse_fail,
+ map:parse_map,
 };
 
 // Parse
@@ -1823,8 +1884,8 @@ int main(int argc, const char *argv[])
    int places = 0;
    char *round = "";
    char *format = "";
-   char comma = 0;
-   char nocomma = 0;
+   int comma = 0;
+   int nocomma = 0;
    {                            // POPT
       poptContext optCon;       // context for parsing command-line options
       const struct poptOption optionsTable[] = {
@@ -1835,14 +1896,11 @@ int main(int argc, const char *argv[])
          { "comma", 'c', POPT_ARG_NONE, &comma, 0, "Comma in output" },
          POPT_AUTOHELP { }
       };
-
       optCon = poptGetContext(NULL, argc, argv, optionsTable, 0);
       poptSetOtherOptionHelp(optCon, "Sums");
-
       int c;
       if ((c = poptGetNextOpt(optCon)) < -1)
          errx(1, "%s: %s\n", poptBadOption(optCon, POPT_BADOPTION_NOALIAS), poptStrerror(c));
-
       if (!poptPeekArg(optCon))
       {
          poptPrintUsage(optCon, stderr, 0);
