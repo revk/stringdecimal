@@ -16,7 +16,8 @@ struct stringdecimal_context_s {
    sd_round_t round;
    const char *fail;
    const char *posn;
-   unsigned char nocomma:1;
+   unsigned char nocomma:1;     // Do not allow comma in parse
+   unsigned char comma:1;       // Add comma in output
    unsigned char raw:1;         // Raw output, i.e. sd not a string
 };
 extern xparse_config_t stringdecimal_xparse;
