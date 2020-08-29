@@ -187,7 +187,7 @@ static sd_val_t *parse_opts(parse_t o)
           t = 0;
       while (*o.v)
       {
-         if (!o.nocomma && *o.v == sd_comma && isdigit(o.v[1]) && isdigit(o.v[2]) && isdigit(o.v[3]) && !isdigit(o.v[4]))
+         if (!o.nocomma && sd_comma && *o.v == sd_comma && isdigit(o.v[1]) && isdigit(o.v[2]) && isdigit(o.v[3]) && !isdigit(o.v[4]))
          {                      // Skip valid commands in numbers
             o.v++;
             continue;
@@ -297,6 +297,8 @@ static char *output(sd_val_t * s, char comma)
 {                               // Convert to a string (malloced)
    if (!s)
       return NULL;
+   if (!sd_comma)
+      comma = 0;                // No commas
    int len = s->sig;            // sig figs
    if (s->mag + 1 > s->sig)
       len = s->mag + 1;         // mag
@@ -1746,7 +1748,10 @@ int main(int argc, const char *argv[])
          }
          if (s[1] == 'c')
          {
-            comma = 1 - comma;
+            if (s[2])
+               sd_comma = s[2];
+            else
+               comma = 1 - comma;
             continue;
          }
          if (s[1] == 'p')
