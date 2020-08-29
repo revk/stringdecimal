@@ -1782,11 +1782,21 @@ static void *parse_cond(void *context, void *data, void **a)
 
 // List of functions - as pre C operator precedence with comma as 1, and postfix as 15
 // e.g. https://www.tutorialspoint.com/cprogramming/c_operators_precedence.htm
-static xparse_op_t parse_uniary[] = {
+static xparse_op_t parse_unary[] = {
    // Postfix would be 15
  { op: "-", level: 14, func:parse_neg },
  { op: "!", op2: "¬", level: 14, func:parse_not },
  { op: "|", op2: "||", level: 14, func:parse_abs },
+   { NULL },
+};
+
+static xparse_op_t parse_post[] = {
+#define	u(p,n)	{ op:#p,level:15,func:parse_ieee,data:(void*)n},
+   ieee
+#undef u
+#define	u(p,n)	{ op:#p,level:15,func:parse_si,data:(void*)n},
+       si
+#undef u
    { NULL },
 };
 
@@ -1843,19 +1853,9 @@ static xparse_map_t parse_map[] = {
    { NULL },
 };
 
-static xparse_op_t parse_post[] = {
-#define	u(p,n)	{ op:#p,level:15,func:parse_ieee,data:(void*)n},
-   ieee
-#undef u
-#define	u(p,n)	{ op:#p,level:15,func:parse_si,data:(void*)n},
-       si
-#undef u
-   { NULL },
-};
-
 // Parse Config (optionally public to allow building layers on top)
 xparse_config_t stringdecimal_xparse = {
- unary:parse_uniary,
+ unary:parse_unary,
  post:parse_post,
  binary:parse_binary,
  ternary:parse_ternary,
