@@ -1105,40 +1105,39 @@ char *sd_output_opts(sd_output_opts_t o)
       break;
    case SD_FORMAT_EXP:
       {
+         sd_val_t *q = NULL;
          sd_p c = sd_copy(o.p);
          int exp = c->n->mag;
+         // Work out exp
          if (c->d)
             exp -= c->d->mag;
          c->n->mag -= exp;
-         char *v;
-         sd_val_t *q = NULL;
-         if (c->d)
+         if (c->d && ucmp(c->n, c->d, 0) < 0)
          {
-            if (ucmp(c->n, c->d, 0) < 0)
-            {
-               exp--;
-               c->n->mag++;
-            }
-            q = srnd(sdiv(c->n, c->d, NULL, o.places, o.round), o.places, o.round);
-            if (q->mag)
-            {                   // Allow for rounding
-               exp += q->mag;
-               c->n->mag -= q->mag;
-               freez(q);
-               q = srnd(sdiv(c->n, c->d, NULL, o.places, o.round), o.places, o.round);
-            }
-         } else
-         {
-            q = srnd(c->n, o.places, o.round);
-            if (q->mag)
-            {                   // Allow for rounding
-               exp += q->mag;
-               c->n->mag -= q->mag;
-               freez(q);
-               q = srnd(c->n, o.places, o.round);
-            }
+            exp--;
+            c->n->mag++;
          }
-       v = output_f(q, comma:o.comma);
+         void try(void) {       // Try formatting - we have to allow for possibly rounding up and adding a digit, so may have to try twice
+            freez(q);
+            if (c->d)
+            {
+               int p = o.places;
+               if (p < 0)
+                  p = (c->n->sig > c->d->sig ? c->n->sig : c->d->sig) - p-1;
+               q = srnd(sdiv(c->n, c->d, NULL, p, o.round), p, o.round);
+            } else if (o.places < 0)
+               q = copy(c->n);  // Just do as many digits as needed
+            else
+               q = srnd(c->n, o.places, o.round);
+         }
+         try();
+         if (q->mag > 0)
+         {                      // Rounded up, try again
+            exp += q->mag;
+            c->n->mag -= q->mag;
+            try();
+         }
+       char *v = output_f(q, comma:o.comma);
          if (asprintf(&r, "%se%+d", v, exp) < 0)
             errx(1, "malloc");
          freez(v);
@@ -1594,6 +1593,13 @@ static void *parse_neg(void *context, void *data, void **a)
    return A;
 }
 
+static void *parse_abs(void *context, void *data, void **a)
+{
+   sd_p A = *a;
+   A->n->neg = 0;
+   return A;
+}
+
 static void *parse_not(void *context, void *data, void **a)
 {
    sd_p A = *a;
@@ -1663,6 +1669,7 @@ static xparse_op_t parse_uniary[] = {
    // Postfix would be 15
  { op: "-", level: 14, func:parse_neg },
  { op: "!", op2: "¬", level: 14, func:parse_not },
+ { op: "|", op2: "||", level: 14, func:parse_abs },
    { NULL },
 };
 

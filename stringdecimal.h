@@ -63,7 +63,7 @@ typedef enum {
    SD_FORMAT_INPUT = '*',       // Round to the max places seen in the args
    // places: is added to the max places seen
    SD_FORMAT_EXP = 'e',         // Exponent (scientific notation)
-   // Places: number of places in mantissa
+   // Places: fixed number of places in mantissa, negative places make a guess
    SD_FORMAT_RATIONAL = '/',    // Output as integer or integer/integer, places is not used
 } sd_format_t;
 
