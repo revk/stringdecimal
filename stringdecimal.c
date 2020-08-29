@@ -1872,7 +1872,7 @@ char *stringdecimal_eval_opts(stringdecimal_unary_t o)
  stringdecimal_context_t context = { places: o.places, format: o.format, round: o.round, nocomma: o.nocomma, comma:o.comma };
    char *ret = xparse(&stringdecimal_xparse, &context, o.a, NULL);
    if (!ret)
-      assert(asprintf(&ret, "!!%s at %.*s", context.fail, 10, context.posn) >= 0);
+      assert(asprintf(&ret, "!!%s at %.*s", context.fail, 10, context.posn && *context.posn ? context.posn : "[end]") >= 0);
    if (o.a_free)
       freez(o.a);
    return ret;
