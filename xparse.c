@@ -109,7 +109,7 @@ void *xparse(xparse_config_t * config, void *context, const char *sum, const cha
       if (args < 0)
          args = 0 - args;       // Used for prefix unary ops, don't run stack
       else
-         while (operators && operator[operators - 1].level >= level && operator[operators - 1].args)
+         while (!fail&&operators && operator[operators - 1].level >= level && operator[operators - 1].args)
             operate();          // Clear stack of pending ops
       if (operators + 1 > operatormax)
          operator = realloc(operator, (operatormax += 10) * sizeof(*operator));
@@ -133,8 +133,10 @@ void *xparse(xparse_config_t * config, void *context, const char *sum, const cha
          return l;
       return 0;
    }
+   const char *posn = sum;
    while (*sum && !fail)
    {
+      posn = sum;
       // Prefix operators and open brackets
       if (*sum == '!' && sum[1] == '!')
       {
@@ -264,7 +266,7 @@ void *xparse(xparse_config_t * config, void *context, const char *sum, const cha
          for (q = 0; config->ternary[q].op; q++)
             if ((l = comp(config->ternary[q].op2, sum)))
             {
-               while (operators && (operator[operators - 1].level > level + config->ternary[q].level || (operator[operators - 1].level == level + config->ternary[q].level && operator[operators - 1].args == 3)))
+               while (!fail&&operators && (operator[operators - 1].level > level + config->ternary[q].level || (operator[operators - 1].level == level + config->ternary[q].level && operator[operators - 1].args == 3)))
                   operate();    // Clear stack of pending ops
                if (operators && operator[operators - 1].op == config->ternary[q].op && operator[operators - 1].args == 0 && operator[operators - 1].level == level + config->ternary[q].level)
                {                // matches
@@ -297,8 +299,8 @@ void *xparse(xparse_config_t * config, void *context, const char *sum, const cha
       free(operand);
    if (operator)
       free(operator);
-   if (fail)
-      config->fail(context, fail, sum);
+   if (fail && config->fail)
+      config->fail(context, fail, posn);
    if (end)
       *end = sum;
    return v;

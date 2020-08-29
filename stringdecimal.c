@@ -90,6 +90,11 @@ static sd_val_t one = { 0, 1, (char[])
    { 1 }
 };
 
+static sd_val_t two = { 0, 1, (char[])
+   { 2 }
+};
+
+
 //static sd_val_t two = { 0, 1, (char[]) { 2 } };
 
 struct sd_s {
@@ -1416,6 +1421,66 @@ sd_p sd_div_cf(sd_p l, sd_p r)
    return o;
 };
 
+sd_p sd_pow(sd_p l, sd_p r)
+{
+   if (r->n->neg)
+      return NULL;
+   sd_val_t *p = NULL;
+   sd_val_t *rem = NULL;
+   p = udiv(r->n, r->d ? : &one, 0, &rem, 0, SD_ROUND_TRUNCATE);
+   if (rem->sig)
+   {
+      freez(p);
+      freez(rem);
+      return NULL;              // Not integer
+   }
+   freez(rem);
+   if (p->sig > p->mag + 1)
+   {                            // Not integer
+      freez(p);
+      return NULL;
+   }
+   sd_p m = sd_copy(l);
+   sd_p res = sd_int(1);
+   while (p->sig)
+   {
+      sd_val_t *p2 = udiv(p, &two, 0, &rem, 0, SD_ROUND_TRUNCATE);
+      freez(p);
+      p = p2;
+      if (rem->sig)
+         res = sd_mul_fc(res, m);
+      freez(rem);
+      if (!p->sig)
+         break;
+      m = sd_mul_fc(m, m);
+   }
+   freez(p);
+   sd_free(m);
+   return res;
+}
+
+sd_p sd_pow_ff(sd_p l, sd_p r)
+{                               // Integer power free all args
+   sd_p o = sd_pow(l, r);
+   sd_free(l);
+   sd_free(r);
+   return o;
+};
+
+sd_p sd_pow_fc(sd_p l, sd_p r)
+{                               // Integer power free first arg
+   sd_p o = sd_pow(l, r);
+   sd_free(l);
+   return o;
+};
+
+sd_p sd_pow_cf(sd_p l, sd_p r)
+{                               // Integer power free second arg
+   sd_p o = sd_pow(l, r);
+   sd_free(r);
+   return o;
+};
+
 int sd_abs_cmp(sd_p l, sd_p r)
 {                               // Compare absolute values
    if (!l)
@@ -1526,7 +1591,8 @@ static void parse_dispose(void *context, void *v)
 static void parse_fail(void *context, const char *failure, const char *posn)
 {                               // Reporting an error
    stringdecimal_context_t *C = context;
-   C->fail = failure;
+   if (!C->fail)
+      C->fail = failure;
    C->posn = posn;
 }
 
@@ -1584,6 +1650,17 @@ static void *parse_div(void *context, void *data, void **a)
 static void *parse_mul(void *context, void *data, void **a)
 {
    return sd_mul(a[0], a[1]);
+}
+
+static void *parse_pow(void *context, void *data, void **a)
+{
+   stringdecimal_context_t *C = context;
+   sd_p L = a[0],
+       R = a[1];
+   sd_p o = sd_pow(L, R);
+   if (!o)
+      C->fail = "Power must be positive integer";
+   return o;
 }
 
 static void *parse_neg(void *context, void *data, void **a)
@@ -1665,6 +1742,7 @@ static void *parse_cond(void *context, void *data, void **a)
 }
 
 // List of functions - as pre C operator precedence with comma as 1, and postfix as 15
+// e.g. https://www.tutorialspoint.com/cprogramming/c_operators_precedence.htm
 static xparse_op_t parse_uniary[] = {
    // Postfix would be 15
  { op: "-", level: 14, func:parse_neg },
@@ -1674,6 +1752,7 @@ static xparse_op_t parse_uniary[] = {
 };
 
 static xparse_op_t parse_binary[] = {
+ { op: "^", level: 14, func:parse_pow },
  { op: "/", op2: "÷", level: 13, func:parse_div },
  { op: "*", op2: "×", level: 13, func:parse_mul },
    // % would be 14, we should add that

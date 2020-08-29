@@ -196,6 +196,10 @@ sd_p sd_div(sd_p, sd_p);        // Divide
 sd_p sd_div_ff(sd_p, sd_p);     // Divide free all args
 sd_p sd_div_fc(sd_p, sd_p);     // Divide free first arg
 sd_p sd_div_cf(sd_p, sd_p);     // Divide free second arg
+sd_p sd_pow(sd_p, sd_p);        // Integer power
+sd_p sd_pow_ff(sd_p, sd_p);     // Integer power free all args
+sd_p sd_pow_fc(sd_p, sd_p);     // Integer power free first arg
+sd_p sd_pow_cf(sd_p, sd_p);     // Integer power free second arg
 int sd_cmp(sd_p, sd_p);         // Compare
 int sd_cmp_ff(sd_p, sd_p);      // Compare free all args
 int sd_cmp_fc(sd_p, sd_p);      // Compare free first arg
