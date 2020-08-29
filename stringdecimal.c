@@ -1121,10 +1121,10 @@ char *sd_output_opts(sd_output_opts_t o)
             freez(q);
             if (c->d)
             {
-               int p = o.places;
-               if (p < 0)
-                  p = (c->n->sig > c->d->sig ? c->n->sig : c->d->sig) - p-1;
-               q = srnd(sdiv(c->n, c->d, NULL, p, o.round), p, o.round);
+               if (o.places < 0)
+                  q = sdiv(c->n, c->d, NULL, (c->n->sig > c->d->sig ? c->n->sig : c->d->sig) - o.places - 1, o.round);
+               else
+                  q = srnd(sdiv(c->n, c->d, NULL, o.places, o.round), o.places, o.round);
             } else if (o.places < 0)
                q = copy(c->n);  // Just do as many digits as needed
             else
