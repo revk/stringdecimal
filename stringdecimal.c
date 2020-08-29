@@ -1114,22 +1114,26 @@ char *sd_output_opts(sd_output_opts_t o)
          sd_val_t *q = NULL;
          if (c->d)
          {
-            q = srnd(sdiv(c->n, c->d, NULL, o.places, o.round), o.places, o.round);
-            if (q->mag < 0)
-            {                   // We can't use ucmp for this as rounding could cause it to overflow to next digit, so may as well just try twice
+            if (ucmp(c->n, c->d, 0) < 0)
+            {
                exp--;
                c->n->mag++;
+            }
+            q = srnd(sdiv(c->n, c->d, NULL, o.places, o.round), o.places, o.round);
+            if (q->mag)
+            {                   // Allow for rounding
+               exp += q->mag;
+               c->n->mag -= q->mag;
                freez(q);
                q = srnd(sdiv(c->n, c->d, NULL, o.places, o.round), o.places, o.round);
             }
-          v = output_f(q, comma:o.comma);
          } else
          {
             q = srnd(c->n, o.places, o.round);
-            if (q->mag > 0)
-            {
-               exp++;
-               c->n->mag--;
+            if (q->mag)
+            {                   // Allow for rounding
+               exp += q->mag;
+               c->n->mag -= q->mag;
                freez(q);
                q = srnd(c->n, o.places, o.round);
             }
