@@ -33,7 +33,7 @@
 // https://www.revk.uk/2020/08/pseudo-c-using-cpp.html
 
 
-extern char sd_comma;           // Comma separator character
+extern char sd_comma;           // Comma thousands character
 extern char sd_point;           // Decimal point character
 
 // Rounding options
@@ -49,8 +49,9 @@ typedef enum {
 } sd_round_t;
 
 // Decimal places formatting options (used with "places" argument)
+// Default: If format is 0 (i.e. not set) and places is 0, then a format of '+' and places of 3 are used
+// Default: If format is 0 and places is non zero then a format of '=' is used
 typedef enum {
-   // Default, (i.e. format:0 and places:0 is '+' and 3 places, format:0 and places:non 0 is '=')
    SD_FORMAT_LIMIT = '-',       // Use as many places as necessary, limiting division, no padding 0's
    // places: sets the maximum for division, but more places may be used if not division
    SD_FORMAT_EXACT = '=',       // Include padding 0's as needed to specified number of places
