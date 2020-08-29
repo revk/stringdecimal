@@ -1844,10 +1844,10 @@ static xparse_map_t parse_map[] = {
 };
 
 static xparse_op_t parse_post[] = {
-#define	u(p,n)	{ op:#p,level:9,func:parse_ieee,data:(void*)n},
+#define	u(p,n)	{ op:#p,level:15,func:parse_ieee,data:(void*)n},
    ieee
 #undef u
-#define	u(p,n)	{ op:#p,level:9,func:parse_si,data:(void*)n},
+#define	u(p,n)	{ op:#p,level:15,func:parse_si,data:(void*)n},
        si
 #undef u
    { NULL },
