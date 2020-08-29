@@ -1738,54 +1738,46 @@ char *stringdecimal_eval_opts(stringdecimal_unary_t o)
 
 #ifndef LIB
 // Test function main build
+#include <popt.h>
 int main(int argc, const char *argv[])
 {
    int places = 0;
-   char round = 0;
-   char format = 0;
+   char *round = "";
+   char *format = "";
    char comma = 0;
    char nocomma = 0;
-   if (argc <= 1)
-      errx(1, "-p<places>, -f<format>, -r<round>, -c, -n");
-   for (int a = 1; a < argc; a++)
-   {
-      const char *s = argv[a];
-      if (*s == '-' && isalpha(s[1]))
+   {                            // POPT
+      poptContext optCon;       // context for parsing command-line options
+      const struct poptOption optionsTable[] = {
+         { "places", 'p', POPT_ARG_INT, &places, 0, "Places", "N" },
+         { "format", 'f', POPT_ARG_STRING, &format, 0, "Format", "-/=/+/>/*/e//" },
+         { "round", 'r', POPT_ARG_STRING, &round, 0, "Rounding", "T/U/F/C/R/B" },
+         { "no-comma", 'n', POPT_ARG_NONE, &nocomma, 0, "No comma in input" },
+         { "comma", 'c', POPT_ARG_NONE, &comma, 0, "Comma in output" },
+         POPT_AUTOHELP { }
+      };
+
+      optCon = poptGetContext(NULL, argc, argv, optionsTable, 0);
+      poptSetOtherOptionHelp(optCon, "Sums");
+
+      int c;
+      if ((c = poptGetNextOpt(optCon)) < -1)
+         errx(1, "%s: %s\n", poptBadOption(optCon, POPT_BADOPTION_NOALIAS), poptStrerror(c));
+
+      if (!poptPeekArg(optCon))
       {
-         if (s[1] == 'n')
-         {
-            nocomma = 1 - nocomma;
-            continue;
-         }
-         if (s[1] == 'c')
-         {
-            if (s[2])
-               sd_comma = s[2];
-            else
-               comma = 1 - comma;
-            continue;
-         }
-         if (s[1] == 'p')
-         {
-            places = atoi(s + 2);
-            continue;
-         }
-         if (s[1] == 'r')
-         {
-            round = s[2];
-            continue;
-         }
-         if (s[1] == 'f')
-         {
-            format = s[2];
-            continue;
-         }
-         errx(1, "Unknown arg %s", s);
+         poptPrintUsage(optCon, stderr, 0);
+         return -1;
       }
-    char *res = stringdecimal_eval(s, places: places, format: format, round: round, comma: comma, nocomma:nocomma);
-      if (res)
-         printf("%s\n", res);
-      freez(res);
+      const char *s;
+      while ((s = poptGetArg(optCon)))
+      {
+       char *res = stringdecimal_eval(s, places: places, format: *format, round: *round, comma: comma, nocomma:nocomma);
+         if (res)
+            printf("%s\n", res);
+         freez(res);
+      }
+      poptFreeContext(optCon);
    }
    return 0;
 }
