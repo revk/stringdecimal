@@ -1249,11 +1249,14 @@ sd_p sd_parse_opts(sd_parse_t o)
    if (f < IEEES)
    {
       p += l;
-      sd_val_t *m = make_int(&v->failure, ieee[f].mul);
-      n = smul(&v->failure, v->n, m);
-      freez(v->n);
-      v->n = n;
-      freez(m);
+      if (v->n->sig)
+      {
+         sd_val_t *m = make_int(&v->failure, ieee[f].mul);
+         n = smul(&v->failure, v->n, m);
+         freez(v->n);
+         v->n = n;
+         freez(m);
+      }
    } else
    {
       f = SIS;
@@ -1262,7 +1265,8 @@ sd_p sd_parse_opts(sd_parse_t o)
       if (f < SIS)
       {
          p += l;
-         sd_10_i(v, si[f].mag);
+         if (v->n->sig)
+            sd_10_i(v, si[f].mag);
       }
    }
    if (n)
