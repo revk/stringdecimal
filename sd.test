@@ -19,6 +19,7 @@ if(! $status) echo "TEST FAIL FAIL FAILED"
 ./sd --fail='Missing operand at [end]' '1+'
 ./sd --fail='Unclosed bracket at [end]' '(1'
 ./sd --fail='Missing/unknown operator at )' '(1))'
+./sd --fail='Number too long at 1e101' --max=100 '1e101'
 
 # Basic maths
 ./sd --pass='7' '1+2*3' '1+(-2*-3)'

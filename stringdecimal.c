@@ -127,22 +127,28 @@ static void sd_rational(sd_p p);
 // Safe free and NULL value
 #define freez(x)	do{if(x)free((void*)(x));x=NULL;}while(0)
 
+static int checkmax(const char **failp, int mag, int sig)
+{
+   if (!sd_max)
+      return 0;
+   int p = mag + 1;
+   if (sig > mag + 1)
+      p += 1 + sig - mag;
+   if (mag < 0)
+      p = sig - mag;
+   if (p > sd_max)
+   {
+      if (failp && !*failp)
+         *failp = "Number too long";
+      return 1;
+   }
+   return 0;
+}
+
 static sd_val_t *make(const char **failp, int mag, int sig)
 {                               // Initialise with space for digits
-   if (sd_max)
-   {
-      int p = mag + 1;
-      if (mag < 0)
-         p = 1;
-      if (sig > mag + 1)
-         p += 1 + sig - mag;
-      if (p > sd_max)
-      {
-         if (failp && !*failp)
-            *failp = "Number too long";
-         return NULL;
-      }
-   }
+   if (checkmax(failp, mag, sig))
+      return NULL;
    sd_val_t *v = calloc(1, sizeof(*v) + sig);
    if (!v)
    {
@@ -339,6 +345,7 @@ static sd_val_t *parse_opts(const char **failp, parse_t o)
       while ((v = getdigit(o.v, &o.v)) >= 0)
          e = e * 10 + v;        // Only advances if digit
       s->mag += e * sign;
+      checkmax(failp, s->mag, s->sig);
    }
    if (o.end)
       *o.end = o.v;             // End of parsing
@@ -354,7 +361,8 @@ static sd_val_t *parse_opts(const char **failp, parse_t o)
 const char *sd_check_opts(sd_parse_t o)
 {
    const char *e = NULL;
- sd_val_t *s = parse(o.failure, o.a, end: &e, nocomma:o.nocomma);
+   const char *failp = NULL;
+ sd_val_t *s = parse(&failp, o.a, end: &e, nocomma:o.nocomma);
    if (!s)
       return NULL;
    freez(s);
@@ -362,6 +370,10 @@ const char *sd_check_opts(sd_parse_t o)
       *o.end = e;
    if (o.a_free)
       freez(o.a);
+   if (failp && o.failure && !*o.failure)
+      *o.failure = failp;
+   if (failp)
+      return NULL;
    return e;
 }
 
@@ -1695,7 +1707,6 @@ static void *parse_operand(void *context, const char *p, const char **end)
          C->fail = v->failure;
       if (!C->posn)
          C->posn = p;
-      return v;
    }
    return v;
 }
@@ -1978,8 +1989,11 @@ char *stringdecimal_eval_opts(stringdecimal_unary_t o)
 {
  stringdecimal_context_t context = { places: o.places, format: o.format, round: o.round, nocomma: o.nocomma, comma:o.comma };
    char *ret = xparse(&stringdecimal_xparse, &context, o.a, NULL);
-   if (!ret)
+   if (!ret || context.fail)
+   {
+      freez(ret);
       assert(asprintf(&ret, "!!%s at %.*s", context.fail, 10, !context.posn ? "[unknown]" : !*context.posn ? "[end]" : context.posn) >= 0);
+   }
    if (o.a_free)
       freez(o.a);
    return ret;
