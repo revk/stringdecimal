@@ -1292,6 +1292,15 @@ sd_p sd_float(long double v)
    return sd_parse(temp);
 }
 
+const char *sd_fail(sd_p p)
+{                               // Failure string
+   if (!p)
+      return "Null";
+   if (p->failure)
+      return p->failure;
+   return NULL;
+}
+
 void *sd_free(sd_p p)
 {                               // Free
    if (!p)
