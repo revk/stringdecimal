@@ -1224,10 +1224,9 @@ sd_p sd_parse_opts(sd_parse_t o)
       {
          p = end;
          v->n = n;
-         if (n && n->mag <= 0 && n->mag + 1 >= n->sig)
+         if (!o.nofrac && n && n->mag <= 0 && n->mag + 1 >= n->sig)
          {                      // Integer, follow by fraction
-            if (!o.nofrac)
-               for (f = 0; f < FRACTIONS && !(l = comp(fraction[f].value, p)); f++);
+            for (f = 0; f < FRACTIONS && !(l = comp(fraction[f].value, p)); f++);
             if (f < FRACTIONS && fraction[f].d)
             {
                p += l;
@@ -1244,7 +1243,28 @@ sd_p sd_parse_opts(sd_parse_t o)
          }
       }
    }
-   // TODO suffix
+   f = IEEES;
+   if (!o.noieee)
+      for (f = 0; f < IEEES && !(l = comp(ieee[f].value, p)); f++);
+   if (f < IEEES)
+   {
+      p += l;
+      sd_val_t *m = make_int(&v->failure, ieee[f].mul);
+      n = smul(&v->failure, v->n, m);
+      freez(v->n);
+      v->n = n;
+      freez(m);
+   } else
+   {
+      f = SIS;
+      if (!o.nosi)
+         for (f = 0; f < SIS && !(l = comp(si[f].value, p)); f++);
+      if (f < SIS)
+      {
+         p += l;
+         sd_10_i(v, si[f].mag);
+      }
+   }
    if (n)
       v->places = places;
    if (o.end)
