@@ -320,6 +320,7 @@ static sd_val_t *parse_opts(const char **failp, parse_t o)
    {
       int d = 0,                // Digits before point (ignoring leading zeros)
           p = 0,                // Places after point
+          l = 0,                // Leading zeros
           t = 0;                // Trailing zeros
       void nextdigit(void) {
          if (v || d)
@@ -330,7 +331,8 @@ static sd_val_t *parse_opts(const char **failp, parse_t o)
                t++;
             else
                t = 0;
-         }
+         } else
+            l++;
          o.v = skip;
       }
       while (*o.v)
@@ -371,14 +373,13 @@ static sd_val_t *parse_opts(const char **failp, parse_t o)
          nextdigit();
          p++;
       }
-      if (!d)
-         s = copy(failp, &zero);        // No digits
-      else
+      if (d)
       {
          s = make(failp, d - p - 1, d - t);
          if (o.placesp)
             *o.placesp = p;
-      }
+      } else if (l)
+         s = copy(failp, &zero);        // No digits
    }
    if (!s)
       return s;

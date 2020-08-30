@@ -28,6 +28,7 @@ if(! $status) echo "TEST FAIL FAIL FAILED"
 ./sd --fail='Missing/unknown operator at ½' '1.12½'
 ./sd --fail='Missing/unknown operator at k' --no-si '1k'
 ./sd --fail='Missing/unknown operator at Ki' --no-ieee '1Ki'
+./sd --fail='Missing operand at [end]' ''
 
 # Specials
 ./sd --pass='12.34' '1⒉34'					# point
