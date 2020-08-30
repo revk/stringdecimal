@@ -85,6 +85,7 @@ typedef struct sd_val_s sd_val_t;
 struct sd_val_s {               // The structure used internally for digit sequences
    int mag;                     // Magnitude of first digit, e.g. 3 is hundreds, can start negative, e.g. 0.1 would be mag -1
    int sig;                     // Significant figures (i.e. size of d array) - logically unsigned but seriously C fucks up any maths with that
+   int max;                     // Total space allocated at m
    char *d;                     // Digit array (normally m, or advanced in to m), digits 0-9 not characters '0'-'9'
    char neg:1;                  // Sign (set if -1)
    char m[];                    // Malloced space
@@ -92,11 +93,11 @@ struct sd_val_s {               // The structure used internally for digit seque
 
 static sd_val_t zero = { 0 };
 
-static sd_val_t one = { 0, 1, (char[])
+static sd_val_t one = { 0, 1, 1, (char[])
    { 1 }
 };
 
-static sd_val_t two = { 0, 1, (char[])
+static sd_val_t two = { 0, 1, 1, (char[])
    { 2 }
 };
 
@@ -129,13 +130,15 @@ static void sd_rational(sd_p p);
 
 static int checkmax(const char **failp, int mag, int sig)
 {
-   if (!sd_max)
+   if (!sd_max || !sig)
       return 0;
-   int p = mag + 1;
-   if (sig > mag + 1)
-      p += 1 + sig - mag;
-   if (mag < 0)
-      p = sig - mag;
+   int p = sig - mag + 1;
+   if (mag >= 0)
+   {
+      p = mag + 1;
+      if (sig > mag + 1)
+         p += sig - mag;
+   }
    if (p > sd_max)
    {
       if (failp && !*failp)
@@ -147,6 +150,8 @@ static int checkmax(const char **failp, int mag, int sig)
 
 static sd_val_t *make(const char **failp, int mag, int sig)
 {                               // Initialise with space for digits
+   if (!sig)
+      mag = 0;
    if (checkmax(failp, mag, sig))
       return NULL;
    sd_val_t *v = calloc(1, sizeof(*v) + sig);
@@ -156,11 +161,9 @@ static sd_val_t *make(const char **failp, int mag, int sig)
          *failp = "Malloc failed";
       return v;
    }
-   // Leave neg as is if set
-   if (!sig)
-      mag = 0;
    v->mag = mag;
    v->sig = sig;
+   v->max = sig;
    v->d = v->m;
    return v;
 }
@@ -1061,6 +1064,10 @@ static sd_p sd_tidy(sd_p v)
       v->n->mag -= v->d->mag;
       freez(v->d);
    }
+   if (v->n)
+      checkmax(&v->failure, v->n->mag, v->n->sig);
+   if (v->d)
+      checkmax(&v->failure, v->d->mag, v->n->sig);
    return v;
 }
 
