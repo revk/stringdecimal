@@ -1721,7 +1721,7 @@ static void parse_fail(void *context, const char *failure, const char *posn)
    stringdecimal_context_t *C = context;
    if (!C->fail)
       C->fail = failure;
-   if (C->posn)
+   if (!C->posn)
       C->posn = posn;
 }
 
@@ -1776,8 +1776,10 @@ static void *parse_div(void *context, void *data, void **a)
 {
    stringdecimal_context_t *C = context;
    sd_p o = sd_div(a[0], a[1]);
-   if (!o)
+   if (!o && !C->fail)
       C->fail = "Divide by zero";
+   if (o && o->failure && !C->fail)
+      C->fail = o->failure;
    return o;
 }
 
@@ -1792,8 +1794,10 @@ static void *parse_pow(void *context, void *data, void **a)
    sd_p L = a[0],
        R = a[1];
    sd_p o = sd_pow(L, R);
-   if (!o)
+   if (!o && !C->fail)
       C->fail = "Power must be positive integer";
+   if (o && o->failure && !C->fail)
+      C->fail = o->failure;
    return o;
 }
 
@@ -1975,7 +1979,7 @@ char *stringdecimal_eval_opts(stringdecimal_unary_t o)
  stringdecimal_context_t context = { places: o.places, format: o.format, round: o.round, nocomma: o.nocomma, comma:o.comma };
    char *ret = xparse(&stringdecimal_xparse, &context, o.a, NULL);
    if (!ret)
-      assert(asprintf(&ret, "!!%s at %.*s", context.fail, 10, context.posn && *context.posn ? context.posn : "[end]") >= 0);
+      assert(asprintf(&ret, "!!%s at %.*s", context.fail, 10, !context.posn ? "[unknown]" : !*context.posn ? "[end]" : context.posn) >= 0);
    if (o.a_free)
       freez(o.a);
    return ret;
