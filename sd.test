@@ -50,6 +50,10 @@ if(! $status) echo "TEST FAIL FAIL FAILED"
 # Formatting
 ./sd --pass='1234' '1234'					# simple
 ./sd --pass='1,234' --comma '1234'				# comma
+./sd --pass='123' --comma '123'
+./sd --pass='12' --comma '12'
+./sd --pass='1' --comma '1'
+./sd --pass='1,234,567,890' --comma '1234567890'
 ./sd --pass='1.234e+3' --format='e' --places=3 '1234'		# exponent / scientific
 ./sd --pass='1.234e+3' --format='e' --places=-1 '1234'
 ./sd --pass='6.170e+2' --format='e' --places=3 '1234/2'

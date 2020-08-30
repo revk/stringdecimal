@@ -455,66 +455,64 @@ const char *sd_check_opts(sd_parse_t o)
    return e;
 }
 
-static char *output(sd_val_t * s, char comma)
+typedef struct {
+   sd_val_t *s;
+   FILE *O;                     // output to a file
+   unsigned char comma:1;
+   unsigned char unicode:1;
+} output_t;
+#define output(...) output_opts((output_t){__VA_ARGS__})
+static char *output_opts(output_t o)
 {                               // Convert to a string (malloced)
+   sd_val_t *s = o.s;
    if (!s)
       return NULL;
-   if (!sd_comma)
-      comma = 0;                // No commas
-   int len = s->sig;            // sig figs
-   if (s->mag + 1 > s->sig)
-      len = s->mag + 1;         // mag
-   if (s->sig > s->mag + 1)
-      len++;                    // point
-   if (s->mag < 0)
-      len -= s->mag;            // zeros
-   if (comma && s->mag > 0)
-      len += s->mag / 3;        // commas
+   char *buf = NULL;
+   size_t len = 0;
+   FILE *O = o.O;
+   if (!O)
+      O = open_memstream(&buf, &len);
    if (s->neg)
-      len++;                    // sign
-   char *d = malloc(len + 1);
-   if (!d)
-      errx(1, "malloc");
-   char *p = d;
-   if (s->neg)
-      *p++ = '-';
+      fputc('-', O);
    int q = 0;
    if (s->mag < 0)
    {
-      *p++ = '0';
+      fputc('0', O);
       if (s->sig || s->mag < -1)
       {
-         *p++ = sd_point;
+         fputc(sd_point, O);
          for (q = 0; q < -1 - s->mag; q++)
-            *p++ = '0';
+            fputc('0', O);
          for (q = 0; q < s->sig; q++)
-            *p++ = '0' + s->d[q];
+            fputc('0' + s->d[q], O);
       }
    } else
    {
-      while (q <= s->mag && q < s->sig)
-      {
-         *p++ = '0' + s->d[q++];
-         if (comma && q < s->mag && !((s->mag - q + 1) % 3))
-            *p++ = sd_comma;
+      void nextdigit(int v) {
+         if (o.unicode && o.comma && sd_comma == ',' && q < s->mag && !((s->mag - q) % 3))
+            fprintf(O, "%s", digitcomma[v]);
+         else
+         {
+            fputc('0' + v, O);
+            if (o.comma && sd_comma && q < s->mag && !((s->mag - q) % 3))
+               fputc(sd_comma, O);
+         }
       }
+      for (; q <= s->mag && q < s->sig; q++)
+         nextdigit(s->d[q]);
       if (s->sig > s->mag + 1)
       {
-         *p++ = sd_point;
-         while (q < s->sig)
-            *p++ = '0' + s->d[q++];
+         fputc(sd_point, O);
+         for (; q < s->sig; q++)
+            fputc('0' + s->d[q], O);
       } else
-         while (q <= s->mag)
-         {
-            *p++ = '0';
-            q++;
-            if (comma && q < s->mag && !((s->mag - q + 1) % 3))
-               *p++ = sd_comma;
-         }
+         for (; q <= s->mag; q++)
+            nextdigit(0);
    }
-   *p = 0;
-   assert(p == d + len);
-   return d;
+   if (o.O)
+      return NULL;              // Output is to file
+   fclose(O);
+   return buf;
 }
 
 #ifdef DEBUG
@@ -565,12 +563,15 @@ typedef struct {
    sd_val_t *b;
    sd_val_t *c;
    sd_val_t *d;
+   FILE *O;
    unsigned char comma:1;
-} output_t;
-#define output_f(...)	output_opts((output_t){__VA_ARGS__})
-static char *output_opts(output_t o)
+   unsigned char unicode:1;
+} output_f_t;
+
+#define output_f(...)	output_f_opts((output_f_t){__VA_ARGS__})
+static char *output_f_opts(output_f_t o)
 {                               // Convert first arg to string, but free multiple args
-   char *r = output(o.a, o.comma);
+ char *r = output(o.a, comma: o.comma, unicode: o.unicode, O:o.O);
    freez(o.a);
    freez(o.b);
    freez(o.c);
@@ -1040,7 +1041,7 @@ char *stringdecimal_add_opts(stringdecimal_binary_t o)
  sd_val_t *A = parse(o.failure, o.a, nocomma:o.nocomma);
  sd_val_t *B = parse(o.failure, o.b, nocomma:o.nocomma);
    sd_val_t *R = sadd(o.failure, A, B);
- char *ret = output_f(R, A, B, comma:o.comma);
+ char *ret = output_f(R, A, B, comma: o.comma, unicode:o.unicode);
    if (o.a_free)
       freez(o.a);
    if (o.b_free)
@@ -1049,11 +1050,12 @@ char *stringdecimal_add_opts(stringdecimal_binary_t o)
 };
 
 char *stringdecimal_sub_opts(stringdecimal_binary_t o)
-{                               // Simple subtract
+{
+   // Simple subtract
  sd_val_t *A = parse(o.failure, o.a, nocomma:o.nocomma);
  sd_val_t *B = parse(o.failure, o.b, nocomma:o.nocomma);
    sd_val_t *R = ssub(o.failure, A, B);
- char *ret = output_f(R, A, B, comma:o.comma);
+ char *ret = output_f(R, A, B, comma: o.comma, unicode:o.unicode);
    if (o.a_free)
       freez(o.a);
    if (o.b_free)
@@ -1062,7 +1064,8 @@ char *stringdecimal_sub_opts(stringdecimal_binary_t o)
 };
 
 char *stringdecimal_mul_opts(stringdecimal_binary_t o)
-{                               // Simple multiply
+{
+   // Simple multiply
  sd_val_t *A = parse(o.failure, o.a, nocomma:o.nocomma);
  sd_val_t *B = parse(o.failure, o.b, nocomma:o.nocomma);
    sd_val_t *R = smul(o.failure, A, B);
@@ -1075,32 +1078,35 @@ char *stringdecimal_mul_opts(stringdecimal_binary_t o)
 };
 
 char *stringdecimal_div_opts(stringdecimal_div_t o)
-{                               // Simple divide - to specified number of places, with remainder
+{
+   // Simple divide - to specified number of places, with remainder
  sd_val_t *B = parse(o.failure, o.b, nocomma:o.nocomma);
  sd_val_t *A = parse(o.failure, o.a, nocomma:o.nocomma);
    sd_val_t *REM = NULL;
    sd_val_t *R = sdiv(o.failure, A, B, &REM, o.places, o.round);
    if (o.remainder)
-      *o.remainder = output(REM, o.comma);
+    *o.remainder = output(REM, comma: o.comma, unicode:o.unicode);
    if (o.a_free)
       freez(o.a);
    if (o.b_free)
       freez(o.b);
- return output_f(R, A, B, REM, comma:o.comma);
+ return output_f(R, A, B, REM, comma: o.comma, unicode:o.unicode);
 };
 
 char *stringdecimal_rnd_opts(stringdecimal_unary_t o)
-{                               // Round to specified number of places
+{
+   // Round to specified number of places
  sd_val_t *A = parse(o.failure, o.a, nocomma:o.nocomma);
    sd_val_t *R = srnd(o.failure, A, o.places, o.round);
- char *ret = output_f(R, A, comma:o.comma);
+ char *ret = output_f(R, A, comma: o.comma, unicode:o.unicode);
    if (o.a_free)
       freez(o.a);
    return ret;
 };
 
 int stringdecimal_cmp_opts(stringdecimal_binary_t o)
-{                               // Compare
+{
+   // Compare
  sd_val_t *A = parse(o.failure, o.a, nocomma:o.nocomma);
  sd_val_t *B = parse(o.failure, o.b, nocomma:o.nocomma);
    int r = scmp(o.failure, A, B);
@@ -1128,6 +1134,7 @@ static struct sd_s sd_zero = { &zero };
 
 static sd_p sd_tidy(sd_p v)
 {                               // Check answer
+
    if (v && v->d && v->d->neg)
    {                            // Normalise sign
       v->n->neg ^= 1;
@@ -1345,13 +1352,14 @@ char *sd_output_opts(sd_output_opts_t o)
          sd_val_t *rem = NULL;
          sd_val_t *res = sdiv(NULL, c->n, c->d, &rem, 0, SD_ROUND_TRUNCATE);
          if (rem && !rem->sig)
-            r = output(res, o.comma);   // No remainder, so integer
+          r = output(res, comma: o.comma, unicode:o.unicode);
+         // No remainder, so integer
          freez(rem);
          freez(res);
          if (!r)
          {                      // Rational
-            char *n = output(c->n, o.comma);
-            char *d = output(c->d, o.comma);
+          char *n = output(c->n, comma: o.comma, unicode:o.unicode);
+          char *d = output(c->d, comma: o.comma, unicode:o.unicode);
             if (asprintf(&r, "%s/%s", n, d) < 0)
                errx(1, "malloc");
             freez(d);
@@ -1362,37 +1370,37 @@ char *sd_output_opts(sd_output_opts_t o)
       break;
    case SD_FORMAT_LIMIT:
       if (o.p->d)
-       r = output_f(sdiv(&failp, o.p->n, o.p->d, NULL, o.places, o.round), comma:o.comma);
+       r = output_f(sdiv(&failp, o.p->n, o.p->d, NULL, o.places, o.round), comma: o.comma, unicode:o.unicode);
       else
-         return output(o.p->n, o.comma);
+       return output(o.p->n, comma: o.comma, unicode:o.unicode);
       break;
    case SD_FORMAT_EXACT:
       if (o.p->d)
-       r = output_f(srnd(&failp, sdiv(&failp, o.p->n, o.p->d, NULL, o.places, o.round), o.places, o.round), comma:o.comma);
+       r = output_f(srnd(&failp, sdiv(&failp, o.p->n, o.p->d, NULL, o.places, o.round), o.places, o.round), comma: o.comma, unicode:o.unicode);
       else
-       r = output_f(srnd(&failp, o.p->n, o.places, o.round), comma:o.comma);
+       r = output_f(srnd(&failp, o.p->n, o.places, o.round), comma: o.comma, unicode:o.unicode);
       break;
    case SD_FORMAT_INPUT:
       if (o.p->d)
-       r = output_f(srnd(&failp, sdiv(&failp, o.p->n, o.p->d, NULL, o.p->places + o.places, o.round), o.places, o.round), comma:o.comma);
+       r = output_f(srnd(&failp, sdiv(&failp, o.p->n, o.p->d, NULL, o.p->places + o.places, o.round), o.places, o.round), comma: o.comma, unicode:o.unicode);
       else
-       r = output_f(srnd(&failp, o.p->n, o.p->places + o.places, o.round), comma:o.comma);
+       r = output_f(srnd(&failp, o.p->n, o.p->places + o.places, o.round), comma: o.comma, unicode:o.unicode);
       break;
    case SD_FORMAT_EXTRA:
       if (o.p->d)
       {
          sd_p c = sd_copy(o.p);
          sd_rational(c);
-       r = output_f(sdiv(&failp, c->n, c->d, NULL, c->d->mag + o.places, o.round), comma:o.comma);
+       r = output_f(sdiv(&failp, c->n, c->d, NULL, c->d->mag + o.places, o.round), comma: o.comma, unicode:o.unicode);
          sd_free(c);
       } else
-         return output(o.p->n, o.comma);
+       return output(o.p->n, comma: o.comma, unicode:o.unicode);
       break;
    case SD_FORMAT_MAX:
       if (o.p->d)
-       r = output_f(sdiv(&failp, o.p->n, o.p->d, NULL, o.p->places + o.places, o.round), comma:o.comma);
+       r = output_f(sdiv(&failp, o.p->n, o.p->d, NULL, o.p->places + o.places, o.round), comma: o.comma, unicode:o.unicode);
       else
-         return output(o.p->n, o.comma);
+       return output(o.p->n, comma: o.comma, unicode:o.unicode);
       break;
    case SD_FORMAT_EXP:
       {
@@ -1428,7 +1436,7 @@ char *sd_output_opts(sd_output_opts_t o)
             c->n->mag -= q->mag;
             try();
          }
-       char *v = output_f(q, comma:o.comma);
+       char *v = output_f(q, comma: o.comma, unicode:o.unicode);
          if (asprintf(&r, "%se%+d", v, exp) < 0)
             errx(1, "malloc");
          freez(v);
@@ -1876,7 +1884,7 @@ static void *parse_final(void *context, void *v)
    sd_p V = v;
    if (!V)
       return NULL;
- return sd_output(V, places: V->places, places: C->places, format: C->format, round: C->round, comma:C->comma);
+ return sd_output(V, places: V->places, places: C->places, format: C->format, round: C->round, comma: C->comma, unicode:C->unicode);
 }
 
 static void parse_dispose(void *context, void *v)
@@ -2046,6 +2054,7 @@ static xparse_op_t parse_bracket[] = {
 };
 
 static xparse_op_t parse_unary[] = {
+
    // Postfix would be 15
  { op: "-", level: 14, func:parse_neg },
  { op: "!", op2: "¬", level: 14, func:parse_not },
@@ -2132,6 +2141,10 @@ int main(int argc, const char *argv[])
    int nosi = 0;
    int noieee = 0;
    int fails = 0;
+   //int frac = 0;
+   //int si = 0;
+   //int ieee = 0;
+   int unicode = 0;
    {                            // POPT
       poptContext optCon;       // context for parsing command-line options
       const struct poptOption optionsTable[] = {
@@ -2143,6 +2156,10 @@ int main(int argc, const char *argv[])
          { "no-si", 0, POPT_ARG_NONE, &nosi, 0, "No SI suffix in input" },
          { "no-ieee", 0, POPT_ARG_NONE, &noieee, 0, "No IEEE suffix in input" },
          { "comma", 'c', POPT_ARG_NONE, &comma, 0, "Comma in output" },
+         { "unicode", 0, POPT_ARG_NONE, &unicode, 0, "Unicode output" },
+         //{ "frac", 0, POPT_ARG_NONE, &frac, 0, "Fractions in output" },
+         //{ "si", 0, POPT_ARG_NONE, &si, 0, "SI in output" },
+         //{ "ieee", 0, POPT_ARG_NONE, &ieee, 0, "IEEE in output" },
          { "comma-char", 'C', POPT_ARG_STRING, &scomma, 0, "Set comma char", "char" },
          { "point-char", 'C', POPT_ARG_STRING, &spoint, 0, "Set point char", "char" },
          { "max", 'm', POPT_ARG_INT, &sd_max, 0, "Max size", "N" },
@@ -2167,7 +2184,7 @@ int main(int argc, const char *argv[])
       const char *s;
       while ((s = poptGetArg(optCon)))
       {
-       char *res = stringdecimal_eval(s, places: places, format: *format, round: *round, comma: comma, nocomma: nocomma, nofrac: nofrac, nosi: nosi, noieee:noieee);
+       char *res = stringdecimal_eval(s, places: places, format: *format, round: *round, comma: comma, nocomma: nocomma, nofrac: nofrac, nosi: nosi, noieee: noieee, unicode:unicode);
          if (pass && (!res || *res == '!' || strcmp(res, pass)))
          {
             fails++;
