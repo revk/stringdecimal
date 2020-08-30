@@ -1245,7 +1245,7 @@ sd_p sd_parse_opts(sd_parse_t o)
       }
    }
    f = IEEES;
-   if (!o.noieee && !v->failure)
+   if (!o.noieee && v->n&&!v->failure)
       for (f = 0; f < IEEES && !(l = comp(ieee[f].value, p)); f++);
    if (f < IEEES)
    {
@@ -1261,7 +1261,7 @@ sd_p sd_parse_opts(sd_parse_t o)
    } else
    {
       f = SIS;
-      if (!o.nosi && !v->failure)
+      if (!o.nosi && v->n&&!v->failure)
          for (f = 0; f < SIS && !(l = comp(si[f].value, p)); f++);
       if (f < SIS)
       {
