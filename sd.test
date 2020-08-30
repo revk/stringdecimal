@@ -16,6 +16,9 @@ if(! $status) echo "TEST FAIL FAIL FAILED"
 ./sd --fail='Missing/unknown operator at 1,234' --no-comma '1,234'
 ./sd --pass='-1' --	'-1' '-1.0' '-10e-1'
 ./sd --pass='0.23' 	'0.23' '0.23000' '0.0023e2'
+./sd --fail='Missing operand at [end]' '1+'
+./sd --fail='Unclosed bracket at (1' '(1'
+./sd --fail='Missing/unknown operator at (1))' '(1))'
 
 # Basic maths
 ./sd --pass='7' '1+2*3' '1+(-2*-3)'

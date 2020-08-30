@@ -312,6 +312,8 @@ void *xparse(xparse_config_t * config, void *context, const char *sum, const cha
    }
    while (!fail && operators)
       operate();                // Final operators
+   if (!fail && level)
+      fail = "Unclosed bracket";
    void *v = NULL;
    if (!fail && operands == 1)
       v = config->final(context, operand[0]);
