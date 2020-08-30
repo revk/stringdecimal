@@ -477,10 +477,14 @@ static char *output_opts(output_t o)
    int q = 0;
    if (s->mag < 0)
    {
-      fputc('0', O);
+      if (o.unicode && sd_point == '.' && (s->sig || s->mag < -1))
+         fprintf(O, "%s", digitpoint[0]);
+      else
+         fputc('0', O);
       if (s->sig || s->mag < -1)
       {
-         fputc(sd_point, O);
+         if (!o.unicode || sd_point != '.')
+            fputc(sd_point, O);
          for (q = 0; q < -1 - s->mag; q++)
             fputc('0', O);
          for (q = 0; q < s->sig; q++)
@@ -491,8 +495,12 @@ static char *output_opts(output_t o)
       void nextdigit(int v) {
          if (o.unicode && o.comma && sd_comma == ',' && q < s->mag && !((s->mag - q) % 3))
             fprintf(O, "%s", digitcomma[v]);
+         else if (o.unicode && sd_point == '.' && q == s->mag && q + 1 < s->sig)
+            fprintf(O, "%s", digitpoint[v]);
          else
          {
+            if (sd_point && q == s->mag + 1)
+               fputc(sd_point, O);
             fputc('0' + v, O);
             if (o.comma && sd_comma && q < s->mag && !((s->mag - q) % 3))
                fputc(sd_comma, O);
@@ -501,11 +509,9 @@ static char *output_opts(output_t o)
       for (; q <= s->mag && q < s->sig; q++)
          nextdigit(s->d[q]);
       if (s->sig > s->mag + 1)
-      {
-         fputc(sd_point, O);
          for (; q < s->sig; q++)
-            fputc('0' + s->d[q], O);
-      } else
+            nextdigit(s->d[q]);
+      else
          for (; q <= s->mag; q++)
             nextdigit(0);
    }
@@ -2110,7 +2116,7 @@ xparse_config_t stringdecimal_xparse = {
 // Parse
 char *stringdecimal_eval_opts(stringdecimal_unary_t o)
 {
- stringdecimal_context_t context = { places: o.places, format: o.format, round: o.round, nocomma: o.nocomma, comma: o.comma, nofrac: o.nofrac, nosi: o.nosi, noieee:o.noieee };
+ stringdecimal_context_t context = { places: o.places, format: o.format, round: o.round, nocomma: o.nocomma, comma: o.comma, nofrac: o.nofrac, nosi: o.nosi, noieee: o.noieee, unicode:o.unicode };
    char *ret = xparse(&stringdecimal_xparse, &context, o.a, NULL);
    if (!ret || context.fail)
    {
