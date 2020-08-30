@@ -108,16 +108,17 @@ struct sd_s {
    int places;                  // Max places seen
 };
 
-   static int comp(const char *a, const char *b) { // Simple compare
-      if (!a || !b)
-         return 0;
-      int l = 0;
-      while (a[l] && b[l] && a[l] == b[l])
-         l++;
-      if (!a[l])
-         return l;
+static int comp(const char *a, const char *b)
+{                               // Simple compare
+   if (!a || !b)
       return 0;
-   }
+   int l = 0;
+   while (a[l] && b[l] && a[l] == b[l])
+      l++;
+   if (!a[l])
+      return l;
+   return 0;
+}
 
 static void sd_rational(sd_p p);
 
@@ -805,7 +806,8 @@ static sd_val_t *srnd(sd_val_t * a, int places, sd_round_t round)
    if (decimals > places)
    {                            // more places, needs truncating
       int sig = a->sig - (decimals - places);
-      if(a->sig<a->mag+1)sig=a->mag+1- (decimals - places);
+      if (a->sig < a->mag + 1)
+         sig = a->mag + 1 - (decimals - places);
       sd_val_t *r;
       if (sig <= 0)
       {
@@ -1709,12 +1711,14 @@ static void *parse_neg(void *context, void *data, void **a)
    return A;
 }
 
+#if 0
 static void *parse_abs(void *context, void *data, void **a)
 {
    sd_p A = *a;
    A->n->neg = 0;
    return A;
 }
+#endif
 
 static void *parse_not(void *context, void *data, void **a)
 {
@@ -1786,7 +1790,7 @@ static xparse_op_t parse_unary[] = {
    // Postfix would be 15
  { op: "-", level: 14, func:parse_neg },
  { op: "!", op2: "¬", level: 14, func:parse_not },
- //{ op: "|", op2: "||", level: 14, func:parse_abs }, // TODO
+   //{ op: "|", op2: "||", level: 14, func:parse_abs }, // TODO
    { NULL },
 };
 
