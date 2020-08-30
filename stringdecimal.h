@@ -35,6 +35,7 @@
 
 extern char sd_comma;           // Comma thousands character
 extern char sd_point;           // Decimal point character
+extern int sd_max;              // Max internal variable, characters as printed excluding comma/sign
 
 // Rounding options
 

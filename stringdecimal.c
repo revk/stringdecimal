@@ -37,6 +37,7 @@
 
 char sd_comma = ',';
 char sd_point = '.';
+int sd_max = 0;
 
 static const char *sup[10] = { "⁰", "¹", "²", "³", "⁴", "⁵", "⁶", "⁷", "⁸", "⁹" };
 
@@ -128,6 +129,20 @@ static void sd_rational(sd_p p);
 
 static sd_val_t *make(const char **failp, int mag, int sig)
 {                               // Initialise with space for digits
+   if (sd_max)
+   {
+      int p = mag + 1;
+      if (mag < 0)
+         p = 1;
+      if (sig > mag + 1)
+         p += 1 + sig - mag;
+      if (p > sd_max)
+      {
+         if (failp && !*failp)
+            *failp = "Number too long";
+         return NULL;
+      }
+   }
    sd_val_t *v = calloc(1, sizeof(*v) + sig);
    if (!v)
    {
@@ -149,6 +164,8 @@ static sd_val_t *copy(const char **failp, sd_val_t * a)
    if (!a)
       return a;
    sd_val_t *r = make(failp, a->mag, a->sig);
+   if (!r)
+      return r;
    r->neg = a->neg;
    if (a->sig)
       memcpy(r->d, a->d, a->sig);
@@ -294,6 +311,8 @@ static sd_val_t *parse_opts(const char **failp, parse_t o)
       s = make(failp, mag, sig - t);
    } else
       s = copy(failp, &zero);
+   if (!s)
+      return s;
    // Load digits
    int q = 0;
    while (*digits && q < s->sig)
@@ -523,6 +542,8 @@ static sd_val_t *uadd(const char **failp, sd_val_t * a, sd_val_t * b, char neg, 
    if (boffset + b->mag - b->sig < end)
       end = boffset + b->mag - b->sig;
    sd_val_t *r = make(failp, mag, mag - end);
+   if (!r)
+      return r;
    int c = 0;
    for (int p = end + 1; p <= mag; p++)
    {
@@ -558,6 +579,8 @@ static sd_val_t *usub(const char **failp, sd_val_t * a, sd_val_t * b, char neg, 
    if (boffset + b->mag - b->sig < end)
       end = boffset + b->mag - b->sig;
    sd_val_t *r = make(failp, mag, mag - end);
+   if (!r)
+      return r;
    int c = 0;
    for (int p = end + 1; p <= mag; p++)
    {
@@ -632,7 +655,18 @@ static sd_val_t *udiv(const char **failp, sd_val_t * a, sd_val_t * b, char neg, 
       mag = -places;            // Limit to places
    int sig = mag + places + 1;  // Limit to places
    sd_val_t *r = make(failp, mag, sig);
+   if (!r)
+   {
+      free_base(base);
+      return r;
+   }
    sd_val_t *v = copy(failp, a);
+   if (!v)
+   {
+      free_base(base);
+      freez(r);
+      return v;
+   }
 #ifdef DEBUG
    fprintf(stderr, "Divide %d->%d\n", mag, mag - sig + 1);
 #endif
@@ -814,7 +848,7 @@ static sd_val_t *srnd(const char **failp, sd_val_t * a, int places, sd_round_t r
       int sig = a->sig - (decimals - places);
       if (a->sig < a->mag + 1)
          sig = a->mag + 1 - (decimals - places);
-      sd_val_t *r;
+      sd_val_t *r = NULL;
       if (sig <= 0)
       {
          r = z();
@@ -824,6 +858,8 @@ static sd_val_t *srnd(const char **failp, sd_val_t * a, int places, sd_round_t r
       } else
       {
          r = make(failp, a->mag, sig);
+         if (!r)
+            return r;
          memcpy(r->d, a->d, sig);
       }
       if (round != SD_ROUND_TRUNCATE)
@@ -873,6 +909,11 @@ static sd_val_t *srnd(const char **failp, sd_val_t * a, int places, sd_round_t r
                if (r->mag > 0)
                   sig = r->mag + 1 + places;
                sd_val_t *s = make(failp, r->mag, sig);
+               if (!s)
+               {
+                  freez(r);
+                  return s;
+               }
                memcpy(s->d, r->d, r->sig);
                s->neg = r->neg;
                freez(r);
@@ -889,6 +930,8 @@ static sd_val_t *srnd(const char **failp, sd_val_t * a, int places, sd_round_t r
       if (a->mag > 0)
          sig = a->mag + 1 + places;
       sd_val_t *r = make(failp, a->mag, sig);
+      if (!r)
+         return r;
       memcpy(r->d, a->d, a->sig);
       r->neg = a->neg;
       return r;
@@ -1646,7 +1689,14 @@ static void *parse_operand(void *context, const char *p, const char **end)
    if (!v)
       return v;
  v->n = parse(&v->failure, p, end: end, placesp: &v->places, nocomma: C->nocomma, comma:C->comma);
-   v->d = NULL;
+   if (v->failure)
+   {
+      if (!C->fail)
+         C->fail = v->failure;
+      if (!C->posn)
+         C->posn = p;
+      return v;
+   }
    return v;
 }
 
@@ -1671,7 +1721,8 @@ static void parse_fail(void *context, const char *failure, const char *posn)
    stringdecimal_context_t *C = context;
    if (!C->fail)
       C->fail = failure;
-   C->posn = posn;
+   if (C->posn)
+      C->posn = posn;
 }
 
 #define MATCH_LT 1
@@ -1956,6 +2007,7 @@ int main(int argc, const char *argv[])
          { "comma", 'c', POPT_ARG_NONE, &comma, 0, "Comma in output" },
          { "comma-char", 'C', POPT_ARG_STRING, &scomma, 0, "Set comma char", "char" },
          { "point-char", 'C', POPT_ARG_STRING, &spoint, 0, "Set point char", "char" },
+         { "max", 'm', POPT_ARG_INT, &sd_max, 0, "Max size", "N" },
          { "pass", 'P', POPT_ARG_STRING, &pass, 0, "Test pass", "expected" },
          { "fail", 'F', POPT_ARG_STRING, &fail, 0, "Test fail", "expected failure" },
          POPT_AUTOHELP { }
