@@ -29,6 +29,8 @@ if(! $status) echo "TEST FAIL FAIL FAILED"
 
 # Formatting
 ./sd --pass='1234' '1234'					# simple
+./sd --pass='1234' '🄂234'					# comma
+./sd --pass='12.34' '1⒉34'					# point
 ./sd --pass='1,234' --comma '1234'				# comma
 ./sd --pass='1.234e+3' --format='e' --places=3 '1234'		# exponent / scientific
 ./sd --pass='1.234e+3' --format='e' --places=-1 '1234'
@@ -56,6 +58,7 @@ if(! $status) echo "TEST FAIL FAIL FAILED"
 ./sd --pass='0.6667' --format='-' --places=4 '2/3'
 ./sd --pass='1' --format='/' '50/50'				# Rational
 ./sd --pass='2/10' --format='/' '0.2'
+./sd --pass='2/10' --format='/' '.2'
 # TODO /0 rational?
 
 # Rounding

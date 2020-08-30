@@ -39,7 +39,16 @@ char sd_comma = ',';
 char sd_point = '.';
 int sd_max = 0;
 
-static const char *sup[10] = { "⁰", "¹", "²", "³", "⁴", "⁵", "⁶", "⁷", "⁸", "⁹" };
+static const char *digitnormal[] = { "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "-", "+", NULL };
+static const char *digitcomma[] = { "🄁", "🄂", "🄃", "🄄", "🄅", "🄆", "🄇", "🄈", "🄉", "🄊", NULL };
+static const char *digitpoint[] = { "🄀", "⒈", "⒉", "⒊", "⒋", "⒌", "⒍", "⒎", "⒏", "⒐", NULL };
+static const char *digitsub[] = { "⁰", "¹", "²", "³", "⁴", "⁵", "⁶", "⁷", "⁸", "⁹", NULL };
+
+static const char **digits[] = {
+   digitnormal,
+   digitsub,
+   NULL,
+};
 
 #define	si		\
 	u(Y,24)		\
@@ -100,7 +109,6 @@ static sd_val_t one = { 0, 1, 1, (char[])
 static sd_val_t two = { 0, 1, 1, (char[])
    { 2 }
 };
-
 
 //static sd_val_t two = { 0, 1, (char[]) { 2 } };
 
@@ -213,25 +221,28 @@ typedef struct {
 #define	parse(failp,...)	parse_opts(failp,(parse_t){__VA_ARGS__})
 static sd_val_t *parse_opts(const char **failp, parse_t o)
 {                               // Parse in to s, and return next character
-   char numeric = 0;
-   int getdigit(const char *p, const char **pp) {
-      if (numeric >= 0 && isdigit(*p))
-      {
-         if (pp)
-            (*pp) = p + 1;
-         numeric = 1;           // Only expecting digits now
-         return *p - '0';
-      }
-      if (numeric > 0)
-         return -1;             // Looking for numbers only
-      for (int q = 0, l; q < 10; q++)
-         if ((l = comp(sup[q], p)))
+   const char **digit = NULL;
+   int getdigit(const char **d, const char *p, const char **pp) {
+      int l;
+      for (int q = 0; d[q]; q++)
+         if ((l = comp(d[q], p)))
          {
             if (pp)
                *pp = p + l;
-            numeric = -1;
+            if (d == digitcomma || d == digitpoint)
+               d = digitnormal;
+            digit = d;
             return q;
          }
+      return -1;
+   }
+   int getdigits(const char *p, const char **pp) {
+      if (digit)
+         return getdigit(digit, p, pp);
+      int v;
+      for (const char ***d = digits; *d; d++)
+         if ((v = getdigit(*d, p, pp)) >= 0)
+            return v;
       return -1;
    }
    if (!o.v)
@@ -240,99 +251,108 @@ static sd_val_t *parse_opts(const char **failp, parse_t o)
       *o.end = o.v;
    if (o.placesp)
       *o.placesp = 0;
-   int places = 0;              // count places
+   int v;
+   const char *skip;
    char neg = 0;
-   if (*o.v == '+')
-      o.v++;                    // Somewhat redundant
-   else if (*o.v == '-')
+   if (*o.v == '-')
    {
       neg ^= 1;                 // negative
       o.v++;
+   } else if (*o.v == '+')
+   {
+      o.v++;                    // Somewhat redundant
+   } else if ((v = getdigits(o.v, &skip)) == 10)
+   {
+      neg ^= 1;                 // negative
+      o.v = skip;
+   } else if (v == 11)
+   {
+      o.v = skip;               // positive
    }
-   if (getdigit(o.v, NULL) < 0 && *o.v != sd_point)
-      return NULL;              // Unexpected, we do allow leading dot
-   while (!getdigit(o.v, NULL))
-      getdigit(o.v, &o.v);
    sd_val_t *s = NULL;
    const char *digits = o.v;
-   if (getdigit(o.v, NULL) >= 0)
-   {                            // Some initial digits
-      int d = 0,
-          p = 0,
-          t = 0;
-      while (*o.v)
-      {
-         const char *q = o.v;
-         if (!o.nocomma && sd_comma && *q++ == sd_comma && getdigit(q, &q) >= 0 && getdigit(q, &q) >= 0 && getdigit(q, &q) >= 0 && getdigit(q, &q) < 0)
-         {                      // Skip valid commas in numbers
-            o.v++;
-            continue;
-         }
-         int v;
-         if ((v = getdigit(o.v, &o.v)) < 0)
-            break;
-         if (!v)
-            t++;                // count trailing zeros
-         else
-            t = 0;
-         d++;
-      }
-      if (*o.v == sd_point)
-      {
-         o.v++;
-         int v;
-         while ((v = getdigit(o.v, &o.v)) >= 0)
+   {
+      int d = 0,                // Digits before point (ignoring leading zeros)
+          p = 0,                // Places after point
+          t = 0;                // Trailing zeros
+      void nextdigit(void) {
+         if (v || d)
          {
-            places++;
+            if (!d++)
+               digits = o.v;
             if (!v)
-               t++;             // count trailing zeros
+               t++;
             else
                t = 0;
-            p++;
          }
+         o.v = skip;
       }
-      s = make(failp, d - 1, d + p - t);
-   } else if (*o.v == sd_point)
-   {                            // No initial digits
-      o.v++;
-      if (getdigit(o.v, NULL) < 0)
-         return NULL;
-      int mag = -1,
-          sig = 0,
-          t = 0;
-      while (!getdigit(o.v, NULL))
+      while (*o.v)
+      {                         // Initial digits
+         if (!o.nocomma && sd_comma)
+         {                      // Check commas
+            int z = -1;
+            if (*o.v == sd_comma || (sd_comma == ',' && (!digit || digit == digitnormal) && (z = getdigit(digitcomma, o.v, &skip) >= 0)))
+            {                   // Comma...
+               if (z < 0)
+                  skip = o.v + 1;
+               const char *q = skip,
+                   *qq;
+               if ((v = getdigits(q, &q)) >= 0 && v < 10 &&     //
+                   (v = getdigits(q, &q)) >= 0 && v < 10 &&     //
+                   (((v = getdigits(qq = q, &q)) >= 0 && v < 10) || (z >= 0 && (v = getdigit(digitcomma, qq, &q)) >= 0)) &&     //
+                   ((v = getdigits(q, &q)) < 0 || v > 9))
+               {                // Next 3 are digits
+                  if (z >= 0)
+                     nextdigit();
+                  o.v = skip;
+                  continue;
+               }
+            }
+         }
+         if (sd_point == '.' && (!digit || digit == digitnormal) && (v = getdigit(digitpoint, o.v, &skip)) >= 0)
+         {                      // Digit point
+            nextdigit();
+            break;              // found point.
+         } else if ((v = getdigits(o.v, &skip)) < 0 || v > 9)
+            break;
+         nextdigit();
+      }
+      if (*o.v == sd_point)
+         o.v++;
+      while ((v = getdigits(o.v, &skip)) >= 0 && v < 10)
       {
-         getdigit(o.v, &o.v);
-         places++;
-         mag--;
+         nextdigit();
+         p++;
       }
-      digits = o.v;
-      int v;
-      while ((v = getdigit(o.v, &o.v)) >= 0)
+      if (!d)
+         s = copy(failp, &zero);        // No digits
+      else
       {
-         places++;
-         if (!v)
-            t++;                // count trailing zeros
-         else
-            t = 0;
-         sig++;
+         s = make(failp, d - p - 1, d - t);
+         if (o.placesp)
+            *o.placesp = p;
       }
-      s = make(failp, mag, sig - t);
-   } else
-      s = copy(failp, &zero);
+   }
    if (!s)
       return s;
    // Load digits
    int q = 0;
    while (*digits && q < s->sig)
    {
-      int v = getdigit(digits, &digits);
-      if (v >= 0)
+      int v = getdigits(digits, &skip);
+      if (v < 0 && !o.nocomma && sd_comma == ',' && digit == digitnormal)
+         v = getdigit(digitcomma, digits, &skip);
+      if (v < 0 && sd_point == '.' && digit == digitnormal)
+         v = getdigit(digitpoint, digits, &skip);
+      if (v >= 0 && v < 10)
+      {
          s->d[q++] = v;
-      else
+         digits = skip;
+      } else
          digits++;              // Advance over non digits, e.g. comma, point
    }
-   if ((*o.v == 'e' || *o.v == 'E') && (((o.v[1] == '+' || o.v[1] == '-') && getdigit(o.v + 2, NULL) >= 0) || getdigit(o.v + 1, NULL) >= 0))
+   if ((*o.v == 'e' || *o.v == 'E') && (((o.v[1] == '+' || o.v[1] == '-') && (v = getdigits(o.v + 2, NULL)) >= 0 && v < 10) || ((v = getdigits(o.v + 1, NULL)) >= 0 && v < 10)))
    {                            // Exponent (may clash with E SI prefix if not careful)
       o.v++;
       int sign = 1,
@@ -345,8 +365,11 @@ static sd_val_t *parse_opts(const char **failp, parse_t o)
          sign = -1;
       }
       int v;
-      while ((v = getdigit(o.v, &o.v)) >= 0)
+      while ((v = getdigits(o.v, &skip)) >= 0 && v < 10)
+      {
          e = e * 10 + v;        // Only advances if digit
+         o.v = skip;
+      }
       s->mag += e * sign;
       checkmax(failp, s->mag, s->sig);
    }
@@ -356,8 +379,6 @@ static sd_val_t *parse_opts(const char **failp, parse_t o)
       s->mag = 0;               // Zero
    else
       s->neg = neg;
-   if (o.placesp)
-      *o.placesp = places;
    return s;
 }
 
