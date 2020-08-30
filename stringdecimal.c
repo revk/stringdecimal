@@ -108,6 +108,17 @@ struct sd_s {
    int places;                  // Max places seen
 };
 
+   static int comp(const char *a, const char *b) { // Simple compare
+      if (!a || !b)
+         return 0;
+      int l = 0;
+      while (a[l] && b[l] && a[l] == b[l])
+         l++;
+      if (!a[l])
+         return l;
+      return 0;
+   }
+
 static void sd_rational(sd_p p);
 
 // Safe free and NULL value
@@ -169,16 +180,6 @@ typedef struct {
 #define	parse(...)	parse_opts((parse_t){__VA_ARGS__})
 static sd_val_t *parse_opts(parse_t o)
 {                               // Parse in to s, and return next character
-   int comp(const char *a, const char *b) {
-      if (!a || !b)
-         return 0;
-      int l = 0;
-      while (a[l] && b[l] && a[l] == b[l])
-         l++;
-      if (!a[l])
-         return l;
-      return 0;
-   }
    char numeric = 0;
    int getdigit(const char *p, const char **pp) {
       if (numeric >= 0 && isdigit(*p))
@@ -804,6 +805,7 @@ static sd_val_t *srnd(sd_val_t * a, int places, sd_round_t round)
    if (decimals > places)
    {                            // more places, needs truncating
       int sig = a->sig - (decimals - places);
+      if(a->sig<a->mag+1)sig=a->mag+1- (decimals - places);
       sd_val_t *r;
       if (sig <= 0)
       {
@@ -811,8 +813,6 @@ static sd_val_t *srnd(sd_val_t * a, int places, sd_round_t round)
          if (sig < 0)
             return r;
          sig = 0;               // Allow rounding
-         if (r->mag >= 0)
-            r->mag--;
       } else
       {
          r = make(a->mag, sig);
@@ -1106,7 +1106,7 @@ char *sd_output_opts(sd_output_opts_t o)
          {                      // Rational
             char *n = output(c->n, o.comma);
             char *d = output(c->d, o.comma);
-            if (asprintf(&r, "(%s/%s)", n, d) < 0)
+            if (asprintf(&r, "%s/%s", n, d) < 0)
                errx(1, "malloc");
             freez(d);
             freez(n);
@@ -1786,7 +1786,7 @@ static xparse_op_t parse_unary[] = {
    // Postfix would be 15
  { op: "-", level: 14, func:parse_neg },
  { op: "!", op2: "¬", level: 14, func:parse_not },
- { op: "|", op2: "||", level: 14, func:parse_abs },
+ //{ op: "|", op2: "||", level: 14, func:parse_abs }, // TODO
    { NULL },
 };
 
@@ -1884,11 +1884,16 @@ char *stringdecimal_eval_opts(stringdecimal_unary_t o)
 #include <popt.h>
 int main(int argc, const char *argv[])
 {
+   const char *pass = NULL;
+   const char *fail = NULL;
+   const char *round = "";
+   const char *format = "";
+   const char *scomma = NULL;
+   const char *spoint = NULL;
    int places = 0;
-   char *round = "";
-   char *format = "";
    int comma = 0;
    int nocomma = 0;
+   int fails = 0;
    {                            // POPT
       poptContext optCon;       // context for parsing command-line options
       const struct poptOption optionsTable[] = {
@@ -1897,6 +1902,10 @@ int main(int argc, const char *argv[])
          { "round", 'r', POPT_ARG_STRING, &round, 0, "Rounding", "T/U/F/C/R/B" },
          { "no-comma", 'n', POPT_ARG_NONE, &nocomma, 0, "No comma in input" },
          { "comma", 'c', POPT_ARG_NONE, &comma, 0, "Comma in output" },
+         { "comma-char", 'C', POPT_ARG_STRING, &scomma, 0, "Set comma char", "char" },
+         { "point-char", 'C', POPT_ARG_STRING, &spoint, 0, "Set point char", "char" },
+         { "pass", 'P', POPT_ARG_STRING, &pass, 0, "Test pass", "expected" },
+         { "fail", 'F', POPT_ARG_STRING, &fail, 0, "Test fail", "expected failure" },
          POPT_AUTOHELP { }
       };
       optCon = poptGetContext(NULL, argc, argv, optionsTable, 0);
@@ -1909,16 +1918,35 @@ int main(int argc, const char *argv[])
          poptPrintUsage(optCon, stderr, 0);
          return -1;
       }
+      if (scomma)
+         sd_comma = *scomma;
+      if (spoint)
+         sd_point = *spoint;
       const char *s;
       while ((s = poptGetArg(optCon)))
       {
        char *res = stringdecimal_eval(s, places: places, format: *format, round: *round, comma: comma, nocomma:nocomma);
-         if (res)
-            printf("%s\n", res);
+         if (pass && (!res || *res == '!' || strcmp(res, pass)))
+         {
+            fails++;
+            fprintf(stderr, "Test:\t%s\nResult:\t%s\nExpect:\t%s\n", s, res ? : "[null]", pass);
+         }
+         if (fail && res && (*res != '!' || res[1] != '!' || strcasecmp(res + 2, fail)))
+         {
+            fails++;
+            fprintf(stderr, "Test:\t%s\nResult:\t%s\nExpect:\t!!%s\n", s, res ? : "[null]", fail);
+         }
+         if (!pass && !fail)
+         {
+            if (res)
+               printf("%s\n", res);
+            else
+               fprintf(stderr, "Failed\n");
+         }
          freez(res);
       }
       poptFreeContext(optCon);
    }
-   return 0;
+   return fails;
 }
 #endif

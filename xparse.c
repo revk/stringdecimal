@@ -19,7 +19,7 @@
 #include "xparse.h"
 
 const char *xparse_sub[10] = { "₀", "₁", "₂", "₃", "₄", "₅", "₆", "₇", "₈", "₉" };
-const char *xparse_sup[11] = { "⁰", "¹", "²", "³", "⁴", "⁵", "⁶", "⁷", "⁸", "⁹"};
+const char *xparse_sup[11] = { "⁰", "¹", "²", "³", "⁴", "⁵", "⁶", "⁷", "⁸", "⁹" };
 
 //#define DEBUG
 
@@ -267,7 +267,7 @@ void *xparse(xparse_config_t * config, void *context, const char *sum, const cha
       int q = 0,
           l;
       if (!back)
-         for (q = 0; q < sizeof(xparse_sup)/sizeof(*xparse_sup); q++)
+         for (q = 0; q < sizeof(xparse_sup) / sizeof(*xparse_sup); q++)
             if ((l = comp(xparse_sup[q], sum)))
             {
                back = sum;

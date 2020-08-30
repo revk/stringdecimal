@@ -1,0 +1,142 @@
+#!/bin/csh
+
+# Testing the test system
+./sd --pass=7 '1+2*3' >& /dev/null
+if($status) echo "TEST PASS FAILED"
+./sd --pass=9 '1+2*3' >& /dev/null
+if(! $status) echo "TEST FAIL PASS FAILED"
+./sd --fail='Missing operand at q' 'q' >& /dev/null
+if($status) echo "TEST FAIL FAILED"
+./sd --fail='Broken' 'q' >& /dev/null
+if(! $status) echo "TEST FAIL FAIL FAILED"
+
+# Testing basic parsing
+./sd --pass='1' --	'1' '+1' '01' '001' '1.' '1.0' '1.000' '100e-2' '0.01e2' '1,000e-3'
+./sd --fail='Missing/unknown operator at 1,23' 	'1,23'
+./sd --fail='Missing/unknown operator at 1,234' --no-comma '1,234'
+./sd --pass='-1' --	'-1' '-1.0' '-10e-1'
+./sd --pass='0.23' 	'0.23' '0.23000' '0.0023e2'
+
+# Basic maths
+./sd --pass='7' '1+2*3' '1+(-2*-3)'
+./sd --pass='9' '(1+2)*3'
+
+# Formatting
+./sd --pass='1234' '1234'					# simple
+./sd --pass='1,234' --comma '1234'				# comma
+./sd --pass='1.234e+3' --format='e' --places=3 '1234'		# exponent / scientific
+./sd --pass='1.234e+3' --format='e' --places=-1 '1234'
+./sd --pass='6.170e+2' --format='e' --places=3 '1234/2'
+./sd --pass='6.17e+2' --format='e' --places=-1 '1234/2'
+./sd --pass='2.000e+0' --format='e' --places=3 '1.9995'
+./sd --pass='1.999e+0' --format='e' --places=3 '1.9994'
+./sd --pass='1.000e+0' --format='e' --places=3 '1.9999/2'
+./sd --pass='9.999e-1' --format='e' --places=3 '1.99989/2'
+./sd --pass='1.20' --format='*' '1.00+0.2'			# input places
+./sd --pass='0' --format='+' '1/7'				# guess extra places
+./sd --pass='0.0143' --format='+' --places=3 '1/70'
+./sd --pass='0.01234' --format='+' --places=3 '0.01234'
+./sd --pass='1.23' --format='=' --places=2 '12345/10000'	# exact
+./sd --pass='0.00' --format='=' --places=2 '0.004'
+./sd --pass='0.01' --format='=' --places=2 '0.006'
+./sd --pass='0.0' --format='=' --places=1 '0'
+./sd --pass='150' --format='=' --places=0 '150'
+./sd --pass='150' --format='=' --places=-1 '150'
+./sd --pass='200' --format='=' --places=-2 '150'
+./sd --pass='0000' --format='=' --places=-3 '150'
+./sd --pass='00000' --format='=' --places=-4 '150'
+./sd --pass='0.2' --format='-' --places=4 '1/5'			# divide limit no padding
+./sd --pass='0.3333' --format='-' --places=4 '1/3'
+./sd --pass='0.6667' --format='-' --places=4 '2/3'
+./sd --pass='1' --format='/' '50/50'				# Rational
+./sd --pass='2/10' --format='/' '0.2'
+# TODO /0 rational?
+
+# Rounding
+./sd --pass='1' --round='T' --format='=' '1.0' '1.1' '1.4999' '1.5' '1.999'		# Truncate
+./sd --pass='-1' --round='T' --format='=' -- '-1.0' '-1.1' '-1.4999' '-1.5' '-1.999'
+./sd --pass='1' --round='U' --format='=' '1.0'						# Away from zero
+./sd --pass='2' --round='U' --format='=' '1.1' '1.4999' '1.5' '1.999'
+./sd --pass='-1' --round='U' --format='=' -- '-1.0'
+./sd --pass='-2' --round='U' --format='=' -- '-1.1' '-1.4999' '-1.5' '-1.999'
+./sd --pass='1' --round='D' --format='=' '1.0' '1.1' '1.4999' '1.5' '1.999'		# Towards from zero
+./sd --pass='-1' --round='D' --format='=' -- '-1.0' '-1.1' '-1.4999' '-1.5' '-1.999'
+./sd --pass='1' --round='F' --format='=' '1.0' '1.1' '1.4999' '1.5' '1.999'		# Floor - towards negative
+./sd --pass='-1' --round='F' --format='=' -- '-1.0'
+./sd --pass='-2' --round='F' --format='=' -- '-1.1' '-1.4999' '-1.5' '-1.999'
+./sd --pass='1' --round='C' --format='=' '1.0'						# Ceiling - towards positive
+./sd --pass='2' --round='C' --format='=' '1.1' '1.4999' '1.5' '1.999'
+./sd --pass='-1' --round='C' --format='=' -- '-1.0' '-1.1' '-1.4999' '-1.5' '-1.999'
+./sd --pass='1' --round='R' --format='=' '1.0' '1.1' '1.4999'				# Away from zero if 0.5 or more
+./sd --pass='2' --round='R' --format='=' '1.5' '1.999'
+./sd --pass='3' --round='R' --format='=' '2.5' '2.999'
+./sd --pass='-1' --round='R' --format='=' -- '-1.0' '-1.1' '-1.4999'
+./sd --pass='-2' --round='R' --format='=' -- '-1.5' '-1.999'
+./sd --pass='-3' --round='R' --format='=' -- '-2.5' '-2.999'
+./sd --pass='1' --round='B' --format='=' '1.0' '1.1' '1.4999'				# Bankers rounding
+./sd --pass='2' --round='B' --format='=' '1.5' '1.999' '2.5'
+./sd --pass='3' --round='B' --format='=' '2.50000001' '2.999'
+./sd --pass='-1' --round='B' --format='=' -- '-1.0' '-1.1' '-1.4999'
+./sd --pass='-2' --round='B' --format='=' -- '-1.5' '-1.999' '-2.5'
+./sd --pass='-3' --round='B' --format='=' -- '-2.5000001' '-2.999'
+
+# Operations
+./sd --pass='340282366920938463463374607431768211456' '2¹²⁸'
+./sd --pass='340282366920938463463374607431768211456' '2^128'
+./sd --pass='340282366920938463463374607431768211456' -- '-2^128'
+./sd --pass='-170141183460469231731687303715884105728' -- '-2^127'
+./sd --pass='0.00000000000000000000000000000000000000293873587705571876992184134305561419454666389193021880377187926569604314863681793212890625' '0.5^128'
+./sd --pass='0.143' '1/7'
+./sd --pass='-0.143' -- '-1/7'
+./sd --pass='-0.143' '1/-7'
+./sd --pass='0.143' -- '-1/-7'
+./sd --pass='31558149.7789324' '366.2564*86164.091'
+./sd --pass='-31558149.7789324' -- '-366.2564*86164.091'
+./sd --pass='-31558149.7789324' -- '366.2564*-86164.091'
+./sd --pass='31558149.7789324' -- '-366.2564*-86164.091'
+./sd --pass='3' '5-2'
+./sd --pass='-3' '2-5'
+./sd --pass='-7' -- '-2-5'
+./sd --pass='3' -- '-2--5'
+./sd --pass='1' '1/7*7'
+./sd --pass='1' '3>=2'
+./sd --pass='1' '2>=2'
+./sd --pass='0' '1>=2'
+./sd --pass='0' -- '-3>=-2'
+./sd --pass='1' -- '-2>=-2'
+./sd --pass='1' -- '-1>=-2'
+./sd --pass='0' '1.9999>=2'
+./sd --pass='1' '1/3>=1/4'
+./sd --pass='0' '3<=2'
+./sd --pass='1' '2<=2'
+./sd --pass='1' '1.9999<=2'
+./sd --pass='0' '1/3<=1/4'
+./sd --pass='1' '2/3==44/66'
+./sd --pass='1' '2/3!=45/66'
+./sd --pass='0' '2/3!=44/66'
+./sd --pass='0' '2/3==45/66'
+./sd --pass='0' '0&&0'
+./sd --pass='0' '0&&1'
+./sd --pass='0' '1&&0'
+./sd --pass='1' '1&&1'
+./sd --pass='0' '0||0'
+./sd --pass='1' '0||1'
+./sd --pass='1' '1||0'
+./sd --pass='1' '1||1'
+./sd --pass='1' '0||1&&1'
+./sd --pass='0' '0||0&&1'
+./sd --pass='1' '1||0&&1'
+./sd --pass='1' '1||1&&0'
+./sd --pass='0' '(1||1)&&0'
+./sd --pass='0' '\!1'
+./sd --pass='1' '\!0'
+./sd --pass='2' '1?2:3'
+./sd --pass='3' '0?2:3'
+# TODO absolute
+# TODO modulo
+
+# SI suffixes
+# IEEE suffixes
+# Fractions
+# Special numbering
+
