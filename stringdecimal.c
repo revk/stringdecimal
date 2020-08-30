@@ -1207,7 +1207,7 @@ sd_p sd_parse_opts(sd_parse_t o)
    if (f < FRACTIONS)
    {                            // Just a fraction
       p += l;
-      v->n = make_int(&v->failure, fraction[f].n);
+      n = v->n = make_int(&v->failure, fraction[f].n);
       if (!fraction[f].d)
       {                         // 1/N
        n = parse(&v->failure, p, placesp: &places, nocomma: o.nocomma, end:&end);
@@ -1276,6 +1276,8 @@ sd_p sd_parse_opts(sd_parse_t o)
       *o.end = p;
    if (o.a_free)
       freez(o.a);
+   if (!n && !v->failure)
+      return sd_free(v);        // NULL
    return v;
 }
 
