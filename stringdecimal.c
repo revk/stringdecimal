@@ -42,11 +42,17 @@ int sd_max = 0;
 static const char *digitnormal[] = { "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "-", "+", NULL };
 static const char *digitcomma[] = { "🄁", "🄂", "🄃", "🄄", "🄅", "🄆", "🄇", "🄈", "🄉", "🄊", NULL };
 static const char *digitpoint[] = { "🄀", "⒈", "⒉", "⒊", "⒋", "⒌", "⒍", "⒎", "⒏", "⒐", NULL };
-static const char *digitsub[] = { "⁰", "¹", "²", "³", "⁴", "⁵", "⁶", "⁷", "⁸", "⁹", NULL };
+static const char *digitsup[] = { "⁰", "¹", "²", "³", "⁴", "⁵", "⁶", "⁷", "⁸", "⁹", "⁻", "⁺", NULL };
+static const char *digitsub[] = { "₀", "₁", "₂", "₃", "₄", "₅", "₆", "₇", "₈", "₉", "₋", "₊", NULL };
+static const char *digitdigbat[] = { "🄋", "➀", "➁", "➂", "➃", "➄", "➅", "➆", "➇", "➈", NULL };
+static const char *digitdigbatneg[] = { "🄌", "➊", "➋", "➌", "➍", "➎", "➏", "➐", "➑", "➒", NULL };
 
 static const char **digits[] = {
    digitnormal,
+   digitsup,
    digitsub,
+   digitdigbat,
+   digitdigbatneg,
    NULL,
 };
 

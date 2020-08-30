@@ -23,14 +23,16 @@ if(! $status) echo "TEST FAIL FAIL FAILED"
 ./sd --fail='Number too long at [unknown]' --max=100 '1/1e99'
 ./sd --pass='1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000' --max=100 '1e99'
 
+# Specials
+./sd --pass='12.34' '1⒉34'					# point
+./sd --pass='1234' '➊➋➌➍' '➀➁➂➃' '🄂234' '₁₂₃₄' '¹²³⁴'		# special and comma
+
 # Basic maths
 ./sd --pass='7' '1+2*3' '1+(-2*-3)'
 ./sd --pass='9' '(1+2)*3'
 
 # Formatting
 ./sd --pass='1234' '1234'					# simple
-./sd --pass='1234' '🄂234'					# comma
-./sd --pass='12.34' '1⒉34'					# point
 ./sd --pass='1,234' --comma '1234'				# comma
 ./sd --pass='1.234e+3' --format='e' --places=3 '1234'		# exponent / scientific
 ./sd --pass='1.234e+3' --format='e' --places=-1 '1234'
