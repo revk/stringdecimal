@@ -10,7 +10,7 @@ See stringdecimal.h for the various calls available.
 
 This includes functions for add, subtract, multiply, compare, divide and rounding.
 
-A general purpose "eval" function in the stringdecimaleval.o variant parses sums using +, -, ÷, ×, (, and ) to produce an answer. ASCII/alternative versions /, \*, also work. Internally this uses rational numbers if you have any division other than by a power of 10, so only does the one division at the end to specified limit of decimal places. Hence 1000/7\*7 is 1, not 994 or some other "nearly 1" answer. It also understands operator precedence, so 1+2\*3 is 7, not 9.
+A general purpose "eval" function in the stringdecimaleval.o variant parses sums using +, -, ÷, ×, ^, |x|, (, and ) to produce an answer. ASCII/alternative versions /, \*, also work. Internally this uses rational numbers if you have any division other than by a power of 10, so only does the one division at the end to specified limit of decimal places. Hence 1000/7\*7 is 1, not 994 or some other "nearly 1" answer. It also understands operator precedence, so 1+2\*3 is 7, not 9.
 
 A lot of unicode is handled, e.g. you can work out 2¹²⁸ if you want.
 
