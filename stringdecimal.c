@@ -1220,7 +1220,7 @@ sd_p sd_parse_opts(sd_parse_t o)
    } else
    {                            // Normal
     n = parse(&v->failure, p, placesp: &places, nocomma: o.nocomma, end:&end);
-      if (n)
+      if (n && !v->failure)
       {
          p = end;
          v->n = n;
@@ -1244,7 +1244,7 @@ sd_p sd_parse_opts(sd_parse_t o)
       }
    }
    f = IEEES;
-   if (!o.noieee)
+   if (!o.noieee && !v->failure)
       for (f = 0; f < IEEES && !(l = comp(ieee[f].value, p)); f++);
    if (f < IEEES)
    {
@@ -1257,7 +1257,7 @@ sd_p sd_parse_opts(sd_parse_t o)
    } else
    {
       f = SIS;
-      if (!o.nosi)
+      if (!o.nosi && !v->failure)
          for (f = 0; f < SIS && !(l = comp(si[f].value, p)); f++);
       if (f < SIS)
       {
