@@ -499,7 +499,7 @@ static char *output_opts(output_t o)
             fprintf(O, "%s", digitpoint[v]);
          else
          {
-            if (sd_point && q == s->mag + 1)
+            if ((!o.unicode || sd_point != '.') && sd_point && q == s->mag + 1)
                fputc(sd_point, O);
             fputc('0' + v, O);
             if (o.comma && sd_comma && q < s->mag && !((s->mag - q) % 3))
