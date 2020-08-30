@@ -65,6 +65,10 @@ typedef enum {
    // places: is added to the max places seen
    SD_FORMAT_EXP = 'e',         // Exponent (scientific notation)
    // Places: fixed number of places in mantissa, negative places make a guess
+   SD_FORMAT_SI = 'S',          // SI suffix
+   // Places: Max places
+   SD_FORMAT_IEEE = 'I',        // IEEE suffix
+   // Places: Max places
    SD_FORMAT_RATIONAL = '/',    // Output as integer or integer/integer, places is not used
 } sd_format_t;
 
@@ -112,8 +116,6 @@ typedef struct {                // Division stringdecimal operation
    unsigned char nofrac:1;      // No fractions when parsing
    unsigned char nosi:1;        // No SI suffix when parsing
    unsigned char noieee:1;      // No IEEE suffix when parsing
-   //unsigned char si:1;          // Use SI on output
-   //unsigned char ieee:1;        // Use IEEE on output
    //unsigned char frac:1;        // Use Fractions on output
    unsigned char unicode:1;     // Use Fractions on output
    const char **failure;        // Error string
@@ -172,8 +174,6 @@ typedef struct {                // Output options
    sd_round_t round;            // Rounding
    unsigned char p_free:1;      // Free argument
    unsigned char comma:1;       // Add comma in output
-   //unsigned char si:1;          // Use SI on output
-   //unsigned char ieee:1;        // Use IEEE on output
    //unsigned char frac:1;        // Use Fractions on output
    unsigned char unicode:1;     // Use Fractions on output
    const char **failure;        // Error report

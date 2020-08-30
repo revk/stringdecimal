@@ -29,12 +29,11 @@ if(! $status) echo "TEST FAIL FAIL FAILED"
 ./sd --fail='Missing/unknown operator at k' --no-si '1k'
 ./sd --fail='Missing/unknown operator at Ki' --no-ieee '1Ki'
 ./sd --fail='Missing operand at [end]' ''
+./sd --fail='Missing operand at ⅟' '⅟'
 
 # Specials
 ./sd --pass='12.34' '1⒉34'					# point
 ./sd --pass='1234567890' '➊➋➌➍➎➏➐➑➒🄌' '➀➁➂➃➄➅➆➇➈🄋' '🄂23🄅56🄈890' '₁₂₃₄₅₆₇₈₉₀' '¹²³⁴⁵⁶⁷⁸⁹⁰'		# special and comma
-./sd --pass='0.5' '½'
-./sd --pass='3/2' --format='/' '1½'
 
 # Suffixes
 ./sd --pass='1000' '1k'
@@ -42,6 +41,11 @@ if(! $status) echo "TEST FAIL FAIL FAILED"
 ./sd --pass='1536' '1½Ki'
 ./sd --pass='512' '½Ki'
 ./sd --pass='0' '0k'
+
+# Fractions
+./sd --pass='0.5' '½'
+./sd --pass='3/2' --format='/' '1½'
+./sd --pass='1/100' --format='/' '⅟100'
 
 # Basic maths
 ./sd --pass='7' '1+2*3' '1+(-2*-3)'
@@ -167,9 +171,4 @@ if(! $status) echo "TEST FAIL FAIL FAILED"
 ./sd --pass='3' '0?2:3'
 ./sd --pass='3' '1+|-1*2|'
 # TODO modulo
-
-# SI suffixes
-# IEEE suffixes
-# Fractions
-# Special numbering
 
