@@ -689,7 +689,11 @@ static sd_val_t *udiv(const char **failp, sd_val_t * a, sd_val_t * b, char neg, 
       b = &zero;
    //debugout ("udiv", a, b, NULL);
    if (!b->sig)
+   {
+      if (failp && !*failp)
+         *failp = "Division by zero";
       return NULL;              // Divide by zero
+   }
    sd_val_t *base[9];
    makebase(failp, base, b);
    int mag = a->mag - b->mag;
@@ -1025,11 +1029,6 @@ char *stringdecimal_mul_opts(stringdecimal_binary_t o)
 char *stringdecimal_div_opts(stringdecimal_div_t o)
 {                               // Simple divide - to specified number of places, with remainder
  sd_val_t *B = parse(o.failure, o.b, nocomma:o.nocomma);
-   if (B && !B->sig)
-   {
-      freez(B);
-      return NULL;              // Divide by zero
-   }
  sd_val_t *A = parse(o.failure, o.a, nocomma:o.nocomma);
    sd_val_t *REM = NULL;
    sd_val_t *R = sdiv(o.failure, A, B, &REM, o.places, o.round);
@@ -1215,8 +1214,8 @@ char *sd_output_opts(sd_output_opts_t o)
          sd_p c = sd_copy(o.p);
          sd_rational(c);        // Normalise to integers
          sd_val_t *rem = NULL;
-         sd_val_t *res = sdiv(&failp, c->n, c->d, &rem, 0, SD_ROUND_TRUNCATE);
-         if (!rem->sig)
+         sd_val_t *res = sdiv(NULL, c->n, c->d, &rem, 0, SD_ROUND_TRUNCATE);
+         if (rem && !rem->sig)
             r = output(res, o.comma);   // No remainder, so integer
          freez(rem);
          freez(res);
@@ -1543,8 +1542,6 @@ sd_p sd_div(sd_p l, sd_p r)
 {                               // Divide
    if (!l)
       l = &sd_zero;
-   if (!r || !r->n || !r->n->sig)
-      return NULL;
    sd_debugout("sd_div", l, r, NULL);
    sd_p v = sd_new(l, r);
    if (!l->d && !r->d)
