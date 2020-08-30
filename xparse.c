@@ -35,6 +35,7 @@ void *xparse(xparse_config_t * config, void *context, const char *sum, const cha
       int args;
       xparse_operate *func;
       void *data;
+      const char *posn;
    } *operator = NULL;          // Operator stack
    int operands = 0,
        operandmax = 0;
@@ -42,6 +43,7 @@ void *xparse(xparse_config_t * config, void *context, const char *sum, const cha
 #ifdef DEBUG
    char **opval = NULL;
 #endif
+   const char *posn = sum;
    void addarg(void *v, const char *text, int l) {
       if (operands + 1 > operandmax)
       {
@@ -69,11 +71,13 @@ void *xparse(xparse_config_t * config, void *context, const char *sum, const cha
       int args = operator[operators].args;
       if (operands < args)
       {
+         posn = operator[operators].posn;
          fail = "Missing args";
          return;
       }
       if (args > 3)
       {
+         posn = operator[operators].posn;
          fail = "Cannot handle more than 3 args at present";
          return;
       }
@@ -100,12 +104,13 @@ void *xparse(xparse_config_t * config, void *context, const char *sum, const cha
       }
       if (!v)
       {
+         posn = operator[operators].posn;
          fail = "Operation failed";
          return;
       }
       addarg(v, operator[operators].op->op, 0);
    }
-   void addop(const xparse_op_t * op, int level, int args) {    // Add an operator
+   void addop(const xparse_op_t * op, int level, int args, const char *posn) {  // Add an operator
       if (args < 0)
          args = 0 - args;       // Used for prefix unary ops, don't run stack
       else
@@ -118,6 +123,7 @@ void *xparse(xparse_config_t * config, void *context, const char *sum, const cha
       operator[operators].data = op->data;
       operator[operators].level = level;
       operator[operators].args = args;
+      operator[operators].posn = posn;
       operators++;
 #ifdef DEBUG
       warnx("Added %s level=%d args=%d", op->op, level, args);
@@ -135,7 +141,6 @@ void *xparse(xparse_config_t * config, void *context, const char *sum, const cha
    }
    int q = 0,
        l;
-   const char *posn = sum;
    while (!fail)
    {
       posn = sum;
@@ -147,13 +152,14 @@ void *xparse(xparse_config_t * config, void *context, const char *sum, const cha
       }
       while (1)
       {
+         posn = sum;
          if (config->bracket)
          {
             for (q = 0; config->bracket[q].op; q++)
                if ((l = comp(config->bracket[q].op, sum)))
                {
                   sum += l;
-                  addop(&config->bracket[q], level, -1);
+                  addop(&config->bracket[q], level, -1, posn);
                   level += 20;
                   break;
                }
@@ -172,7 +178,7 @@ void *xparse(xparse_config_t * config, void *context, const char *sum, const cha
                if ((l = comp(config->unary[q].op, sum)) || (l = comp(config->unary[q].op2, sum)))
                {
                   sum += l;
-                  addop(&config->unary[q], level + config->unary[q].level, -1);
+                  addop(&config->unary[q], level + config->unary[q].level, -1, posn);
                   break;
                }
             if (config->unary[q].op)
@@ -203,6 +209,7 @@ void *xparse(xparse_config_t * config, void *context, const char *sum, const cha
       // Postfix operators and close brackets
       while (1)
       {
+         posn = sum;
          if (config->bracket)
          {
             for (q = 0; config->bracket[q].op; q++)
@@ -233,7 +240,7 @@ void *xparse(xparse_config_t * config, void *context, const char *sum, const cha
                if ((l = comp(config->post[q].op, sum)) || (l = comp(config->post[q].op2, sum)))
                {
                   sum += l;
-                  addop(&config->post[q], level + config->post[q].level, 1);
+                  addop(&config->post[q], level + config->post[q].level, 1, posn);
                   break;
                }
             if (config->post[q].op)
@@ -265,7 +272,7 @@ void *xparse(xparse_config_t * config, void *context, const char *sum, const cha
             {
                if (!implied)
                   sum += l;
-               addop(&config->binary[q], level + config->binary[q].level, 2);
+               addop(&config->binary[q], level + config->binary[q].level, 2, posn);
                break;
             }
          if (config->binary[q].op)
@@ -279,7 +286,7 @@ void *xparse(xparse_config_t * config, void *context, const char *sum, const cha
             {
                if (!implied)
                   sum += l;
-               addop(&config->ternary[q], level + config->ternary[q].level, 0);
+               addop(&config->ternary[q], level + config->ternary[q].level, 0, posn);
                break;
             }
          if (config->ternary[q].op)

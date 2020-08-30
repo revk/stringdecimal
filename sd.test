@@ -12,13 +12,13 @@ if(! $status) echo "TEST FAIL FAIL FAILED"
 
 # Testing basic parsing
 ./sd --pass='1' --	'1' '+1' '01' '001' '1.' '1.0' '1.000' '100e-2' '0.01e2' '1,000e-3'
-./sd --fail='Missing/unknown operator at 1,23' 	'1,23'
-./sd --fail='Missing/unknown operator at 1,234' --no-comma '1,234'
+./sd --fail='Missing/unknown operator at ,23' 	'1,23'
+./sd --fail='Missing/unknown operator at ,234' --no-comma '1,234'
 ./sd --pass='-1' --	'-1' '-1.0' '-10e-1'
 ./sd --pass='0.23' 	'0.23' '0.23000' '0.0023e2'
 ./sd --fail='Missing operand at [end]' '1+'
-./sd --fail='Unclosed bracket at (1' '(1'
-./sd --fail='Missing/unknown operator at (1))' '(1))'
+./sd --fail='Unclosed bracket at [end]' '(1'
+./sd --fail='Missing/unknown operator at )' '(1))'
 
 # Basic maths
 ./sd --pass='7' '1+2*3' '1+(-2*-3)'
