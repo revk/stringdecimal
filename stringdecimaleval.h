@@ -19,6 +19,9 @@ struct stringdecimal_context_s {
    unsigned char nocomma:1;     // Do not allow comma in parse
    unsigned char comma:1;       // Add comma in output
    unsigned char raw:1;         // Raw output, i.e. sd not a string
+   unsigned char nofrac:1;      // Do not allow fractions in parse
+   unsigned char nosi:1;        // Do not allow SI suffix in parse
+   unsigned char noieee:1;      // Do not allow IEEE suffix in parse
 };
 extern xparse_config_t stringdecimal_xparse;
 #endif

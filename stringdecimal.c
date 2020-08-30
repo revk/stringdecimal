@@ -56,41 +56,81 @@ static const char **digits[] = {
    NULL,
 };
 
-#define	si		\
-	u(Y,24)		\
-	u(Z,21)		\
-	u(E,18)		\
-	u(P,15)		\
-	u(T,12)		\
-	u(G,9)		\
-	u(M,6)		\
-	u(k,3)		\
-	u(h,2)		\
-	u(da,1)		\
-	u(d,-1)		\
-	u(c,-2)		\
-	u(mc,-6)	\
-	u(m,-3)		\
-	u(μ,-6)		\
-	u(µ,-6)		\
-	u(u,-6)		\
-	u(n,-9)		\
-	u(p,-12)	\
-	u(f,-15)	\
-	u(a,-18)	\
-	u(z,-21)	\
-	u(y,-24)	\
-	u(%,-2)		\
-	u(‰,-3)		\
-	u(‱,-4)		\
+struct {
+   const char *value;
+   int mag;
+} si[] = {
+   { "Y", 24 },
+   { "Z", 21 },
+   { "E", 18 },
+   { "P", 15 },
+   { "T", 12 },
+   { "G", 9 },
+   { "M", 6 },
+   { "k", 3 },
+   { "h", 2 },
+   { "da", 1 },
+   { "d", -1 },
+   { "c", -2 },
+   { "mc", -6 },
+   { "m", -3 },
+   { "μ", -6 },
+   { "µ", -6 },
+   { "u", -6 },
+   { "n", -9 },
+   { "p", -12 },
+   { "f", -15 },
+   { "a", -18 },
+   { "z", -21 },
+   { "y", -24 },
+   { "‰", -3 },
+   { "‱", -4 },
+};
 
-#define	ieee				\
-	u(Ki,1024L)			\
-	u(Mi,1048576L)			\
-	u(Gi,1073741824LL)		\
-	u(Ti,1099511627776LL)		\
-	u(Pi,1125899906842624LL)	\
-	u(Ei,1152921504606846976LL)	\
+#define	SIS (sizeof(si)/sizeof(*si))
+
+struct {
+   const char *value;
+   unsigned long long mul;
+} ieee[] = {
+   { "Ki", 1024L },
+   { "Mi", 1048576L },
+   { "Gi", 1073741824LL },
+   { "Ti", 1099511627776LL },
+   { "Pi", 1125899906842624LL },
+   { "Ei", 1152921504606846976LL },
+};
+
+#define IEEES (sizeof(ieee)/sizeof(*ieee))
+
+struct {
+   const char *value;
+   unsigned char n;
+   unsigned char d;
+} fraction[] = {
+   { "¼", 1, 4 },
+   { "½", 1, 2 },
+   { "¾", 3, 4 },
+   { "⅐", 1, 7 },
+   { "⅑", 1, 9 },
+   { "⅒", 1, 10 },
+   { "⅓", 1, 3 },
+   { "⅔", 2, 3 },
+   { "⅕", 1, 5 },
+   { "⅖", 2, 5 },
+   { "⅗", 3, 5 },
+   { "⅘", 4, 5 },
+   { "⅙", 1, 6 },
+   { "⅚", 5, 6 },
+   { "⅛", 1, 8 },
+   { "⅜", 3, 8 },
+   { "⅝", 5, 8 },
+   { "⅞", 7, 8 },
+   { "⅟", 1, 0 },
+   { "↉", 0, 3 },
+};
+
+#define	FRACTIONS (sizeof (fraction)/sizeof(*fraction))
 
 //#define DEBUG
 
@@ -125,7 +165,7 @@ struct sd_s {
    const char *failure;         // Error message
 };
 
-static int comp(const char *a, const char *b)
+static inline int comp(const char *a, const char *b)
 {                               // Simple compare
    if (!a || !b)
       return 0;
@@ -386,6 +426,13 @@ static sd_val_t *parse_opts(const char **failp, parse_t o)
    else
       s->neg = neg;
    return s;
+}
+
+static sd_val_t *make_int(const char **failp, long long l)
+{                               // Int...
+   char temp[40];
+   snprintf(temp, sizeof(temp), "%lld", l);
+   return parse(failp, temp);
 }
 
 const char *sd_check_opts(sd_parse_t o)
@@ -1149,13 +1196,59 @@ sd_p sd_parse_opts(sd_parse_t o)
    sd_p v = sd_make(NULL);
    if (!v)
       return v;
- sd_val_t *n = parse(&v->failure, o.a, placesp: &places, nocomma:o.nocomma);
-   if (n)
-   {
-      v->places = places;
-      v->n = n;
-      v->d = NULL;
+   int f = FRACTIONS;
+   sd_val_t *n = NULL;
+   const char *p = o.a,
+       *end;
+   int l;
+   if (!o.nofrac)
+      for (f = 0; f < FRACTIONS && !(l = comp(fraction[f].value, p)); f++);
+   if (f < FRACTIONS)
+   {                            // Just a fraction
+      p += l;
+      v->n = make_int(&v->failure, fraction[f].n);
+      if (!fraction[f].d)
+      {                         // 1/N
+       n = parse(&v->failure, p, placesp: &places, nocomma: o.nocomma, end:&end);
+         if (n)
+         {
+            p = end;
+            v->d = n;
+         }
+      } else
+         v->d = make_int(&v->failure, fraction[f].d);
+   } else
+   {                            // Normal
+    n = parse(&v->failure, p, placesp: &places, nocomma: o.nocomma, end:&end);
+      if (n)
+      {
+         p = end;
+         v->n = n;
+         if (n && n->mag <= 0 && n->mag + 1 >= n->sig)
+         {                      // Integer, follow by fraction
+            if (!o.nofrac)
+               for (f = 0; f < FRACTIONS && !(l = comp(fraction[f].value, p)); f++);
+            if (f < FRACTIONS && fraction[f].d)
+            {
+               p += l;
+               v->d = make_int(&v->failure, fraction[f].d);
+               n = smul(&v->failure, v->n, v->d);
+               freez(v->n);
+               v->n = n;
+               sd_val_t *a = make_int(&v->failure, fraction[f].n);
+               n = sadd(&v->failure, v->n, a);
+               freez(v->n);
+               v->n = n;
+               freez(a);
+            }
+         }
+      }
    }
+   // TODO suffix
+   if (n)
+      v->places = places;
+   if (o.end)
+      *o.end = p;
    if (o.a_free)
       freez(o.a);
    return v;
@@ -1728,11 +1821,8 @@ int sd_cmp_cf(sd_p l, sd_p r)
 static void *parse_operand(void *context, const char *p, const char **end)
 {                               // Parse an operand, malloc value (or null if error), set end
    stringdecimal_context_t *C = context;
-   sd_p v = sd_make(NULL);
-   if (!v)
-      return v;
- v->n = parse(&v->failure, p, end: end, placesp: &v->places, nocomma: C->nocomma, comma:C->comma);
-   if (v->failure)
+ sd_p v = sd_parse(p, end: end, nocomma: C->nocomma, nofrac: C->nofrac, nosi: C->nosi, noieee:C->noieee);
+   if (v && v->failure)
    {
       if (!C->fail)
          C->fail = v->failure;
@@ -1791,17 +1881,6 @@ static sd_p parse_bin_cmp(sd_p l, sd_p r, int match)
 static void *parse_null(void *context, void *data, void **a)
 {
    return *a;
-}
-
-static void *parse_si(void *context, void *data, void **a)
-{                               // SI prefix (suffix on number)
-   return sd_10_i(*a, (long) data);
-}
-
-static void *parse_ieee(void *context, void *data, void **a)
-{                               // IEEE prefix (suffix on number)
-   long n = (long) data;
-   return sd_mul_cf(*a, sd_int(n));
 }
 
 static void *parse_add(void *context, void *data, void **a)
@@ -1938,12 +2017,6 @@ static xparse_op_t parse_unary[] = {
 };
 
 static xparse_op_t parse_post[] = {
-#define	u(p,n)	{ op:#p,level:15,func:parse_ieee,data:(void*)n},
-   ieee
-#undef u
-#define	u(p,n)	{ op:#p,level:15,func:parse_si,data:(void*)n},
-       si
-#undef u
    { NULL },
 };
 
@@ -1976,32 +2049,6 @@ static xparse_op_t parse_ternary[] = {
    { NULL },
 };
 
-#if 0
-static xparse_map_t parse_map[] = {
-   { "¼", "(1/4)" },
-   { "½", "(1/2)" },
-   { "¾", "(3/4)" },
-   { "⅐", "(1/7)" },
-   { "⅑", "(1/9)" },
-   { "⅒", "(1/10)" },
-   { "⅓", "(1/3)" },
-   { "⅔", "(2/3)" },
-   { "⅕", "(1/5)" },
-   { "⅖", "(2/5)" },
-   { "⅗", "(3/5)" },
-   { "⅘", "(4/5)" },
-   { "⅙", "(1/6)" },
-   { "⅚", "(5/6)" },
-   { "⅛", "(1/8)" },
-   { "⅜", "(3/8)" },
-   { "⅝", "(5/8)" },
-   { "⅞", "(7/8)" },
-   { "⅟", "1/" },
-   { "↉", "(0/3)" },
-   { NULL },
-};
-#endif
-
 // Parse Config (optionally public to allow building layers on top)
 xparse_config_t stringdecimal_xparse = {
  bracket:parse_bracket,
@@ -2018,7 +2065,7 @@ xparse_config_t stringdecimal_xparse = {
 // Parse
 char *stringdecimal_eval_opts(stringdecimal_unary_t o)
 {
- stringdecimal_context_t context = { places: o.places, format: o.format, round: o.round, nocomma: o.nocomma, comma:o.comma };
+ stringdecimal_context_t context = { places: o.places, format: o.format, round: o.round, nocomma: o.nocomma, comma: o.comma, nofrac: o.nofrac, nosi: o.nosi, noieee:o.noieee };
    char *ret = xparse(&stringdecimal_xparse, &context, o.a, NULL);
    if (!ret || context.fail)
    {
@@ -2045,6 +2092,9 @@ int main(int argc, const char *argv[])
    int places = 0;
    int comma = 0;
    int nocomma = 0;
+   int nofrac = 0;
+   int nosi = 0;
+   int noieee = 0;
    int fails = 0;
    {                            // POPT
       poptContext optCon;       // context for parsing command-line options
@@ -2053,6 +2103,9 @@ int main(int argc, const char *argv[])
          { "format", 'f', POPT_ARG_STRING, &format, 0, "Format", "-/=/+/>/*/e//" },
          { "round", 'r', POPT_ARG_STRING, &round, 0, "Rounding", "T/U/F/C/R/B" },
          { "no-comma", 'n', POPT_ARG_NONE, &nocomma, 0, "No comma in input" },
+         { "no-frac", 0, POPT_ARG_NONE, &nofrac, 0, "No fractions in input" },
+         { "no-si", 0, POPT_ARG_NONE, &nosi, 0, "No SI suffix in input" },
+         { "no-ieee", 0, POPT_ARG_NONE, &noieee, 0, "No IEEE suffix in input" },
          { "comma", 'c', POPT_ARG_NONE, &comma, 0, "Comma in output" },
          { "comma-char", 'C', POPT_ARG_STRING, &scomma, 0, "Set comma char", "char" },
          { "point-char", 'C', POPT_ARG_STRING, &spoint, 0, "Set point char", "char" },
@@ -2078,7 +2131,7 @@ int main(int argc, const char *argv[])
       const char *s;
       while ((s = poptGetArg(optCon)))
       {
-       char *res = stringdecimal_eval(s, places: places, format: *format, round: *round, comma: comma, nocomma:nocomma);
+       char *res = stringdecimal_eval(s, places: places, format: *format, round: *round, comma: comma, nocomma: nocomma, nofrac: nofrac, nosi: nosi, noieee:noieee);
          if (pass && (!res || *res == '!' || strcmp(res, pass)))
          {
             fails++;
