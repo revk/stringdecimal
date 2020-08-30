@@ -77,6 +77,7 @@ typedef struct {                // Binary stringdecimal operations
    unsigned char a_free:1;      // Free first argument
    unsigned char b_free:1;      // Free second argument
    unsigned char comma:1;       // Add comma in output
+   const char **failure;        // Error string
 } stringdecimal_binary_t;
 typedef struct {                // Unary stringdecimal operations
    const char *a;               // Argument
@@ -86,6 +87,7 @@ typedef struct {                // Unary stringdecimal operations
    unsigned char nocomma:1;     // Do not allow commas when parsing
    unsigned char a_free:1;      // Free argument
    unsigned char comma:1;       // Add comma in output
+   const char **failure;        // Error string
 } stringdecimal_unary_t;
 typedef struct {                // Division stringdecimal operation
    const char *a;               // First argument
@@ -98,6 +100,7 @@ typedef struct {                // Division stringdecimal operation
    unsigned char a_free:1;      // Free first argument
    unsigned char b_free:1;      // Free second argument
    unsigned char comma:1;       // Add comma in output
+   const char **failure;        // Error string
 } stringdecimal_div_t;
 
 // These _cf, _fc, _ff options free one or both args
@@ -141,6 +144,7 @@ typedef struct {                // Parse options
    const char **end;            // Where to store pointer for next character after parsed value
    unsigned char nocomma:1;     // Do not allow commas when parsing
    unsigned char a_free:1;      // Free argument
+   const char **failure;        // Error report
 } sd_parse_t;
 typedef struct {                // Output options
    sd_p p;                      // Argument
@@ -149,8 +153,10 @@ typedef struct {                // Output options
    sd_round_t round;            // Rounding
    unsigned char p_free:1;      // Free argument
    unsigned char comma:1;       // Add comma in output
+   const char **failure;        // Error report
 } sd_output_opts_t;
 
+const char *sd_fail(sd_p);      // Failure string
 void *sd_free(sd_p);            // Free sd_p
 sd_p sd_copy(sd_p p);           // Make copy
 sd_p sd_int(long long);         // Make from integer
