@@ -306,9 +306,9 @@ static sd_val_t *parse_opts(const char **failp, parse_t o)
                    *qq;
                if ((v = getdigits(q, &q)) >= 0 && v < 10 &&     //
                    (v = getdigits(q, &q)) >= 0 && v < 10 &&     //
-                   (((v = getdigits(qq = q, &q)) >= 0 && v < 10) || (z >= 0 && (v = getdigit(digitcomma, qq, &q)) >= 0)) &&     //
-                   ((v = getdigits(q, &q)) < 0 || v > 9))
-               {                // Next 3 are digits
+                   (((v = getdigits(qq = q, &q)) >= 0 && v < 10 && ((v = getdigits(q, &q)) < 0 || v > 9)) ||    //
+                    (z >= 0 && (v = getdigit(digitcomma, qq, &q)) >= 0 && (v = getdigits(q, &q)) >= 0 && v < 10)))
+               {                // Either three digits and non comma, or two digits and comma-digit and digit
                   if (z >= 0)
                      nextdigit();
                   o.v = skip;
