@@ -1833,6 +1833,7 @@ static xparse_op_t parse_ternary[] = {
    { NULL },
 };
 
+#if 0
 static xparse_map_t parse_map[] = {
    { "¼", "(1/4)" },
    { "½", "(1/2)" },
@@ -1856,6 +1857,7 @@ static xparse_map_t parse_map[] = {
    { "↉", "(0/3)" },
    { NULL },
 };
+#endif
 
 // Parse Config (optionally public to allow building layers on top)
 xparse_config_t stringdecimal_xparse = {
@@ -1867,7 +1869,6 @@ xparse_config_t stringdecimal_xparse = {
  final:parse_final,
  dispose:parse_dispose,
  fail:parse_fail,
- map:parse_map,
 };
 
 // Parse

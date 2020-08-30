@@ -38,11 +38,6 @@ typedef struct {
    void *data;                  // Passed to xparse_operate
 } xparse_op_t;
 
-typedef struct {
-   const char *f;               // Operand mapping table
-   const char *t;
-} xparse_map_t;
-
 // This is the top level config
 typedef struct xparse_config_s xparse_config_t;
 struct xparse_config_s {
@@ -54,7 +49,6 @@ struct xparse_config_s {
    xparse_final *final;         // final process operand
    xparse_free *dispose;        // Dispose of an operand
    xparse_fail *fail;           // Failure report
-   xparse_map_t *map;           // Operand mapping
    unsigned char eol:1;         // Stop at end of line
 };
 

@@ -18,9 +18,6 @@
 #include <ctype.h>
 #include "xparse.h"
 
-const char *xparse_sub[10] = { "₀", "₁", "₂", "₃", "₄", "₅", "₆", "₇", "₈", "₉" };
-const char *xparse_sup[11] = { "⁰", "¹", "²", "³", "⁴", "⁵", "⁶", "⁷", "⁸", "⁹" };
-
 //#define DEBUG
 
 // The parse function
@@ -137,19 +134,9 @@ void *xparse(xparse_config_t * config, void *context, const char *sum, const cha
       return 0;
    }
    const char *posn = sum;
-   const char *back = NULL;
-   const char *isback(void) {   // Back link
-      if (*sum || !back)
-         return sum;
-      sum = back;
-      back = NULL;
-      return sum;
-   }
    while (!fail)
    {
-      posn = back ? : sum;
-      if (!*isback())
-         break;
+      posn = sum;
       // Prefix operators and open brackets
       if (*sum == '!' && sum[1] == '!')
       {
@@ -158,19 +145,6 @@ void *xparse(xparse_config_t * config, void *context, const char *sum, const cha
       }
       while (1)
       {
-         if (!*isback())
-            break;
-         if (!back && config->map)
-         {
-            int l;
-            for (int q = 0; config->map[q].f; q++)
-               if ((l = comp(config->map[q].f, sum)))
-               {
-                  back = sum + l;
-                  sum = config->map[q].t;
-                  break;
-               }
-         }
          if (*sum == '(')
          {
             level += 20;
@@ -222,8 +196,6 @@ void *xparse(xparse_config_t * config, void *context, const char *sum, const cha
       // Postfix operators and close brackets
       while (1)
       {
-         if (!*isback())
-            break;
          if (*sum == ')')
          {
             sum++;
@@ -257,7 +229,7 @@ void *xparse(xparse_config_t * config, void *context, const char *sum, const cha
          }
          break;
       }
-      if (!*isback() || (config->eol && (unsigned char) *sum < ' '))
+      if (!*sum || (config->eol && (unsigned char) *sum < ' '))
       {
          while (sum > was && isspace(sum[-1]))
             sum--;
@@ -266,20 +238,22 @@ void *xparse(xparse_config_t * config, void *context, const char *sum, const cha
       // Operator
       int q = 0,
           l;
-      if (!back)
-         for (q = 0; q < sizeof(xparse_sup) / sizeof(*xparse_sup); q++)
-            if ((l = comp(xparse_sup[q], sum)))
+      const char *implied=NULL;
+      { // Implied power
+static const char *sup[11] = { "⁰", "¹", "²", "³", "⁴", "⁵", "⁶", "⁷", "⁸", "⁹" };
+         for (q = 0; q < sizeof(sup) / sizeof(*sup); q++)
+            if ((l = comp(sup[q], sum)))
             {
-               back = sum;
-               sum = "^";       // Implied power operator
+		    implied="^";
                break;
             }
+      }
       if (config->binary)
       {
          for (q = 0; config->binary[q].op; q++)
-            if ((l = comp(config->binary[q].op, sum)) || (l = comp(config->binary[q].op2, sum)))
+            if ((l = comp(config->binary[q].op, implied?:sum)) || (l = comp(config->binary[q].op2, implied?:sum)))
             {
-               sum += l;
+               if(!implied)sum += l;
                addop(&config->binary[q], level + config->binary[q].level, 2);
                break;
             }
@@ -290,9 +264,9 @@ void *xparse(xparse_config_t * config, void *context, const char *sum, const cha
       {
          // Left hand side of ternary
          for (q = 0; config->ternary[q].op; q++)
-            if ((l = comp(config->ternary[q].op, sum)))
+            if ((l = comp(config->ternary[q].op, implied?:sum)))
             {
-               sum += l;
+               if(!implied)sum += l;
                addop(&config->ternary[q], level + config->ternary[q].level, 0);
                break;
             }
@@ -300,7 +274,7 @@ void *xparse(xparse_config_t * config, void *context, const char *sum, const cha
             continue;
          // Right hand side of ternary
          for (q = 0; config->ternary[q].op; q++)
-            if ((l = comp(config->ternary[q].op2, sum)))
+            if ((l = comp(config->ternary[q].op2, implied?:sum)))
             {
                while (!fail && operators && (operator[operators - 1].level > level + config->ternary[q].level || (operator[operators - 1].level == level + config->ternary[q].level && operator[operators - 1].args == 3)))
                   operate();    // Clear stack of pending ops
@@ -309,7 +283,7 @@ void *xparse(xparse_config_t * config, void *context, const char *sum, const cha
 #ifdef DEBUG
                   warnx("Making op %s ternary", operator[operators - 1].op);
 #endif
-                  sum += l;
+                  if(!implied)sum += l;
                   operator[operators - 1].args = 3;     // Extent op
                   break;
                }
