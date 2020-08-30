@@ -40,6 +40,7 @@ if(! $status) echo "TEST FAIL FAIL FAILED"
 ./sd --pass='1024' '1Ki'
 ./sd --pass='1536' '1½Ki'
 ./sd --pass='512' '½Ki'
+./sd --pass='0' '0k'
 
 # Basic maths
 ./sd --pass='7' '1+2*3' '1+(-2*-3)'
