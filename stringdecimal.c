@@ -1658,6 +1658,11 @@ static sd_p parse_bin_cmp(sd_p l, sd_p r, int match)
 }
 
 // Parse Functions
+static void *parse_null(void *context, void *data, void **a)
+{
+   return *a;
+}
+
 static void *parse_si(void *context, void *data, void **a)
 {                               // SI prefix (suffix on number)
    return sd_10_i(*a, (long) data);
@@ -1711,14 +1716,12 @@ static void *parse_neg(void *context, void *data, void **a)
    return A;
 }
 
-#if 0
 static void *parse_abs(void *context, void *data, void **a)
 {
    sd_p A = *a;
    A->n->neg = 0;
    return A;
 }
-#endif
 
 static void *parse_not(void *context, void *data, void **a)
 {
@@ -1786,11 +1789,17 @@ static void *parse_cond(void *context, void *data, void **a)
 
 // List of functions - as pre C operator precedence with comma as 1, and postfix as 15
 // e.g. https://www.tutorialspoint.com/cprogramming/c_operators_precedence.htm
+//
+static xparse_op_t parse_bracket[] = {
+ { op: "(", op2: ")", func:parse_null },
+ { op: "|", op2: "|", func:parse_abs },
+   { NULL },
+};
+
 static xparse_op_t parse_unary[] = {
    // Postfix would be 15
  { op: "-", level: 14, func:parse_neg },
  { op: "!", op2: "¬", level: 14, func:parse_not },
-   //{ op: "|", op2: "||", level: 14, func:parse_abs }, // TODO
    { NULL },
 };
 
@@ -1861,6 +1870,7 @@ static xparse_map_t parse_map[] = {
 
 // Parse Config (optionally public to allow building layers on top)
 xparse_config_t stringdecimal_xparse = {
+ bracket:parse_bracket,
  unary:parse_unary,
  post:parse_post,
  binary:parse_binary,

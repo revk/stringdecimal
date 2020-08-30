@@ -30,7 +30,7 @@ void *xparse(xparse_config_t * config, void *context, const char *sum, const cha
    int operators = 0,
        operatormax = 0;
    struct operator_s {
-      const char *op;
+      const xparse_op_t *op;
       int level;
       int args;
       xparse_operate *func;
@@ -79,11 +79,11 @@ void *xparse(xparse_config_t * config, void *context, const char *sum, const cha
       }
 #ifdef	DEBUG
       if (args == 1)
-         warnx("Doing %s (%s)", operator[operators].op, opval[operands - 1]);
+         warnx("Doing %s (%s)", operator[operators].op->op, opval[operands - 1]);
       else if (args == 2)
-         warnx("Doing (%s) %s (%s)", opval[operands - 2], operator[operators].op, opval[operands - 1]);
+         warnx("Doing (%s) %s (%s)", opval[operands - 2], operator[operators].op->op, opval[operands - 1]);
       else if (args == 3)
-         warnx("Doing (%s) %s (%s) (%s)", opval[operands - 3], operator[operators].op, opval[operands - 2], opval[operands - 1]);
+         warnx("Doing (%s) %s (%s) (%s)", opval[operands - 3], operator[operators].op->op, opval[operands - 2], opval[operands - 1]);
 #endif
       void *a[3] = { };
       for (int n = 0; n < args; n++)
@@ -103,7 +103,7 @@ void *xparse(xparse_config_t * config, void *context, const char *sum, const cha
          fail = "Operation failed";
          return;
       }
-      addarg(v, operator[operators].op, 0);
+      addarg(v, operator[operators].op->op, 0);
    }
    void addop(const xparse_op_t * op, int level, int args) {    // Add an operator
       if (args < 0)
@@ -113,7 +113,7 @@ void *xparse(xparse_config_t * config, void *context, const char *sum, const cha
             operate();          // Clear stack of pending ops
       if (operators + 1 > operatormax)
          operator = realloc(operator, (operatormax += 10) * sizeof(*operator));
-      operator[operators].op = op->op;
+      operator[operators].op = op;
       operator[operators].func = op->func;
       operator[operators].data = op->data;
       operator[operators].level = level;
@@ -133,6 +133,8 @@ void *xparse(xparse_config_t * config, void *context, const char *sum, const cha
          return l;
       return 0;
    }
+   int q = 0,
+       l;
    const char *posn = sum;
    while (!fail)
    {
@@ -145,11 +147,18 @@ void *xparse(xparse_config_t * config, void *context, const char *sum, const cha
       }
       while (1)
       {
-         if (*sum == '(')
+         if (config->bracket)
          {
-            level += 20;
-            sum++;
-            continue;
+            for (q = 0; config->bracket[q].op; q++)
+               if ((l = comp(config->bracket[q].op, sum)))
+               {
+                  sum += l;
+                  addop(&config->bracket[q], level, -1);
+                  level += 20;
+                  break;
+               }
+            if (config->bracket[q].op)
+               continue;        // again
          }
          if (isspace(*sum) && (!config->eol || (unsigned char) *sum >= ' '))
          {
@@ -157,8 +166,6 @@ void *xparse(xparse_config_t * config, void *context, const char *sum, const cha
             continue;
          }
          // Pre unary operators
-         int q = 0,
-             l;
          if (config->unary)
          {
             for (q = 0; config->unary[q].op; q++)
@@ -196,16 +203,23 @@ void *xparse(xparse_config_t * config, void *context, const char *sum, const cha
       // Postfix operators and close brackets
       while (1)
       {
-         if (*sum == ')')
+         if (config->bracket)
          {
-            sum++;
-            if (!level)
-            {
-               fail = "Too many close brackets";
-               break;
-            }
-            level -= 20;
-            continue;
+            for (q = 0; config->bracket[q].op; q++)
+               if ((l = comp(config->bracket[q].op2, sum)))
+               {
+                  while (!fail && operators && (operator[operators - 1].level > level - 20))
+                     operate(); // Clear stack of pending ops
+                  if (operators && operator[operators - 1].op == &config->bracket[q])
+                  {
+                     level -= 20;
+                     sum += l;
+                     operate();
+                     break;
+                  }
+               }
+            if (config->bracket[q].op)
+               continue;        // again
          }
          if (isspace(*sum) && (!config->eol || (unsigned char) *sum >= ' '))
          {
@@ -213,8 +227,6 @@ void *xparse(xparse_config_t * config, void *context, const char *sum, const cha
             continue;
          }
          // Post unary operators
-         int q = 0,
-             l;
          if (config->post)
          {
             for (q = 0; config->post[q].op; q++)
@@ -236,24 +248,23 @@ void *xparse(xparse_config_t * config, void *context, const char *sum, const cha
          break;                 // clean exit after last operand
       }
       // Operator
-      int q = 0,
-          l;
-      const char *implied=NULL;
-      { // Implied power
-static const char *sup[11] = { "⁰", "¹", "²", "³", "⁴", "⁵", "⁶", "⁷", "⁸", "⁹" };
+      const char *implied = NULL;
+      {                         // Implied power
+         static const char *sup[11] = { "⁰", "¹", "²", "³", "⁴", "⁵", "⁶", "⁷", "⁸", "⁹" };
          for (q = 0; q < sizeof(sup) / sizeof(*sup); q++)
             if ((l = comp(sup[q], sum)))
             {
-		    implied="^";
+               implied = "^";
                break;
             }
       }
       if (config->binary)
       {
          for (q = 0; config->binary[q].op; q++)
-            if ((l = comp(config->binary[q].op, implied?:sum)) || (l = comp(config->binary[q].op2, implied?:sum)))
+            if ((l = comp(config->binary[q].op, implied ? : sum)) || (l = comp(config->binary[q].op2, implied ? : sum)))
             {
-               if(!implied)sum += l;
+               if (!implied)
+                  sum += l;
                addop(&config->binary[q], level + config->binary[q].level, 2);
                break;
             }
@@ -264,9 +275,10 @@ static const char *sup[11] = { "⁰", "¹", "²", "³", "⁴", "⁵", "⁶", "�
       {
          // Left hand side of ternary
          for (q = 0; config->ternary[q].op; q++)
-            if ((l = comp(config->ternary[q].op, implied?:sum)))
+            if ((l = comp(config->ternary[q].op, implied ? : sum)))
             {
-               if(!implied)sum += l;
+               if (!implied)
+                  sum += l;
                addop(&config->ternary[q], level + config->ternary[q].level, 0);
                break;
             }
@@ -274,16 +286,17 @@ static const char *sup[11] = { "⁰", "¹", "²", "³", "⁴", "⁵", "⁶", "�
             continue;
          // Right hand side of ternary
          for (q = 0; config->ternary[q].op; q++)
-            if ((l = comp(config->ternary[q].op2, implied?:sum)))
+            if ((l = comp(config->ternary[q].op2, implied ? : sum)))
             {
                while (!fail && operators && (operator[operators - 1].level > level + config->ternary[q].level || (operator[operators - 1].level == level + config->ternary[q].level && operator[operators - 1].args == 3)))
                   operate();    // Clear stack of pending ops
-               if (operators && operator[operators - 1].op == config->ternary[q].op && operator[operators - 1].args == 0 && operator[operators - 1].level == level + config->ternary[q].level)
+               if (operators && operator[operators - 1].op == &config->ternary[q] && operator[operators - 1].args == 0 && operator[operators - 1].level == level + config->ternary[q].level)
                {                // matches
 #ifdef DEBUG
-                  warnx("Making op %s ternary", operator[operators - 1].op);
+                  warnx("Making op %s ternary", operator[operators - 1].op->op);
 #endif
-                  if(!implied)sum += l;
+                  if (!implied)
+                     sum += l;
                   operator[operators - 1].args = 3;     // Extent op
                   break;
                }

@@ -45,6 +45,7 @@ struct xparse_config_s {
    xparse_op_t *post;           // post unary operators
    xparse_op_t *binary;         // binary operators
    xparse_op_t *ternary;        // ternary operators
+   xparse_op_t *bracket;        // bracketing operators
    xparse_operand *operand;     // operand parse
    xparse_final *final;         // final process operand
    xparse_free *dispose;        // Dispose of an operand
