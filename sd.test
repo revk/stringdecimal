@@ -132,7 +132,7 @@ if(! $status) echo "TEST FAIL FAIL FAILED"
 ./sd --pass='1' '\!0'
 ./sd --pass='2' '1?2:3'
 ./sd --pass='3' '0?2:3'
-# TODO absolute
+./sd --pass='3' '1+|-1*2|'
 # TODO modulo
 
 # SI suffixes
