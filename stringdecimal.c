@@ -212,7 +212,10 @@ static sd_val_t *make(const char **failp, int mag, int sig)
    if (!v)
    {
       if (failp && !*failp)
+      {
+         warnx("Malloc %lu failed", sizeof(*v) + sig);
          *failp = "Malloc failed";
+      }
       return v;
    }
    v->mag = mag;
@@ -1930,10 +1933,6 @@ int sd_cmp_opts(sd_cmp_t o)
 {                               // Compare
    sd_p l = o.l ? : &sd_zero;
    sd_p r = o.r ? : &sd_zero;
-   if (!l)
-      l = &sd_zero;
-   if (!r)
-      r = &sd_zero;
    sd_val_t *a,
    *b;
    sd_p v = sd_cross(l, r, &a, &b);
