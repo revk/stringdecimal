@@ -933,12 +933,17 @@ static sd_val_t *udiv_opts(const char **failp, udiv_t o)
  return norm(r, neg: o.neg, pad:o.pad);
 }
 
-static int scmp(const char **failp, sd_val_t * a, sd_val_t * b)
+typedef struct {
+   sd_val_t *a;
+   sd_val_t *b;
+   unsigned char a_free:1;
+   unsigned char b_free:1;
+} scmp_t;
+#define scmp(failp,...) scmp_opts(failp,(scmp_t){__VA_ARGS__})
+static int scmp_opts(const char **failp, scmp_t o)
 {
-   if (!a)
-      a = &zero;
-   if (!b)
-      b = &zero;
+   sd_val_t *a = o.a ? : &zero;
+   sd_val_t *b = o.b ? : &zero;
    debugout("scmp", a, b, NULL);
    if (a->neg && !b->neg)
       return -1;
@@ -946,7 +951,12 @@ static int scmp(const char **failp, sd_val_t * a, sd_val_t * b)
       return 1;
    if (a->neg && b->neg)
       return -ucmp(failp, a, b, 0);
-   return ucmp(failp, a, b, 0);
+   int diff = ucmp(failp, a, b, 0);;
+   if (o.a_free)
+      freez(o.a);
+   if (o.b_free)
+      freez(o.b);
+   return diff;
 }
 
 static sd_val_t *sadd(const char **failp, sd_val_t * a, sd_val_t * b)
@@ -1608,24 +1618,43 @@ char *sd_output_opts(sd_output_opts_t o)
             if (exp > 24)
                exp = 24;
             v->mag -= exp;
-            char *o = output_f(v);
+            char *t = output_f(v);
             if (!exp)
-               return o;
+               return t;
             int s;
             for (s = 0; s < SIS && si[s].mag != exp; s++);
             char *r;
-            if (asprintf(&r, "%s%s", o, si[s].value) < 0)
+            if (asprintf(&r, "%s%s", t, si[s].value) < 0)
                errx(1, "malloc");
-            freez(o);
+            freez(t);
             return r;
          }
          break;
       case SD_FORMAT_IEEE:
-         {                      // TODO
-            if (o.p->d)
-             r = output_f(sdiv(&failp, o.p->n, o.p->d, places: o.places, round: o.round), comma: o.comma, combined:o.combined);
-            else
-             return output(o.p->n, comma: o.comma, combined:o.combined);
+         {
+            int places = o.places + 1;
+            if (o.places < 0)
+               places = (!o.p->d || o.p->n->sig > o.p->d->sig ? o.p->n->sig : o.p->d->sig) - o.places;
+            int i;
+            for (i = 0; i < IEEES; i++)
+             if (sd_cmp(o.p, sd_int(ieee[i].mul), abs: 1, r_free:1) < 0)
+                  break;
+            if (i)
+            {
+               if (!o.p->d)
+                  o.p->d = make_int(&failp, ieee[i - 1].mul);
+               else
+                o.p->d = umul(&failp, o.p->d, make_int(&failp, ieee[i - 1].mul), b_free:1);
+            }
+          sd_val_t *v = sd_rnd(o.p, places: places, round: o.round, sig: 1, pad: o.places >= 0, cap:1);
+            char *t = output_f(v);
+            if (!i)
+               return t;
+            char *r;
+            if (asprintf(&r, "%s%s", t, ieee[i - 1].value) < 0)
+               errx(1, "malloc");
+            freez(t);
+            return r;
          }
          break;
       default:

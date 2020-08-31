@@ -34,6 +34,10 @@
 ./sd --pass='8.10n' --format=S --places=2 1/123456789
 ./sd --pass='100000Y' --format=S --places=2 1e29
 ./sd --pass='0.0000100y' --format=S --places=2 1e-29
+./sd --pass='1023' --format=I --places=3 1023
+./sd --pass='1.000Ki' --format=I --places=3 1024
+./sd --pass='2.000Mi' --format=I --places=3 2Mi-1
+./sd --pass='1.999Mi' --format=I --places=3 --round=T 2Mi-1
 
 # Fractions
 ./sd --pass='0.5' '½'
