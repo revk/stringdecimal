@@ -68,9 +68,9 @@ typedef enum {
    SD_FORMAT_EXP = 'e',         // Exponent (scientific notation)
    // Places: fixed number of places in mantissa, negative places make a guess
    SD_FORMAT_SI = 'S',          // SI suffix
-   // Places: Max places
+   // Places: Sig fig is places+1, or -ve for working our sensible number of places
    SD_FORMAT_IEEE = 'I',        // IEEE suffix
-   // Places: Max places
+   // Places:  Sig fig is places+1, or -ve for working our sensible number of places
    SD_FORMAT_RATIONAL = '/',    // Output as integer or integer/integer, places is not used
    SD_FORMAT_FRACTION = '%',    // Try to output fractions
 } sd_format_t;
