@@ -140,6 +140,7 @@ typedef struct sd_val_s sd_val_t;
 struct sd_val_s {               // The structure used internally for digit sequences
    int mag;                     // Magnitude of first digit, e.g. 3 is hundreds, can start negative, e.g. 0.1 would be mag -1
    int sig;                     // Significant figures (i.e. size of d array) - logically unsigned but seriously C fucks up any maths with that
+   int max;                     // Max space at m
    char *d;                     // Digit array (normally m, or advanced in to m), digits 0-9 not characters '0'-'9'
    char neg:1;                  // Sign (set if -1)
    char m[];                    // Malloced space
@@ -147,11 +148,11 @@ struct sd_val_s {               // The structure used internally for digit seque
 
 static sd_val_t zero = { 0 };
 
-static sd_val_t one = { 0, 1, (char[])
+static sd_val_t one = { 0, 1, 1, (char[])
    { 1 }
 };
 
-static sd_val_t two = { 0, 1, (char[])
+static sd_val_t two = { 0, 1, 1, (char[])
    { 2 }
 };
 
@@ -216,6 +217,7 @@ static sd_val_t *make(const char **failp, int mag, int sig)
    }
    v->mag = mag;
    v->sig = sig;
+   v->max = sig;
    v->d = v->m;
    return v;
 }
@@ -465,6 +467,9 @@ static char *output_opts(output_t o)
    sd_val_t *s = o.s;
    if (!s)
       return NULL;
+#ifdef DEBUG
+   //fprintf(stderr,"output mag=%d sig=%d\n",s->mag,s->sig);
+#endif
    char *buf = NULL;
    size_t len = 0;
    FILE *O = o.O;
@@ -634,15 +639,39 @@ static sd_val_t *uadd_opts(const char **failp, uadd_t o)
 {                               // Unsigned add (i.e. final sign already set in r) and set in r if needed
    sd_val_t *a = o.a ? : &zero;
    sd_val_t *b = o.b ? : &zero;
-   //debugout ("uadd", a, b, NULL);
-   int mag = a->mag;            // Max mag
-   if (o.boffset + b->mag > a->mag)
+   debugout ("uadd", a, b, NULL);
+   int mag = a->mag;       // Max mag
+   if (!a->sig||o.boffset + b->mag > mag)
       mag = o.boffset + b->mag;
    mag++;                       // allow for extra digit
-   int end = a->mag - a->sig;
-   if (o.boffset + b->mag - b->sig < end)
+   int end =  a->mag - a->sig ;
+   if (!a->sig||o.boffset + b->mag - b->sig < end)
       end = o.boffset + b->mag - b->sig;
-   sd_val_t *r = make(failp, mag, mag - end);
+   sd_val_t *r = NULL;
+   if (o.a_free)
+   {                            // Check if we can use a
+      if (a->mag + (a->d - a->m) >= mag && a->mag + (a->d - a->m) - a->max <= end)
+      {                         // reuse a
+         while (a->mag < mag)
+         {
+            *--a->d = 0;
+            a->mag++;
+	    a->sig++;
+         }
+         if (!a->sig && a->mag > mag)
+         {
+            a->d += a->mag - mag;
+            a->mag = mag;
+         }
+         while (a->sig < mag - end)
+            a->d[a->sig++] = 0;
+         r = a;
+         o.a_free = 0;
+      } else warnx("Not reusing in uadd");
+   }
+   debugout ("uadd", a, b, NULL);
+   if (!r)
+      r = make(failp, mag, mag - end);
    if (r)
    {
       int c = 0;
@@ -659,13 +688,15 @@ static sd_val_t *uadd_opts(const char **failp, uadd_t o)
             c = 1;
             v -= 10;
          }
+         if (!(p <= r->mag && p > r->mag - r->sig))
+            errx(1, "uadd fail");
          r->d[r->mag - p] = v;
       }
       if (c)
          errx(1, "Carry add error %d", c);
    }
    if (o.a_free)
-      freez(o.a);               // TODO plan to be in-situ
+      freez(o.a);
    return norm(r, o.neg);
 }
 
@@ -688,7 +719,31 @@ static sd_val_t *usub_opts(const char **failp, usub_t o)
    int end = a->mag - a->sig;
    if (o.boffset + b->mag - b->sig < end)
       end = o.boffset + b->mag - b->sig;
-   sd_val_t *r = make(failp, mag, mag - end);
+   sd_val_t *r = NULL;
+   if (o.a_free)
+   {                            // Check if we can use a
+      if (a->mag + (a->d - a->m) >= mag && a->mag + (a->d - a->m) - a->max <= end)
+      {                         // reuse a
+         while (a->mag < mag)
+         {
+            *--a->d = 0;
+            a->mag++;
+	    a->sig++;
+         }
+         if (!a->sig && a->mag > mag)
+         {
+            a->d += a->mag - mag;
+            a->mag = mag;
+         }
+         while (a->sig < mag - end)
+            a->d[a->sig++] = 0;
+         r = a;
+         o.a_free = 0;
+      } else warnx("Not reusing in usub");
+   }
+   debugout ("uadd", a, b, NULL);
+   if (!r)
+      r = make(failp, mag, mag - end);
    if (r)
    {
       int c = 0;
@@ -711,7 +766,7 @@ static sd_val_t *usub_opts(const char **failp, usub_t o)
          errx(1, "Carry sub error %d", c);
    }
    if (o.a_free)
-      freez(o.a);               // TODO plan to be in-situ
+      freez(o.a);
    return norm(r, o.neg);
 }
 
@@ -741,17 +796,13 @@ static sd_val_t *umul_opts(const char **failp, umul_t o)
    //debugout ("umul", a, b, NULL);
    sd_val_t *base[9];
    makebase(failp, base, b);
-   sd_val_t *r = copy(failp, &zero);
+   int mag = a->mag + b->mag + 4;
+   int sig = a->sig + b->sig + 3;
+   sd_val_t *r = make(failp, mag, sig);
+   r->sig = 0;                  // Is zero, we just made it big enough to re-use
    for (int p = 0; p < a->sig; p++)
       if (a->d[p])
-      {                         // Add
-       sd_val_t *sum = uadd(failp, r, base[a->d[p] - 1], boffset:a->mag - p);
-         if (sum)
-         {
-            freez(r);
-            r = sum;
-         }
-      }
+       r = uadd(failp, r, base[a->d[p] - 1], boffset: a->mag - p, a_free:1);
    free_base(base);
    return norm(r, o.neg);
 }
@@ -788,13 +839,14 @@ static sd_val_t *udiv_opts(const char **failp, udiv_t o)
       free_base(base);
       return r;
    }
-   sd_val_t *v = copy(failp, a);
+   sd_val_t *v=make(failp,a->mag,b->sig+sig);
    if (!v)
    {
       free_base(base);
       freez(r);
       return v;
    }
+   memcpy(v->d,a->d,v->sig=a->sig);
 #ifdef DEBUG
    fprintf(stderr, "Divide %d->%d\n", mag, mag - sig + 1);
 #endif
@@ -805,14 +857,7 @@ static sd_val_t *udiv_opts(const char **failp, udiv_t o)
          n++;
       //debugout ("udiv rem", v, NULL);
       if (n)
-      {
-       sd_val_t *s = usub(failp, v, base[n - 1], boffset:p);
-         if (s)
-         {
-            freez(v);
-            v = s;
-         }
-      }
+       v = usub(failp, v, base[n - 1], boffset: p, a_free:1);
       r->d[mag - p] = n;
       if (!v->sig)
          break;
@@ -1707,6 +1752,7 @@ sd_p sd_mod_opts(sd_mod_t o)
       o.l->d = copy(NULL, &one);
    if (!o.r->d)
       o.r->d = copy(NULL, &one);
+   sd_debugout("sd_mod", o.l, o.r, NULL);
    sd_p v = sd_new(o.l, o.r);
    sd_val_t *ad = smul(&v->failure, o.l->n, o.r->d);
    sd_val_t *bc = smul(&v->failure, o.l->d, o.r->n);
@@ -1728,6 +1774,7 @@ sd_p sd_pow_opts(sd_2_t o)
    const char *failp = NULL;
    if (o.r->n->neg)
       return NULL;
+   sd_debugout("sd_pow", o.l, o.r, NULL);
    sd_val_t *p = NULL;
    sd_val_t *rem = NULL;
  p = udiv(&failp, o.r->n, o.r->d ? : &one, rem: &rem, round:SD_ROUND_TRUNCATE);
@@ -1756,6 +1803,8 @@ sd_p sd_pow_opts(sd_2_t o)
       if (!p->sig)
          break;
       m = sd_mul_fc(m, m);
+      debugout("pow",p2,NULL);
+      sd_debugout("pow",m,v,NULL);
    }
    freez(p);
    sd_free(m);
