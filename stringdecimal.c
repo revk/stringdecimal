@@ -1140,7 +1140,6 @@ static struct sd_s sd_zero = { &zero };
 
 static sd_p sd_tidy(sd_p v)
 {                               // Check answer
-
    if (v && v->d && v->d->neg)
    {                            // Normalise sign
       v->n->neg ^= 1;
@@ -1480,61 +1479,49 @@ char *sd_output_opts(sd_output_opts_t o)
    return r;
 }
 
-sd_p sd_neg_i(sd_p p)
-{                               // Negate (in situ)
-   if (!p)
-      return p;
-   if (p->n->sig)
-      p->n->neg ^= 1;
-   return p;
-}
-
-sd_p sd_neg(sd_p p)
+sd_p sd_neg_opts(sd_1_t o)
 {                               // Negate
-   return sd_neg_i(sd_copy(p));
+   if (!o.p)
+      if (!o.p_free)
+         o.p = sd_copy(o.p);
+   return o.p;
+   if (o.p->n->sig)
+      o.p->n->neg ^= 1;
+   return o.p;
 }
 
-sd_p sd_abs_i(sd_p p)
-{                               // Absolute (in situ)
-   if (!p)
-      return p;
-   p->n->neg = 0;
-   return p;
-}
-
-sd_p sd_abs(sd_p p)
+sd_p sd_abs_opts(sd_1_t o)
 {                               // Absolute
-   return sd_abs_i(sd_copy(p));
+   if (!o.p)
+      return o.p;
+   if (!o.p_free)
+      o.p = sd_copy(o.p);
+   o.p->n->neg = 0;
+   return o.p;
 }
 
-sd_p sd_inv_i(sd_p p)
-{                               // Reciprocal (in situ)
-   if (!p)
-      return p;
-   sd_val_t *d = p->d;
-   if (!d)
-      d = copy(&p->failure, &one);
-   p->d = p->n;
-   p->n = d;
-   return p;
-}
-
-sd_p sd_inv(sd_p p)
+sd_p sd_inv_opts(sd_1_t o)
 {                               // Reciprocal
-   return sd_inv_i(sd_copy(p));
+   if (!o.p)
+      return o.p;
+   if (!o.p_free)
+      o.p = sd_copy(o.p);
+   sd_val_t *d = o.p->d;
+   if (!d)
+      d = copy(&o.p->failure, &one);
+   o.p->d = o.p->n;
+   o.p->n = d;
+   return o.p;
 }
 
-sd_p sd_10_i(sd_p p, int shift)
-{                               // Adjust by power of 10 (in situ)
-   if (!p || !p->n)
-      return p;
-   p->n->mag += shift;
-   return p;
-}
-
-sd_p sd_10(sd_p p, int shift)
+sd_p sd_10_opts(sd_10_t o)
 {                               // Adjust by power of 10
-   return sd_10_i(sd_copy(p), shift);
+   if (!o.p || !o.p->n)
+      return o.p;
+   if (!o.p_free)
+      o.p = sd_copy(o.p);
+   o.p->n->mag += o.shift;
+   return o.p;
 }
 
 int sd_iszero(sd_p p)
@@ -1566,189 +1553,148 @@ static void sd_rational(sd_p p)
    p->d->mag += shift;
 }
 
-sd_p sd_add(sd_p l, sd_p r)
+sd_p sd_add_opts(sd_2_t o)
 {                               // Add
-   if (!l)
-      l = &sd_zero;
-   if (!r)
-      r = &sd_zero;
-   sd_debugout("sd_add", l, r, NULL);
+   if (!o.l)
+      o.l = &sd_zero;
+   if (!o.r)
+      o.r = &sd_zero;
+   sd_debugout("sd_add", o.l, o.r, NULL);
    sd_val_t *a,
    *b;
-   sd_p v = sd_cross(l, r, &a, &b);
+   sd_p v = sd_cross(o.l, o.r, &a, &b);
    if (v)
    {
-      v->n = sadd(&v->failure, a ? : l->n, b ? : r->n);
-      if (l->d || r->d)
+      v->n = sadd(&v->failure, a ? : o.l->n, b ? : o.r->n);
+      if (o.l->d || o.r->d)
       {
-         if (!scmp(&v->failure, l->d ? : &one, r->d ? : &one))
-            v->d = copy(&v->failure, l->d ? : &one);
+         if (!scmp(&v->failure, o.l->d ? : &one, o.r->d ? : &one))
+            v->d = copy(&v->failure, o.l->d ? : &one);
          else
-            v->d = smul(&v->failure, l->d ? : &one, r->d ? : &one);
+            v->d = smul(&v->failure, o.l->d ? : &one, o.r->d ? : &one);
       }
       freez(a);
       freez(b);
    }
-   return sd_tidy(v);
+   v = sd_tidy(v);
+   if (o.l_free)
+      sd_free(o.l);
+   if (o.r_free)
+      sd_free(o.r);
+   return v;
 };
 
-sd_p sd_add_ff(sd_p l, sd_p r)
-{                               // Add free all args
-   sd_p o = sd_add(l, r);
-   sd_free(l);
-   sd_free(r);
-   return o;
-};
-
-sd_p sd_add_fc(sd_p l, sd_p r)
-{                               // Add free first arg
-   sd_p o = sd_add(l, r);
-   sd_free(l);
-   return o;
-};
-
-sd_p sd_add_cf(sd_p l, sd_p r)
-{                               // Add free second arg
-   sd_p o = sd_add(l, r);
-   sd_free(r);
-   return o;
-};
-
-sd_p sd_sub(sd_p l, sd_p r)
+sd_p sd_sub_opts(sd_2_t o)
 {                               // Subtract
-   if (r && r->n)
-      r->n->neg ^= 1;
-   sd_p o = sd_add(l, r);
-   if (r && r->n)
-      r->n->neg ^= 1;
-   return o;
+   if (o.r && o.r->n)
+      o.r->n->neg ^= 1;
+   sd_p v = sd_add(o.l, o.r);
+   if (o.r && o.r->n)
+      o.r->n->neg ^= 1;
+   if (o.l_free)
+      sd_free(o.l);
+   if (o.r_free)
+      sd_free(o.r);
+   return v;
 };
 
-sd_p sd_sub_ff(sd_p l, sd_p r)
-{                               // Subtract free all args
-   sd_p o = sd_sub(l, r);
-   sd_free(l);
-   sd_free(r);
-   return o;
-};
-
-sd_p sd_sub_fc(sd_p l, sd_p r)
-{                               // Subtract free first arg
-   sd_p o = sd_sub(l, r);
-   sd_free(l);
-   return o;
-};
-
-sd_p sd_sub_cf(sd_p l, sd_p r)
-{                               // Subtract free second arg
-   sd_p o = sd_sub(l, r);
-   sd_free(r);
-   return o;
-};
-
-sd_p sd_mul(sd_p l, sd_p r)
+sd_p sd_mul_opts(sd_2_t o)
 {                               // Multiply
-   if (!l)
-      l = &sd_zero;
-   if (!r)
-      r = &sd_zero;
-   sd_debugout("sd_mul", l, r, NULL);
-   sd_p v = sd_new(l, r);
-   if (r->d && !scmp(&v->failure, l->n, r->d))
+   if (!o.l)
+      o.l = &sd_zero;
+   if (!o.r)
+      o.r = &sd_zero;
+   sd_debugout("sd_mul", o.l, o.r, NULL);
+   sd_p v = sd_new(o.l, o.r);
+   if (o.r->d && !scmp(&v->failure, o.l->n, o.r->d))
    {                            // Cancel out
-      v->n = copy(&v->failure, r->n);
-      v->d = copy(&v->failure, l->d);
-      if (l->n->neg)
+      v->n = copy(&v->failure, o.r->n);
+      v->d = copy(&v->failure, o.l->d);
+      if (o.l->n->neg)
          v->n->neg ^= 1;
-   } else if (l->d && !scmp(&v->failure, r->n, l->d))
+   } else if (o.l->d && !scmp(&v->failure, o.r->n, o.l->d))
    {                            // Cancel out
-      v->n = copy(&v->failure, l->n);
-      v->d = copy(&v->failure, r->d);
-      if (r->n->neg)
+      v->n = copy(&v->failure, o.l->n);
+      v->d = copy(&v->failure, o.r->d);
+      if (o.r->n->neg)
          v->n->neg ^= 1;
    } else
    {                            // Multiple
-      if (l->d || r->d)
-         v->d = smul(&v->failure, l->d ? : &one, r->d ? : &one);
-      v->n = smul(&v->failure, l->n, r->n);
+      if (o.l->d || o.r->d)
+         v->d = smul(&v->failure, o.l->d ? : &one, o.r->d ? : &one);
+      v->n = smul(&v->failure, o.l->n, o.r->n);
    }
-   return sd_tidy(v);
+   v = sd_tidy(v);
+   if (o.l_free)
+      sd_free(o.l);
+   if (o.r_free)
+      sd_free(o.r);
+   return v;
 };
 
-sd_p sd_mul_ff(sd_p l, sd_p r)
-{                               // Multiply free all args
-   sd_p o = sd_mul(l, r);
-   sd_free(l);
-   sd_free(r);
-   return o;
-};
-
-sd_p sd_mul_fc(sd_p l, sd_p r)
-{                               // Multiply free first arg
-   sd_p o = sd_mul(l, r);
-   sd_free(l);
-   return o;
-};
-
-sd_p sd_mul_cf(sd_p l, sd_p r)
-{                               // Multiply free second arg
-   sd_p o = sd_mul(l, r);
-   sd_free(r);
-   return o;
-};
-
-sd_p sd_div(sd_p l, sd_p r)
+sd_p sd_div_opts(sd_2_t o)
 {                               // Divide
-   if (!l)
-      l = &sd_zero;
-   sd_debugout("sd_div", l, r, NULL);
-   sd_p v = sd_new(l, r);
-   if (!l->d && !r->d)
+   if (!o.l)
+      o.l = &sd_zero;
+   if (!o.r)
+      o.r = &sd_zero;
+   sd_debugout("sd_div", o.l, o.r, NULL);
+   sd_p v = sd_new(o.l, o.r);
+   if (!o.l->d && !o.r->d)
    {                            // Simple - making a new rational
-      v->n = copy(&v->failure, l->n);
-      v->d = copy(&v->failure, r->n);
+      v->n = copy(&v->failure, o.l->n);
+      v->d = copy(&v->failure, o.r->n);
    } else
    {                            // Flip and multiply 
-      sd_val_t *t = r->n;
-      r->n = r->d ? : copy(&v->failure, &one);
-      r->d = t;
-      r->n->neg = r->d->neg;
-      r->d->neg = 0;
-      return sd_mul(l, r);
+      sd_val_t *t = o.r->n;
+      o.r->n = o.r->d ? : copy(&v->failure, &one);
+      o.r->d = t;
+      o.r->n->neg = o.r->d->neg;
+      o.r->d->neg = 0;
+      return sd_mul(o.l, o.r);
    }
-   return sd_tidy(v);
+   v = sd_tidy(v);
+   if (o.l_free)
+      sd_free(o.l);
+   if (o.r_free)
+      sd_free(o.r);
+   return v;
 };
 
-sd_p sd_div_ff(sd_p l, sd_p r)
-{                               // Divide free all args
-   sd_p o = sd_div(l, r);
-   sd_free(l);
-   sd_free(r);
-   return o;
-};
+sd_p sd_mod_opts(sd_mod_t o)
+{                               // modulo
+   if (!o.l)
+      o.l = &sd_zero;
+   if (!o.r)
+      o.r = &sd_zero;
+   if (!o.l->d)
+      o.l->d = copy(NULL, &one);
+   if (!o.r->d)
+      o.r->d = copy(NULL, &one);
+   sd_p v = sd_new(o.l, o.r);
+   sd_val_t *ad = smul(&v->failure, o.l->n, o.r->d);
+   sd_val_t *bc = smul(&v->failure, o.l->d, o.r->n);
+   v->d = smul(&v->failure, o.l->d, o.r->d);
+   sd_val_t *n = sdiv(&v->failure, ad, bc, &v->n, 0, o.round ? : SD_ROUND_FLOOR);
+   freez(ad);
+   freez(bc);
+   freez(n);
+   v = sd_tidy(v);
+   if (o.l_free)
+      sd_free(o.l);
+   if (o.r_free)
+      sd_free(o.r);
+   return v;
+}
 
-sd_p sd_div_fc(sd_p l, sd_p r)
-{                               // Divide free first arg
-   sd_p o = sd_div(l, r);
-   sd_free(l);
-   return o;
-};
-
-sd_p sd_div_cf(sd_p l, sd_p r)
-{                               // Divide free second arg
-   sd_p o = sd_div(l, r);
-   sd_free(r);
-   return o;
-};
-
-sd_p sd_pow(sd_p l, sd_p r)
+sd_p sd_pow_opts(sd_2_t o)
 {
    const char *failp = NULL;
-   if (r->n->neg)
+   if (o.r->n->neg)
       return NULL;
    sd_val_t *p = NULL;
    sd_val_t *rem = NULL;
-   p = udiv(&failp, r->n, r->d ? : &one, 0, &rem, 0, SD_ROUND_TRUNCATE);
+   p = udiv(&failp, o.r->n, o.r->d ? : &one, 0, &rem, 0, SD_ROUND_TRUNCATE);
    if (rem->sig)
    {
       freez(p);
@@ -1761,15 +1707,15 @@ sd_p sd_pow(sd_p l, sd_p r)
       freez(p);
       return NULL;
    }
-   sd_p m = sd_copy(l);
-   sd_p res = sd_int(1);
+   sd_p m = sd_copy(o.l);
+   sd_p v = sd_int(1);
    while (p->sig)
    {
       sd_val_t *p2 = udiv(&failp, p, &two, 0, &rem, 0, SD_ROUND_TRUNCATE);
       freez(p);
       p = p2;
       if (rem->sig)
-         res = sd_mul_fc(res, m);
+         v = sd_mul_fc(v, m);
       freez(rem);
       if (!p->sig)
          break;
@@ -1777,106 +1723,37 @@ sd_p sd_pow(sd_p l, sd_p r)
    }
    freez(p);
    sd_free(m);
-   if (failp && !res->failure)
-      res->failure = failp;
-   return res;
+   if (failp && !v->failure)
+      v->failure = failp;
+   v = sd_tidy(v);
+   if (o.l_free)
+      sd_free(o.l);
+   if (o.r_free)
+      sd_free(o.r);
+   return v;
 }
 
-sd_p sd_pow_ff(sd_p l, sd_p r)
-{                               // Integer power free all args
-   sd_p o = sd_pow(l, r);
-   sd_free(l);
-   sd_free(r);
-   return o;
-};
-
-sd_p sd_pow_fc(sd_p l, sd_p r)
-{                               // Integer power free first arg
-   sd_p o = sd_pow(l, r);
-   sd_free(l);
-   return o;
-};
-
-sd_p sd_pow_cf(sd_p l, sd_p r)
-{                               // Integer power free second arg
-   sd_p o = sd_pow(l, r);
-   sd_free(r);
-   return o;
-};
-
-int sd_abs_cmp(sd_p l, sd_p r)
-{                               // Compare absolute values
-   if (!l)
-      l = &sd_zero;
-   if (!r)
-      r = &sd_zero;
-   sd_val_t *a,
-   *b;
-   sd_p v = sd_cross(l, r, &a, &b);
-   int diff = ucmp(NULL, a ? : l->n, b ? : r->n, 0);
-   sd_free(v);
-   freez(a);
-   freez(b);
-   return diff;
-};
-
-int sd_abs_cmp_ff(sd_p l, sd_p r)
-{                               // Compare free all args
-   int diff = sd_abs_cmp(l, r);
-   sd_free(l);
-   sd_free(r);
-   return diff;
-};
-
-int sd_abs_cmp_fc(sd_p l, sd_p r)
-{                               // Compare free first arg
-   int diff = sd_abs_cmp(l, r);
-   sd_free(l);
-   return diff;
-};
-
-int sd_abs_cmp_cf(sd_p l, sd_p r)
-{                               // Compare free second arg
-   int diff = sd_abs_cmp(l, r);
-   sd_free(r);
-   return diff;
-};
-
-int sd_cmp(sd_p l, sd_p r)
+int sd_cmp_opts(sd_cmp_t o)
 {                               // Compare
-   if (!l)
-      l = &sd_zero;
-   if (!r)
-      r = &sd_zero;
+   if (!o.l)
+      o.l = &sd_zero;
+   if (!o.r)
+      o.r = &sd_zero;
    sd_val_t *a,
    *b;
-   sd_p v = sd_cross(l, r, &a, &b);
-   int diff = scmp(NULL, a ? : l->n, b ? : r->n);
+   sd_p v = sd_cross(o.l, o.r, &a, &b);
+   int diff = 0;
+   if (o.abs)
+      diff = ucmp(NULL, a ? : o.l->n, b ? : o.r->n, 0);
+   else
+      diff = scmp(NULL, a ? : o.l->n, b ? : o.r->n);
    sd_free(v);
    freez(a);
    freez(b);
-   return diff;
-};
-
-int sd_cmp_ff(sd_p l, sd_p r)
-{                               // Compare free all args
-   int diff = sd_cmp(l, r);
-   sd_free(l);
-   sd_free(r);
-   return diff;
-};
-
-int sd_cmp_fc(sd_p l, sd_p r)
-{                               // Compare free first arg
-   int diff = sd_cmp(l, r);
-   sd_free(l);
-   return diff;
-};
-
-int sd_cmp_cf(sd_p l, sd_p r)
-{                               // Compare free second arg
-   int diff = sd_cmp(l, r);
-   sd_free(r);
+   if (o.l_free)
+      sd_free(o.l);
+   if (o.r_free)
+      sd_free(o.r);
    return diff;
 };
 
@@ -1965,6 +1842,15 @@ static void *parse_div(void *context, void *data, void **a)
    sd_p o = sd_div(a[0], a[1]);
    if (!o && !C->fail)
       C->fail = "Divide by zero";
+   if (o && o->failure && !C->fail)
+      C->fail = o->failure;
+   return o;
+}
+
+static void *parse_mod(void *context, void *data, void **a)
+{
+   stringdecimal_context_t *C = context;
+   sd_p o = sd_mod(a[0], a[1]);
    if (o && o->failure && !C->fail)
       C->fail = o->failure;
    return o;
@@ -2090,6 +1976,7 @@ static xparse_op_t parse_post[] = {
 static xparse_op_t parse_binary[] = {
  { op: "^", level: 14, func:parse_pow },
  { op: "/", op2: "÷", level: 13, func:parse_div },
+ { op: "%", level: 13, func:parse_mod },
  { op: "*", op2: "×", level: 13, func:parse_mul },
    // % would be 14, we should add that
  { op: "+", level: 12, func:parse_add },

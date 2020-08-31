@@ -200,41 +200,87 @@ int sd_iszero(sd_p);            // If zero value
 int sd_isneg(sd_p);             // If negative value
 int sd_ispos(sd_p);             // If positive value
 
-sd_p sd_neg_i(sd_p);            // Negate (in place, returns arg)
-sd_p sd_abs_i(sd_p);            // Absolute (in place, returns arg)
-sd_p sd_inv_i(sd_p);            // Reciprocal (in place, returns arg)
-sd_p sd_10_i(sd_p, int);        // Multiple by a power of 10 (in place, returns arg)
-sd_p sd_neg(sd_p);              // Negate
-sd_p sd_abs(sd_p);              // Absolute
-sd_p sd_inv(sd_p);              // Reciprocal
-sd_p sd_10(sd_p, int);          // Multiple by a power of 10
+typedef struct {
+   sd_p p;
+   unsigned char p_free:1;
+} sd_1_t;
+typedef struct {
+   sd_p p;
+   int shift;
+   unsigned char p_free:1;
+} sd_10_t;
+typedef struct {
+   sd_p l;
+   sd_p r;
+   unsigned char l_free:1;
+   unsigned char r_free:1;
+} sd_2_t;
+typedef struct {
+   sd_p l;
+   sd_p r;
+   unsigned char l_free:1;
+   unsigned char r_free:1;
+   unsigned char abs:1;
+} sd_cmp_t;
+typedef struct {
+   sd_p l;
+   sd_p r;
+   sd_round_t round;
+   unsigned char l_free:1;
+   unsigned char r_free:1;
+} sd_mod_t;
 
-sd_p sd_add(sd_p, sd_p);        // Add
-sd_p sd_add_ff(sd_p, sd_p);     // Add free all args
-sd_p sd_add_fc(sd_p, sd_p);     // Add free first arg
-sd_p sd_add_cf(sd_p, sd_p);     // Add free second arg
-sd_p sd_sub(sd_p, sd_p);        // Subtract
-sd_p sd_sub_ff(sd_p, sd_p);     // Subtract free all args
-sd_p sd_sub_fc(sd_p, sd_p);     // Subtract free first arg
-sd_p sd_sub_cf(sd_p, sd_p);     // Subtract free second arg
-sd_p sd_mul(sd_p, sd_p);        // Multiply
-sd_p sd_mul_ff(sd_p, sd_p);     // Multiply free all args
-sd_p sd_mul_fc(sd_p, sd_p);     // Multiply free first arg
-sd_p sd_mul_cf(sd_p, sd_p);     // Multiply free second arg
-sd_p sd_div(sd_p, sd_p);        // Divide
-sd_p sd_div_ff(sd_p, sd_p);     // Divide free all args
-sd_p sd_div_fc(sd_p, sd_p);     // Divide free first arg
-sd_p sd_div_cf(sd_p, sd_p);     // Divide free second arg
-sd_p sd_pow(sd_p, sd_p);        // Integer power
-sd_p sd_pow_ff(sd_p, sd_p);     // Integer power free all args
-sd_p sd_pow_fc(sd_p, sd_p);     // Integer power free first arg
-sd_p sd_pow_cf(sd_p, sd_p);     // Integer power free second arg
-int sd_cmp(sd_p, sd_p);         // Compare
-int sd_cmp_ff(sd_p, sd_p);      // Compare free all args
-int sd_cmp_fc(sd_p, sd_p);      // Compare free first arg
-int sd_cmp_cf(sd_p, sd_p);      // Compare free second arg
-int sd_abs_cmp(sd_p, sd_p);     // Compare absolute values
-int sd_abs_cmp_ff(sd_p, sd_p);  // Compare absolute values free all args
-int sd_abs_cmp_fc(sd_p, sd_p);  // Compare absolute values free first arg
-int sd_abs_cmp_cf(sd_p, sd_p);  // Compare absolute values free second arg
+#define sd_neg(...) sd_neg_opts((sd_1_t){__VA_ARGS__})
+#define sd_neg_i(...) sd_neg_opts((sd_1_t){__VA_ARGS__,p_free:1})
+sd_p sd_neg_opts(sd_1_t);       // Negate
+#define sd_abs(...) sd_abs_opts((sd_1_t){__VA_ARGS__})
+#define sd_abs_i(...) sd_abs_opts((sd_1_t){__VA_ARGS__,p_free:1})
+sd_p sd_abs_opts(sd_1_t);       // Absolute value
+#define sd_inv(...) sd_inv_opts((sd_1_t){__VA_ARGS__})
+#define sd_inv_i(...) sd_inv_opts((sd_1_t){__VA_ARGS__,p_free:1})
+sd_p sd_inv_opts(sd_1_t);       // Reciprocal
+#define sd_10(...) sd_10_opts((sd_10_t){__VA_ARGS__})
+#define sd_10_i(...) sd_10_opts((sd_10_t){__VA_ARGS__,p_free:1})
+sd_p sd_10_opts(sd_10_t);       // Multiple by a power of 10
+
+#define sd_add(...) sd_add_opts((sd_2_t){__VA_ARGS__})
+#define sd_add_fc(...) sd_add_opts((sd_2_t){__VA_ARGS__,l_free:1})
+#define sd_add_cf(...) sd_add_opts((sd_2_t){__VA_ARGS__,r_free:1})
+#define sd_add_ff(...) sd_add_opts((sd_2_t){__VA_ARGS__,l_free:1,r_free:1})
+sd_p sd_add_opts(sd_2_t);       // Add
+#define sd_sub(...) sd_sub_opts((sd_2_t){__VA_ARGS__})
+#define sd_sub_fc(...) sd_sub_opts((sd_2_t){__VA_ARGS__,l_free:1})
+#define sd_sub_cf(...) sd_sub_opts((sd_2_t){__VA_ARGS__,r_free:1})
+#define sd_sub_ff(...) sd_sub_opts((sd_2_t){__VA_ARGS__,l_free:1,r_free:1})
+sd_p sd_sub_opts(sd_2_t);       // Subtract
+#define sd_mul(...) sd_mul_opts((sd_2_t){__VA_ARGS__})
+#define sd_mul_fc(...) sd_mul_opts((sd_2_t){__VA_ARGS__,l_free:1})
+#define sd_mul_cf(...) sd_mul_opts((sd_2_t){__VA_ARGS__,r_free:1})
+#define sd_mul_ff(...) sd_mul_opts((sd_2_t){__VA_ARGS__,l_free:1,r_free:1})
+sd_p sd_mul_opts(sd_2_t);       // Multiply
+#define sd_div(...) sd_div_opts((sd_2_t){__VA_ARGS__})
+#define sd_div_fc(...) sd_div_opts((sd_2_t){__VA_ARGS__,l_free:1})
+#define sd_div_cf(...) sd_div_opts((sd_2_t){__VA_ARGS__,r_free:1})
+#define sd_div_ff(...) sd_div_opts((sd_2_t){__VA_ARGS__,l_free:1,r_free:1})
+sd_p sd_div_opts(sd_2_t);       // Divide
+#define sd_pow(...) sd_pow_opts((sd_2_t){__VA_ARGS__})
+#define sd_pow_fc(...) sd_pow_opts((sd_2_t){__VA_ARGS__,l_free:1})
+#define sd_pow_cf(...) sd_pow_opts((sd_2_t){__VA_ARGS__,r_free:1})
+#define sd_pow_ff(...) sd_pow_opts((sd_2_t){__VA_ARGS__,l_free:1,r_free:1})
+sd_p sd_pow_opts(sd_2_t);       // Positive Integer Power
+#define sd_mod(...) sd_mod_opts((sd_mod_t){__VA_ARGS__})
+#define sd_mod_fc(...) sd_mod_opts((sd_mod_t){__VA_ARGS__,l_free:1})
+#define sd_mod_cf(...) sd_mod_opts((sd_mod_t){__VA_ARGS__,r_free:1})
+#define sd_mod_ff(...) sd_mod_opts((sd_mod_t){__VA_ARGS__,l_free:1,r_free:1})
+sd_p sd_mod_opts(sd_mod_t);     // Modulo
+#define sd_cmp(...) sd_cmp_opts((sd_cmp_t){__VA_ARGS__})
+#define sd_cmp_fc(...) sd_cmp_opts((sd_cmp_t){__VA_ARGS__,l_free:1})
+#define sd_cmp_cf(...) sd_cmp_opts((sd_cmp_t){__VA_ARGS__,r_free:1})
+#define sd_cmp_ff(...) sd_cmp_opts((sd_cmp_t){__VA_ARGS__,l_free:1,r_free:1})
+#define sd_abs_cmp(...) sd_cmp_opts((sd_cmp_t){__VA_ARGS__})
+#define sd_abs_cmp_fc(...) sd_cmp_opts((sd_cmp_t){__VA_ARGS__,abs:1,l_free:1})
+#define sd_abs_cmp_cf(...) sd_cmp_opts((sd_cmp_t){__VA_ARGS__,abs:1,r_free:1})
+#define sd_abs_cmp_ff(...) sd_cmp_opts((sd_cmp_t){__VA_ARGS__,abs:1,l_free:1,r_free:1})
+int sd_cmp_opts(sd_cmp_t);      // Compare
+
 #endif

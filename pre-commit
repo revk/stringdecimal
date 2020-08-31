@@ -1,0 +1,6 @@
+#!/bin/csh -fe
+foreach f (`git status --porcelain=1 | cut -c4-`)
+	if("$f:e" == c || "$f:e" == h) indent "$f"
+end
+make
+./sd.test
