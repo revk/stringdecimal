@@ -50,7 +50,7 @@ typedef enum {
 } sd_round_t;
 
 // Decimal places formatting options (used with "places" argument)
-#define	SD_FORMATS	"-=+>*eSI/%"
+#define	SD_FORMATS	"-*-eSI/%"
 typedef enum {
    SD_FORMAT_DEFAULT = 0,       // Default (EXACT if places==0, else places is set to -3 and LIMIT used)
    SD_FORMAT_EXACT = '=',       // Exact number of places, places can even be -ve to round left of decimal

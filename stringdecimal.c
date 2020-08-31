@@ -2249,8 +2249,8 @@ int main(int argc, const char *argv[])
       poptContext optCon;       // context for parsing command-line options
       const struct poptOption optionsTable[] = {
          { "places", 'p', POPT_ARG_INT, &places, 0, "Places", "N" },
-         { "format", 'f', POPT_ARG_STRING, &format, 0, "Format", "-/=/+/>/*/e//" },
-         { "round", 'r', POPT_ARG_STRING, &round, 0, "Rounding", "T/U/F/C/R/B" },
+         { "format", 'f', POPT_ARG_STRING, &format, 0, "Format", SD_FORMATS },
+         { "round", 'r', POPT_ARG_STRING, &round, 0, "Rounding", "TUFCRB" },
          { "no-comma", 'n', POPT_ARG_NONE, &nocomma, 0, "No comma in input" },
          { "no-frac", 0, POPT_ARG_NONE, &nofrac, 0, "No fractions in input" },
          { "no-si", 0, POPT_ARG_NONE, &nosi, 0, "No SI suffix in input" },
