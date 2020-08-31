@@ -639,13 +639,13 @@ static sd_val_t *uadd_opts(const char **failp, uadd_t o)
 {                               // Unsigned add (i.e. final sign already set in r) and set in r if needed
    sd_val_t *a = o.a ? : &zero;
    sd_val_t *b = o.b ? : &zero;
-   debugout ("uadd", a, b, NULL);
-   int mag = a->mag;       // Max mag
-   if (!a->sig||o.boffset + b->mag > mag)
+   debugout("uadd", a, b, NULL);
+   int mag = a->mag;            // Max mag
+   if (!a->sig || o.boffset + b->mag > mag)
       mag = o.boffset + b->mag;
    mag++;                       // allow for extra digit
-   int end =  a->mag - a->sig ;
-   if (!a->sig||o.boffset + b->mag - b->sig < end)
+   int end = a->mag - a->sig;
+   if (!a->sig || o.boffset + b->mag - b->sig < end)
       end = o.boffset + b->mag - b->sig;
    sd_val_t *r = NULL;
    if (o.a_free)
@@ -656,7 +656,7 @@ static sd_val_t *uadd_opts(const char **failp, uadd_t o)
          {
             *--a->d = 0;
             a->mag++;
-	    a->sig++;
+            a->sig++;
          }
          if (!a->sig && a->mag > mag)
          {
@@ -667,9 +667,10 @@ static sd_val_t *uadd_opts(const char **failp, uadd_t o)
             a->d[a->sig++] = 0;
          r = a;
          o.a_free = 0;
-      } else warnx("Not reusing in uadd");
+      } else
+         warnx("Not reusing in uadd");
    }
-   debugout ("uadd", a, b, NULL);
+   debugout("uadd", a, b, NULL);
    if (!r)
       r = make(failp, mag, mag - end);
    if (r)
@@ -728,7 +729,7 @@ static sd_val_t *usub_opts(const char **failp, usub_t o)
          {
             *--a->d = 0;
             a->mag++;
-	    a->sig++;
+            a->sig++;
          }
          if (!a->sig && a->mag > mag)
          {
@@ -739,9 +740,10 @@ static sd_val_t *usub_opts(const char **failp, usub_t o)
             a->d[a->sig++] = 0;
          r = a;
          o.a_free = 0;
-      } else warnx("Not reusing in usub");
+      } else
+         warnx("Not reusing in usub");
    }
-   debugout ("uadd", a, b, NULL);
+   debugout("uadd", a, b, NULL);
    if (!r)
       r = make(failp, mag, mag - end);
    if (r)
@@ -839,14 +841,14 @@ static sd_val_t *udiv_opts(const char **failp, udiv_t o)
       free_base(base);
       return r;
    }
-   sd_val_t *v=make(failp,a->mag,b->sig+sig);
+   sd_val_t *v = make(failp, a->mag, b->sig + sig);
    if (!v)
    {
       free_base(base);
       freez(r);
       return v;
    }
-   memcpy(v->d,a->d,v->sig=a->sig);
+   memcpy(v->d, a->d, v->sig = a->sig);
 #ifdef DEBUG
    fprintf(stderr, "Divide %d->%d\n", mag, mag - sig + 1);
 #endif
@@ -1803,8 +1805,8 @@ sd_p sd_pow_opts(sd_2_t o)
       if (!p->sig)
          break;
       m = sd_mul_fc(m, m);
-      debugout("pow",p2,NULL);
-      sd_debugout("pow",m,v,NULL);
+      debugout("pow", p2, NULL);
+      sd_debugout("pow", m, v, NULL);
    }
    freez(p);
    sd_free(m);
