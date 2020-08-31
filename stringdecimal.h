@@ -53,6 +53,7 @@ typedef enum {
 // Decimal places formatting options (used with "places" argument)
 // Default: If format is 0 (i.e. not set) and places is 0, then a format of '+' and places of 3 are used
 // Default: If format is 0 and places is non zero then a format of '=' is used
+#define	SD_FORMATS	"-=+>*eSI/%"
 typedef enum {
    SD_FORMAT_LIMIT = '-',       // Use as many places as necessary, limiting division, no padding 0's
    // places: sets the maximum for division, but more places may be used if not division
