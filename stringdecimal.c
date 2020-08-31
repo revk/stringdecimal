@@ -1496,10 +1496,31 @@ char *sd_output_opts(sd_output_opts_t o)
    {                            // Defaults
       if (!o.places)
       {
-         o.format = SD_FORMAT_EXTRA;    // Extra for divide
-         o.places = 3;
+         o.format = SD_FORMAT_LIMIT;    // Extra for divide
+         o.places = -3;
       } else
          o.format = SD_FORMAT_EXACT;    // Exact places
+   }
+   int guess(char sig) {        // Guess places
+      if (o.places >= 0)
+         return o.places + sig;
+      int q = 0,
+          d = 0;
+      if (sig)
+      {
+         if (p->n && (d = p->n->sig) > q)
+            q = d;
+         if (p->d && (d = p->d->sig) > q)
+            q = d;
+         q++;
+      } else
+      {
+         if (p->n && (d = p->n->sig - p->n->mag - 1) && d > q)
+            q = d;
+         if (p->d && (d = p->d->mag + 1 - p->d->sig) && d > q)
+            q = d;
+      }
+      return q - o.places;
    }
    char *format(void) {
       char *r = NULL;
@@ -1551,7 +1572,7 @@ char *sd_output_opts(sd_output_opts_t o)
             {                   // Found
                char *v = NULL;
                if (N1->sig)
-                  v = output(N1);
+                v = output(N1, comma: o.comma, combined:o.combined);
                if (asprintf(&r, "%s%s%s", p->n->neg ? "-" : "", v ? : "", fraction[f].value) < 0)
                   errx(1, "malloc");
                freez(v);
@@ -1563,68 +1584,37 @@ char *sd_output_opts(sd_output_opts_t o)
             return r;
          // Drop through
       case SD_FORMAT_LIMIT:
-         if (p->d)
-          r = output_f(sdiv(&failp, p->n, p->d, places: o.places, round: o.round), comma: o.comma, combined:o.combined);
-         else
-          return output(p->n, comma: o.comma, combined:o.combined);
+       r = output_f(sd_rnd(p, places: guess(0), round: o.round, cap: 1), comma: o.comma, combined:o.combined);
          break;
       case SD_FORMAT_EXACT:
-         if (p->d)
-          r = output_f(srnd(&failp, sdiv(&failp, p->n, p->d, places: o.places, round: o.round), places: o.places, round: o.round, cap: 1, pad: 1), comma: o.comma, combined:o.combined);
-         else
-          r = output_f(srnd(&failp, p->n, places: o.places, round: o.round, cap: 1, pad: 1), comma: o.comma, combined:o.combined);
+       r = output_f(sd_rnd(p, places: o.places, round: o.round, cap: 1, pad: 1), comma: o.comma, combined:o.combined);
          break;
       case SD_FORMAT_INPUT:
-         if (p->d)
-          r = output_f(srnd(&failp, sdiv(&failp, p->n, p->d, places: o.p->places + o.places, round: o.round), places: o.places, round: o.round, cap: 1, pad: 1), comma: o.comma, combined:o.combined);
-         else
-          r = output_f(srnd(&failp, p->n, places: p->places + o.places, round: o.round, cap: 1, pad: 1), comma: o.comma, combined:o.combined);
-         break;
-      case SD_FORMAT_EXTRA:
-         if (p->d)
-         {
-            sd_p c = sd_copy(p);
-            sd_rational(c);
-          r = output_f(sdiv(&failp, c->n, c->d, places: c->d->mag + o.places, round: o.round), comma: o.comma, combined:o.combined);
-            sd_free(c);
-         } else
-          return output(p->n, comma: o.comma, combined:o.combined);
-         break;
-      case SD_FORMAT_MAX:
-         if (p->d)
-          r = output_f(sdiv(&failp, p->n, p->d, places: o.p->places + o.places, round: o.round), comma: o.comma, combined:o.combined);
-         else
-          return output(p->n, comma: o.comma, combined:o.combined);
+       r = output_f(sd_rnd(p, places: p->places + o.places, round: o.round, cap: 1, pad: 1), comma: o.comma, combined:o.combined);
          break;
       case SD_FORMAT_EXP:
          {
-            int places = o.places + 1;
-            if (o.places < 0)
-               places = (!p->d || p->n->sig > p->d->sig ? p->n->sig : p->d->sig) - o.places;
-          sd_val_t *v = sd_rnd(p, places: places, round: o.round, sig: 1, pad: o.places >= 0, cap:1);
+          sd_val_t *v = sd_rnd(p, places: guess(1), round: o.round, sig: 1, pad: o.places >= 0, cap:1);
             int exp = v->mag;
             v->mag = 0;
-            char *o = output_f(v);
+          char *t = output_f(v, comma: o.comma, combined:o.combined);
             char *r;
-            if (asprintf(&r, "%se%+d", o, exp) < 0)
+            if (asprintf(&r, "%se%+d", t, exp) < 0)
                errx(1, "malloc");
-            freez(o);
+            freez(t);
             return r;
          }
          break;
       case SD_FORMAT_SI:
          {
-            int places = o.places + 1;
-            if (o.places < 0)
-               places = (!p->d || p->n->sig > p->d->sig ? p->n->sig : p->d->sig) - o.places;
-          sd_val_t *v = sd_rnd(p, places: places, round: o.round, sig: 1, pad: o.places >= 0, cap:1);
+          sd_val_t *v = sd_rnd(p, places: guess(1), round: o.round, sig: 1, pad: o.places >= 0, cap:1);
             int exp = (v->mag + 27) / 3 * 3 - 27;
             if (exp < -24)
                exp = -24;
             if (exp > 24)
                exp = 24;
             v->mag -= exp;
-            char *t = output_f(v);
+          char *t = output_f(v, comma: o.comma, combined:o.combined);
             if (!exp)
                return t;
             int s;
@@ -1638,9 +1628,6 @@ char *sd_output_opts(sd_output_opts_t o)
          break;
       case SD_FORMAT_IEEE:
          {
-            int places = o.places + 1;
-            if (o.places < 0)
-               places = (!p->d || p->n->sig > p->d->sig ? p->n->sig : p->d->sig) - o.places;
             int i;
             for (i = 0; i < IEEES; i++)
              if (sd_cmp(p, sd_int(ieee[i].mul), abs: 1, r_free:1) < 0)
@@ -1652,8 +1639,8 @@ char *sd_output_opts(sd_output_opts_t o)
                else
                 p->d = umul(&failp, p->d, make_int(&failp, ieee[i - 1].mul), b_free:1);
             }
-          sd_val_t *v = sd_rnd(p, places: places, round: o.round, sig: 1, pad: o.places >= 0, cap:1);
-            char *t = output_f(v);
+          sd_val_t *v = sd_rnd(p, places: guess(1), round: o.round, sig: 1, pad: o.places >= 0, cap:1);
+          char *t = output_f(v, comma: o.comma, combined:o.combined);
             if (!i)
                return t;
             char *r;
@@ -1664,14 +1651,14 @@ char *sd_output_opts(sd_output_opts_t o)
          }
          break;
       default:
-         fprintf(stderr, "Unknown format %c\n", o.format);
+         warnx("Unknown format %c\n", o.format);
          break;
       }
       return r;
    }
    char *r = format();
-   if (o.p_free)
-      sd_free(o.p);
+   if (!failp && p && p->failure)
+      failp = p->failure;
    if (failp)
    {
       freez(r);
@@ -1680,6 +1667,8 @@ char *sd_output_opts(sd_output_opts_t o)
       if (o.failure)
          *o.failure = "Output failed";
    }
+   if (o.p_free)
+      sd_free(o.p);
    return r;
 }
 

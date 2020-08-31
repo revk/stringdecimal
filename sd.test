@@ -80,9 +80,8 @@
 ./sd --pass='1.000e+0' --format='e' --places=3 '1.9999/2'
 ./sd --pass='9.999e-1' --format='e' --places=3 '1.99989/2'
 ./sd --pass='1.20' --format='*' '1.00+0.2'			# input places
-./sd --pass='0' --format='+' '1/7'				# guess extra places
-./sd --pass='0.0143' --format='+' --places=3 '1/70'
-./sd --pass='0.01234' --format='+' --places=3 '0.01234'
+./sd --pass='0.0143' --format='-' --places=-3 '1/70' # guess places
+./sd --pass='0.01234' --format='-' --places=-3 '0.01234'
 ./sd --pass='1.23' --format='=' --places=2 '12345/10000'	# exact
 ./sd --pass='0.00' --format='=' --places=2 '0.004'
 ./sd --pass='0.01' --format='=' --places=2 '0.006'

@@ -49,28 +49,16 @@ typedef enum {
    SD_ROUND_BANKING = 'B',      // Away from zero if above 0.5, or 0.5 exactly and goes to even
 } sd_round_t;
 
-// TODO revise logic, and adjust jsql/xmlsql accordingly
 // Decimal places formatting options (used with "places" argument)
-// Default: If format is 0 (i.e. not set) and places is 0, then a format of '+' and places of 3 are used
-// Default: If format is 0 and places is non zero then a format of '=' is used
 #define	SD_FORMATS	"-=+>*eSI/%"
 typedef enum {
-   SD_FORMAT_LIMIT = '-',       // Use as many places as necessary, limiting division, no padding 0's
-   // places: sets the maximum for division, but more places may be used if not division
-   SD_FORMAT_EXACT = '=',       // Include padding 0's as needed to specified number of places
-   // places: sets the exact number of places, used for money, for example
-   SD_FORMAT_EXTRA = '+',       // Try to use enough places even for division, no padding
-   // places: is added to a guess of number of places for division
-   SD_FORMAT_MAX = '>',         // Use as many places as necessary, limited to max places seen in args
-   // places: is added to the max places seen
-   SD_FORMAT_INPUT = '*',       // Round to the max places seen in the args
-   // places: is added to the max places seen
+   SD_FORMAT_DEFAULT = 0,       // Default (EXACT if places==0, else places is set to -3 and LIMIT used)
+   SD_FORMAT_EXACT = '=',       // Exact number of places, places can even be -ve to round left of decimal
+   SD_FORMAT_INPUT = '*',       // Exact number of places, but use max places from input (+places specified)
+   SD_FORMAT_LIMIT = '-',       // Limit number of places, not padded (-ve means no limit on non divide, and guess length for divide)
    SD_FORMAT_EXP = 'e',         // Exponent (scientific notation)
-   // Places: fixed number of places in mantissa, negative places make a guess
    SD_FORMAT_SI = 'S',          // SI suffix
-   // Places: Sig fig is places+1, or -ve for working our sensible number of places
    SD_FORMAT_IEEE = 'I',        // IEEE suffix
-   // Places:  Sig fig is places+1, or -ve for working our sensible number of places
    SD_FORMAT_RATIONAL = '/',    // Output as integer or integer/integer, places is not used
    SD_FORMAT_FRACTION = '%',    // Try to output fractions
 } sd_format_t;
