@@ -204,6 +204,8 @@ static int checkmax(const char **failp, int mag, int sig)
 
 static sd_val_t *make(const char **failp, int mag, int sig)
 {                               // Initialise with space for digits
+   if (sig < 0)
+      sig = 0;
    if (!sig)
       mag = 0;
    if (checkmax(failp, mag, sig))
