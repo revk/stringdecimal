@@ -1753,23 +1753,21 @@ static void sd_rational(sd_p p)
 
 sd_p sd_add_opts(sd_2_t o)
 {                               // Add
-   if (!o.l)
-      o.l = &sd_zero;
-   if (!o.r)
-      o.r = &sd_zero;
-   sd_debugout("sd_add", o.l, o.r, NULL);
+   sd_p l = o.l ? : &sd_zero;
+   sd_p r = o.r ? : &sd_zero;
+   sd_debugout("sd_add", l, r, NULL);
    sd_val_t *a,
    *b;
-   sd_p v = sd_cross(o.l, o.r, &a, &b);
+   sd_p v = sd_cross(l, r, &a, &b);
    if (v)
    {
-      v->n = sadd(&v->failure, a ? : o.l->n, b ? : o.r->n);
-      if (o.l->d || o.r->d)
+      v->n = sadd(&v->failure, a ? : l->n, b ? : r->n);
+      if (l->d || r->d)
       {
-         if (!scmp(&v->failure, o.l->d ? : &one, o.r->d ? : &one))
-            v->d = copy(&v->failure, o.l->d ? : &one);
+         if (!scmp(&v->failure, l->d ? : &one, r->d ? : &one))
+            v->d = copy(&v->failure, l->d ? : &one);
          else
-            v->d = smul(&v->failure, o.l->d ? : &one, o.r->d ? : &one);
+            v->d = smul(&v->failure, l->d ? : &one, r->d ? : &one);
       }
       freez(a);
       freez(b);
@@ -1784,11 +1782,13 @@ sd_p sd_add_opts(sd_2_t o)
 
 sd_p sd_sub_opts(sd_2_t o)
 {                               // Subtract
-   if (o.r && o.r->n)
-      o.r->n->neg ^= 1;
-   sd_p v = sd_add(o.l, o.r);
-   if (o.r && o.r->n)
-      o.r->n->neg ^= 1;
+   sd_p l = o.l ? : &sd_zero;
+   sd_p r = o.r ? : &sd_zero;
+   if (r && r->n)
+      r->n->neg ^= 1;
+   sd_p v = sd_add(l, r);
+   if (r && r->n)
+      r->n->neg ^= 1;
    if (o.l_free)
       sd_free(o.l);
    if (o.r_free)
@@ -1798,29 +1798,27 @@ sd_p sd_sub_opts(sd_2_t o)
 
 sd_p sd_mul_opts(sd_2_t o)
 {                               // Multiply
-   if (!o.l)
-      o.l = &sd_zero;
-   if (!o.r)
-      o.r = &sd_zero;
-   sd_debugout("sd_mul", o.l, o.r, NULL);
-   sd_p v = sd_new(o.l, o.r);
-   if (o.r->d && !scmp(&v->failure, o.l->n, o.r->d))
+   sd_p l = o.l ? : &sd_zero;
+   sd_p r = o.r ? : &sd_zero;
+   sd_debugout("sd_mul", l, r, NULL);
+   sd_p v = sd_new(l, r);
+   if (r->d && !scmp(&v->failure, l->n, r->d))
    {                            // Cancel out
-      v->n = copy(&v->failure, o.r->n);
-      v->d = copy(&v->failure, o.l->d);
-      if (o.l->n->neg)
+      v->n = copy(&v->failure, r->n);
+      v->d = copy(&v->failure, l->d);
+      if (l->n->neg)
          v->n->neg ^= 1;
-   } else if (o.l->d && !scmp(&v->failure, o.r->n, o.l->d))
+   } else if (l->d && !scmp(&v->failure, r->n, l->d))
    {                            // Cancel out
-      v->n = copy(&v->failure, o.l->n);
-      v->d = copy(&v->failure, o.r->d);
-      if (o.r->n->neg)
+      v->n = copy(&v->failure, l->n);
+      v->d = copy(&v->failure, r->d);
+      if (r->n->neg)
          v->n->neg ^= 1;
    } else
    {                            // Multiple
-      if (o.l->d || o.r->d)
-         v->d = smul(&v->failure, o.l->d ? : &one, o.r->d ? : &one);
-      v->n = smul(&v->failure, o.l->n, o.r->n);
+      if (l->d || r->d)
+         v->d = smul(&v->failure, l->d ? : &one, r->d ? : &one);
+      v->n = smul(&v->failure, l->n, r->n);
    }
    v = sd_tidy(v);
    if (o.l_free)
@@ -1832,24 +1830,22 @@ sd_p sd_mul_opts(sd_2_t o)
 
 sd_p sd_div_opts(sd_2_t o)
 {                               // Divide
-   if (!o.l)
-      o.l = &sd_zero;
-   if (!o.r)
-      o.r = &sd_zero;
-   sd_debugout("sd_div", o.l, o.r, NULL);
-   sd_p v = sd_new(o.l, o.r);
-   if (!o.l->d && !o.r->d)
+   sd_p l = o.l ? : &sd_zero;
+   sd_p r = o.r ? : &sd_zero;
+   sd_debugout("sd_div", l, r, NULL);
+   sd_p v = sd_new(l, r);
+   if (!l->d && !r->d)
    {                            // Simple - making a new rational
-      v->n = copy(&v->failure, o.l->n);
-      v->d = copy(&v->failure, o.r->n);
+      v->n = copy(&v->failure, l->n);
+      v->d = copy(&v->failure, r->n);
    } else
    {                            // Flip and multiply 
-      sd_val_t *t = o.r->n;
-      o.r->n = o.r->d ? : copy(&v->failure, &one);
-      o.r->d = t;
-      o.r->n->neg = o.r->d->neg;
-      o.r->d->neg = 0;
-      return sd_mul(o.l, o.r);
+      sd_val_t *t = r->n;
+      r->n = r->d ? : copy(&v->failure, &one);
+      r->d = t;
+      r->n->neg = r->d->neg;
+      r->d->neg = 0;
+      return sd_mul(l, r);
    }
    v = sd_tidy(v);
    if (o.l_free)
@@ -1861,19 +1857,13 @@ sd_p sd_div_opts(sd_2_t o)
 
 sd_p sd_mod_opts(sd_mod_t o)
 {                               // modulo
-   if (!o.l)
-      o.l = &sd_zero;
-   if (!o.r)
-      o.r = &sd_zero;
-   if (!o.l->d)
-      o.l->d = copy(NULL, &one);
-   if (!o.r->d)
-      o.r->d = copy(NULL, &one);
-   sd_debugout("sd_mod", o.l, o.r, NULL);
-   sd_p v = sd_new(o.l, o.r);
-   sd_val_t *ad = smul(&v->failure, o.l->n, o.r->d);
-   sd_val_t *bc = smul(&v->failure, o.l->d, o.r->n);
-   v->d = smul(&v->failure, o.l->d, o.r->d);
+   sd_p l = o.l ? : &sd_zero;
+   sd_p r = o.r ? : &sd_zero;
+   sd_debugout("sd_mod", l, r, NULL);
+   sd_p v = sd_new(l, r);
+   sd_val_t *ad = smul(&v->failure, l->n, r->d ? : &one);
+   sd_val_t *bc = smul(&v->failure, l->d ? : &one, r->n);
+   v->d = smul(&v->failure, l->d ? : &one, r->d ? : &one);
  sd_val_t *n = sdiv(&v->failure, ad, bc, rem: &v->n, round:o.round ? : SD_ROUND_FLOOR);
    freez(ad);
    freez(bc);
@@ -1888,13 +1878,15 @@ sd_p sd_mod_opts(sd_mod_t o)
 
 sd_p sd_pow_opts(sd_2_t o)
 {
+   sd_p l = o.l ? : &sd_zero;
+   sd_p r = o.r ? : &sd_zero;
    const char *failp = NULL;
-   if (o.r->n->neg)
+   if (r->n->neg)
       return NULL;
-   sd_debugout("sd_pow", o.l, o.r, NULL);
+   sd_debugout("sd_pow", l, r, NULL);
    sd_val_t *p = NULL;
    sd_val_t *rem = NULL;
- p = udiv(&failp, o.r->n, o.r->d ? : &one, rem: &rem, round:SD_ROUND_TRUNCATE);
+ p = udiv(&failp, r->n, r->d ? : &one, rem: &rem, round:SD_ROUND_TRUNCATE);
    if (rem->sig)
    {
       freez(p);
@@ -1907,7 +1899,7 @@ sd_p sd_pow_opts(sd_2_t o)
       freez(p);
       return NULL;
    }
-   sd_p m = sd_copy(o.l);
+   sd_p m = sd_copy(l);
    sd_p v = sd_int(1);
    while (p->sig)
    {
@@ -1937,18 +1929,20 @@ sd_p sd_pow_opts(sd_2_t o)
 
 int sd_cmp_opts(sd_cmp_t o)
 {                               // Compare
-   if (!o.l)
-      o.l = &sd_zero;
-   if (!o.r)
-      o.r = &sd_zero;
+   sd_p l = o.l ? : &sd_zero;
+   sd_p r = o.r ? : &sd_zero;
+   if (!l)
+      l = &sd_zero;
+   if (!r)
+      r = &sd_zero;
    sd_val_t *a,
    *b;
-   sd_p v = sd_cross(o.l, o.r, &a, &b);
+   sd_p v = sd_cross(l, r, &a, &b);
    int diff = 0;
    if (o.abs)
-      diff = ucmp(NULL, a ? : o.l->n, b ? : o.r->n, 0);
+      diff = ucmp(NULL, a ? : l->n, b ? : r->n, 0);
    else
-      diff = scmp(NULL, a ? : o.l->n, b ? : o.r->n);
+      diff = scmp(NULL, a ? : l->n, b ? : r->n);
    sd_free(v);
    freez(a);
    freez(b);
