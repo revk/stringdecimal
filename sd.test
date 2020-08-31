@@ -35,6 +35,12 @@
 ./sd --pass='0.5' '½'
 ./sd --pass='3/2' --format='/' '1½'
 ./sd --pass='1/100' --format='/' '⅟100'
+./sd --pass='½' --format=% '1/2'
+./sd --pass='1⅔' --format=% '5/3'
+./sd --pass='⅘' --format=% '4/5'
+./sd --pass='-1⅑' --format=% -- '-10/9'
+./sd --pass='0.222' --format=% --places=3 '2/9'
+./sd --pass='½' --format=% '4/8'
 
 # Basic maths
 ./sd --pass='7' '1+2*3' '1+(-2*-3)'
