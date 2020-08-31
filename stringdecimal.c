@@ -1686,9 +1686,9 @@ char *sd_output_opts(sd_output_opts_t o)
 sd_p sd_neg_opts(sd_1_t o)
 {                               // Negate
    if (!o.p)
-      if (!o.p_free)
-         o.p = sd_copy(o.p);
-   return o.p;
+      return o.p;
+   if (!o.p_free)
+      o.p = sd_copy(o.p);
    if (o.p->n->sig)
       o.p->n->neg ^= 1;
    return o.p;
@@ -1720,10 +1720,12 @@ sd_p sd_inv_opts(sd_1_t o)
 
 sd_p sd_10_opts(sd_10_t o)
 {                               // Adjust by power of 10
-   if (!o.p || !o.p->n)
+   if (!o.p)
       return o.p;
    if (!o.p_free)
       o.p = sd_copy(o.p);
+   if (!o.p->n)
+      return o.p;
    o.p->n->mag += o.shift;
    return o.p;
 }
