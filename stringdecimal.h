@@ -88,7 +88,7 @@ typedef struct {                // Binary stringdecimal operations
    unsigned char nofrac:1;      // No fractions when parsing
    unsigned char nosi:1;        // No SI suffix when parsing
    unsigned char noieee:1;      // No IEEE suffix when parsing
-   unsigned char unicode:1;     // Use Fractions on output
+   unsigned char combined:1;    // Use combined digit and comma or dot
    const char **failure;        // Error string
 } stringdecimal_binary_t;
 typedef struct {                // Unary stringdecimal operations
@@ -102,7 +102,7 @@ typedef struct {                // Unary stringdecimal operations
    unsigned char nofrac:1;      // No fractions when parsing
    unsigned char nosi:1;        // No SI suffix when parsing
    unsigned char noieee:1;      // No IEEE suffix when parsing
-   unsigned char unicode:1;     // Use Fractions on output
+   unsigned char combined:1;    // Use combined digit and comma or dot
    const char **failure;        // Error string
 } stringdecimal_unary_t;
 typedef struct {                // Division stringdecimal operation
@@ -119,7 +119,7 @@ typedef struct {                // Division stringdecimal operation
    unsigned char nofrac:1;      // No fractions when parsing
    unsigned char nosi:1;        // No SI suffix when parsing
    unsigned char noieee:1;      // No IEEE suffix when parsing
-   unsigned char unicode:1;     // Use Fractions on output
+   unsigned char combined:1;    // Use combined digit and comma or dot
    const char **failure;        // Error string
 } stringdecimal_div_t;
 
@@ -176,7 +176,7 @@ typedef struct {                // Output options
    sd_round_t round;            // Rounding
    unsigned char p_free:1;      // Free argument
    unsigned char comma:1;       // Add comma in output
-   unsigned char unicode:1;     // Use Fractions on output
+   unsigned char combined:1;    // Use combined digit and comma or dot
    const char **failure;        // Error report
 } sd_output_opts_t;
 
