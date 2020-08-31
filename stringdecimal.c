@@ -1450,19 +1450,19 @@ char *sd_output_opts(sd_output_opts_t o)
       }
       break;
    case SD_FORMAT_SI:
-      { // TODO
-      if (o.p->d)
-       r = output_f(sdiv(&failp, o.p->n, o.p->d, NULL, o.places, o.round), comma: o.comma, unicode:o.unicode);
-      else
-       return output(o.p->n, comma: o.comma, unicode:o.unicode);
+      {                         // TODO
+         if (o.p->d)
+          r = output_f(sdiv(&failp, o.p->n, o.p->d, NULL, o.places, o.round), comma: o.comma, unicode:o.unicode);
+         else
+          return output(o.p->n, comma: o.comma, unicode:o.unicode);
       }
       break;
    case SD_FORMAT_IEEE:
-      { // TODO
-      if (o.p->d)
-       r = output_f(sdiv(&failp, o.p->n, o.p->d, NULL, o.places, o.round), comma: o.comma, unicode:o.unicode);
-      else
-       return output(o.p->n, comma: o.comma, unicode:o.unicode);
+      {                         // TODO
+         if (o.p->d)
+          r = output_f(sdiv(&failp, o.p->n, o.p->d, NULL, o.places, o.round), comma: o.comma, unicode:o.unicode);
+         else
+          return output(o.p->n, comma: o.comma, unicode:o.unicode);
       }
       break;
    default:

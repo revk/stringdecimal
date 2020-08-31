@@ -1,14 +1,4 @@
-#!/bin/csh
-
-# Testing the test system
-./sd --pass=7 '1+2*3' >& /dev/null
-if($status) echo "TEST PASS FAILED"
-./sd --pass=9 '1+2*3' >& /dev/null
-if(! $status) echo "TEST FAIL PASS FAILED"
-./sd --fail='Missing operand at q' 'q' >& /dev/null
-if($status) echo "TEST FAIL FAILED"
-./sd --fail='Broken' 'q' >& /dev/null
-if(! $status) echo "TEST FAIL FAIL FAILED"
+#!/bin/bash -e
 
 # Testing basic parsing
 ./sd --pass='1' --	'1' '+1' '01' '001' '1.' '1.0' '1.000' '100e-2' '0.01e2' '1,000e-3'
@@ -165,8 +155,8 @@ if(! $status) echo "TEST FAIL FAIL FAILED"
 ./sd --pass='1' '1||0&&1'
 ./sd --pass='1' '1||1&&0'
 ./sd --pass='0' '(1||1)&&0'
-./sd --pass='0' '\!1'
-./sd --pass='1' '\!0'
+./sd --pass='0' '!1'
+./sd --pass='1' '!0'
 ./sd --pass='2' '1?2:3'
 ./sd --pass='3' '0?2:3'
 ./sd --pass='3' '1+|-1*2|'

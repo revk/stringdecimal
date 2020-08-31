@@ -49,6 +49,7 @@ typedef enum {
    SD_ROUND_BANKING = 'B',      // Away from zero if above 0.5, or 0.5 exactly and goes to even
 } sd_round_t;
 
+// TODO revise logic, and adjust jsql/xmlsql accordingly
 // Decimal places formatting options (used with "places" argument)
 // Default: If format is 0 (i.e. not set) and places is 0, then a format of '+' and places of 3 are used
 // Default: If format is 0 and places is non zero then a format of '=' is used
@@ -70,6 +71,7 @@ typedef enum {
    SD_FORMAT_IEEE = 'I',        // IEEE suffix
    // Places: Max places
    SD_FORMAT_RATIONAL = '/',    // Output as integer or integer/integer, places is not used
+   SD_FORMAT_FRACTION = '%',    // Try to output fractions
 } sd_format_t;
 
 typedef struct {                // Binary stringdecimal operations
@@ -116,7 +118,6 @@ typedef struct {                // Division stringdecimal operation
    unsigned char nofrac:1;      // No fractions when parsing
    unsigned char nosi:1;        // No SI suffix when parsing
    unsigned char noieee:1;      // No IEEE suffix when parsing
-   //unsigned char frac:1;        // Use Fractions on output
    unsigned char unicode:1;     // Use Fractions on output
    const char **failure;        // Error string
 } stringdecimal_div_t;
@@ -174,7 +175,6 @@ typedef struct {                // Output options
    sd_round_t round;            // Rounding
    unsigned char p_free:1;      // Free argument
    unsigned char comma:1;       // Add comma in output
-   //unsigned char frac:1;        // Use Fractions on output
    unsigned char unicode:1;     // Use Fractions on output
    const char **failure;        // Error report
 } sd_output_opts_t;

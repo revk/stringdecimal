@@ -22,7 +22,6 @@ struct stringdecimal_context_s {
    unsigned char nofrac:1;      // Do not allow fractions in parse
    unsigned char nosi:1;        // Do not allow SI suffix in parse
    unsigned char noieee:1;      // Do not allow IEEE suffix in parse
-   //unsigned char frac:1;        // Use Fractions on output
    unsigned char unicode:1;     // Use Fractions on output
 };
 extern xparse_config_t stringdecimal_xparse;
