@@ -2044,6 +2044,8 @@ static void *parse_cond(void *context, void *data, void **a)
 //
 static xparse_op_t parse_bracket[] = {
  { op: "(", op2: ")", func:parse_null },
+ { op: "⁽", op2: "⁾", func:parse_null },
+ { op: "₍", op2: "₎", func:parse_null },
  { op: "|", op2: "|", func:parse_abs },
    { NULL },
 };
@@ -2067,7 +2069,9 @@ static xparse_op_t parse_binary[] = {
  { op: "*", op2: "×", level: 13, func:parse_mul },
    // % would be 14, we should add that
  { op: "+", level: 12, func:parse_add },
+ { op: "⁺", op2: "₊", level: 12, func:parse_add },
  { op: "-", op2: "−", level: 12, func:parse_sub },
+ { op: "⁻", op2: "₋", level: 12, func:parse_sub },
    // Shift would be 11
  { op: ">=", op2: "≥", level: 10, func:parse_ge },
  { op: "<=", op2: "≤", level: 10, func:parse_le },
@@ -2075,6 +2079,7 @@ static xparse_op_t parse_binary[] = {
  { op: ">", op2: "≰", level: 10, func:parse_gt },
  { op: "<", op2: "≱", level: 10, func:parse_lt },
  { op: "==", op2: "=", level: 9, func:parse_eq },
+ { op: "⁼", op2: "₌", level: 9, func:parse_eq },
    // & would be 8
    // ^ would be 7
    // | would be 6

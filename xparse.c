@@ -257,7 +257,7 @@ void *xparse(xparse_config_t * config, void *context, const char *sum, const cha
       // Operator
       const char *implied = NULL;
       {                         // Implied power
-         static const char *sup[11] = { "⁰", "¹", "²", "³", "⁴", "⁵", "⁶", "⁷", "⁸", "⁹" };
+         static const char *sup[11] = { "⁰", "¹", "²", "³", "⁴", "⁵", "⁶", "⁷", "⁸", "⁹", "⁽" };
          for (q = 0; q < sizeof(sup) / sizeof(*sup); q++)
             if ((l = comp(sup[q], sum)))
             {
