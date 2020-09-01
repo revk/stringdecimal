@@ -2137,7 +2137,7 @@ static void *parse_or(void *context, void *data, void **a)
 static void *parse_cond(void *context, void *data, void **a)
 {
    if (!sd_iszero(a[0]))
-      return a[1] ? : a[0];     // Allow for null second operator
+      return a[1] ? : a[0];     // Allow for null second operand
    return a[2];
 }
 
