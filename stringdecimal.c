@@ -680,7 +680,7 @@ static sd_val_t *uadd_opts(const char **failp, uadd_t o)
          r = a;
          o.a_free = 0;
       } else
-         warnx("Not reusing in uadd");
+         warnx("Not reusing in uadd (%d<%d || %d>%d)", (int) (a->mag + (a->d - a->m)), mag, (int) (a->mag + (a->d - a->m) - a->max), end);
    }
    if (!r)
       r = make(failp, mag, mag - end);
@@ -752,7 +752,7 @@ static sd_val_t *usub_opts(const char **failp, usub_t o)
          r = a;
          o.a_free = 0;
       } else
-         warnx("Not reusing in usub");
+         warnx("Not reusing in usub (%d<%d || %d>%d)", (int) (a->mag + (a->d - a->m)), mag, (int) (a->mag + (a->d - a->m) - a->max), end);
    }
    if (!r)
       r = make(failp, mag, mag - end);
