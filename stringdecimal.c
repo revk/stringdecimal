@@ -811,7 +811,7 @@ static sd_val_t *umul_opts(const char **failp, umul_t o)
    sd_val_t *base[9];
    makebase(failp, base, b);
    int mag = a->mag + b->mag + 4;       // Allow plenty of space
-   int sig = a->sig + b->sig + 8;
+   int sig = a->sig + b->sig + 10;
    sd_val_t *r = make(failp, mag, sig);
    r->sig = 0;                  // Is zero, we just made it big enough to re-use
    for (int p = 0; p < a->sig; p++)
