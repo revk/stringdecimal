@@ -860,10 +860,10 @@ static sd_val_t *udiv_opts(const char **failp, udiv_t o)
          mag--;
       if (sig < 0)
          sig = 0;
-      r = make(failp, mag + 1, sig + 1);
-      r->d++;                   // Allowed more space for the rounding in-situ
-      r->mag--;
-      r->sig--;
+      r = make(failp, mag + 2, sig + 2);
+      r->d += 2;                // Allowed more space for the rounding in-situ, including allowing for round at end
+      r->mag -= 2;
+      r->sig -= 2;
       if (r)
       {
          sd_val_t *v = make(failp, a->mag, b->sig + sig + 1);
