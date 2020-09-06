@@ -105,8 +105,8 @@ struct {
 
 struct {
    const char *value;
-   unsigned char n;
-   unsigned char d;
+   char n;
+   char d;
 } fraction[] = {
    { "¼", 1, 4 },
    { "½", 1, 2 },
@@ -126,8 +126,9 @@ struct {
    { "⅜", 3, 8 },
    { "⅝", 5, 8 },
    { "⅞", 7, 8 },
-   { "⅟", 1, 0 },
+   { "⅟", 1, -1 },
    { "↉", 0, 3 },
+   { "∞", 1, 0 },
 };
 
 #define	FRACTIONS (sizeof (fraction)/sizeof(*fraction))
@@ -1375,7 +1376,7 @@ sd_p sd_parse_opts(sd_parse_t o)
    {                            // Just a fraction
       p += l;
       n = v->n = make_int(&v->failure, fraction[f].n);
-      if (!fraction[f].d)
+      if (fraction[f].d < 0)
       {                         // 1/N
        n = parse(&v->failure, p, placesp: &places, nocomma: o.nocomma, end:&end);
          if (n)
@@ -1395,7 +1396,7 @@ sd_p sd_parse_opts(sd_parse_t o)
          if (!o.nofrac && n && n->mag <= 0 && n->mag + 1 >= n->sig)
          {                      // Integer, follow by fraction
             for (f = 0; f < FRACTIONS && !(l = comp(fraction[f].value, p)); f++);
-            if (f < FRACTIONS && fraction[f].d)
+            if (f < FRACTIONS && fraction[f].d >= 0)
             {
                p += l;
                v->d = make_int(&v->failure, fraction[f].d);
@@ -1523,6 +1524,8 @@ char *sd_output_opts(sd_output_opts_t o)
       return q - o.places;
    }
    char *format(void) {
+      if (o.format != SD_FORMAT_RATIONAL && o.p->d && !o.p->d->sig)
+         return strdup("∞");
       char *r = NULL;
       switch (o.format)
       {
