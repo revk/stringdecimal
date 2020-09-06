@@ -1524,7 +1524,7 @@ char *sd_output_opts(sd_output_opts_t o)
       return q - o.places;
    }
    char *format(void) {
-      if (o.format != SD_FORMAT_RATIONAL && o.p->d && !o.p->d->sig)
+      if (o.format != SD_FORMAT_RATIONAL && o.p && o.p->d && !o.p->d->sig)
          return strdup(o.p->n->neg ? "-∞" : "∞");
       char *r = NULL;
       switch (o.format)
