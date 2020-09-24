@@ -218,7 +218,17 @@ typedef struct {
    unsigned char l_free:1;
    unsigned char r_free:1;
 } sd_mod_t;
+typedef struct {
+   sd_p p;
+   int places;
+   sd_round_t round;
+   unsigned char cap:1;         // Cap to specified places
+   unsigned char pad:1;         // Pad to specified places
+   unsigned char sig:1;         // Places+1 is sig figures
+} sd_rnd_t;
 
+#define sd_rnd(...) sd_rnd_opts((sd_rnd_t){__VA_ARGS__})
+sd_p sd_rnd_opts(sd_rnd_t o);
 #define sd_neg(...) sd_neg_opts((sd_1_t){__VA_ARGS__})
 #define sd_neg_i(...) sd_neg_opts((sd_1_t){__VA_ARGS__,p_free:1})
 sd_p sd_neg_opts(sd_1_t);       // Negate
