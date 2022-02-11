@@ -2231,6 +2231,62 @@ char *stringdecimal_eval_opts(stringdecimal_unary_t o)
 
 #ifndef LIB
 // Test function main build
+#include <sys/types.h>
+#include <unistd.h>
+
+char *expand(const char *s)
+{                               // Do variable expansion, return malloced string, does $x and ${x} but not $x:x
+   if (!s)
+      return NULL;
+   if (!strchr(s, '$'))
+      return strdup(s);
+   char *out = NULL;
+   size_t l;
+   FILE *f = open_memstream(&out, &l);
+   while (*s)
+   {
+      if (*s != '$')
+      {
+         fputc(*s++, f);
+         continue;
+      }
+      s++;
+      if (*s == '$')
+      {                         // $$
+         s++;
+         fprintf(f, "%d", getppid());
+         continue;
+      }
+      const char *v = s,
+          *e = s;
+      if (*s == '{')
+      {
+         s++;
+         v = s;
+         while (*s && *s != '}')
+            s++;
+         e = s;
+         if (*s == '}')
+            s++;
+      } else
+      {
+         while (isalnum(*s))
+            s++;
+         e = s;
+      }
+      if (e > v)
+      {
+         char *name = strndup(v, (int) (e - v));
+         char *value = getenv(name);
+         if (value)
+            fprintf(f, "%s", value);
+         free(name);
+      }
+   }
+   fclose(f);
+   return out;
+}
+
 #include <popt.h>
 int main(int argc, const char *argv[])
 {
@@ -2281,8 +2337,8 @@ int main(int argc, const char *argv[])
          sd_comma = *scomma;
       if (spoint)
          sd_point = *spoint;
-      const char *s;
-      while ((s = poptGetArg(optCon)))
+      char *s;
+      while ((s = expand(poptGetArg(optCon))))
       {
        char *res = stringdecimal_eval(s, places: places, format: *format, round: *round, comma: comma, nocomma: nocomma, nofrac: nofrac, nosi: nosi, noieee: noieee, combined:combined);
          if (pass && (!res || *res == '!' || strcmp(res, pass)))
@@ -2303,6 +2359,7 @@ int main(int argc, const char *argv[])
                fprintf(stderr, "Failed\n");
          }
          freez(res);
+         free(s);
       }
       poptFreeContext(optCon);
    }
