@@ -903,6 +903,7 @@ static sd_val_t *udiv_opts(const char **failp, udiv_t o)
             if (o.round == SD_ROUND_UP ||       // Round up
                 o.round == SD_ROUND_CEILING     // Round up
                 || (o.round == SD_ROUND_ROUND && diff >= 0)     // Round up if 0.5 and above up
+                || (o.round == SD_ROUND_NI && diff > 0) // Round up if above 0.5
                 || (o.round == SD_ROUND_BANKING && diff > 0)    // Round up if above 0.5
                 || (o.round == SD_ROUND_BANKING && !diff && (r->d[r->sig - 1] & 1))     // Round up if 0.5 and odd previous digit
                 )
@@ -1125,6 +1126,8 @@ static sd_val_t *srnd_opts(const char **failp, srnd_t o)
          } else if (o.round == SD_ROUND_ROUND && a->d[p] >= 5)  // Up if .5 or above
             up = 1;
          else if (o.round == SD_ROUND_BANKING && a->d[p] > 5)
+            up = 1;             // Up as more than .5
+         else if (o.round == SD_ROUND_NI && a->d[p] > 5)
             up = 1;             // Up as more than .5
          else if (o.round == SD_ROUND_BANKING && a->d[p] == 5)
          {                      // Bankers, check exactly .5

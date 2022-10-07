@@ -45,8 +45,9 @@ typedef enum {
    SD_ROUND_UP = 'U',           // Away from zero
    SD_ROUND_FLOOR = 'F',        // Towards -ve
    SD_ROUND_CEILING = 'C',      // Towards +ve
-   SD_ROUND_ROUND = 'R',        // Away from zero if 0.5 or more
-   SD_ROUND_BANKING = 'B',      // Away from zero if above 0.5, or 0.5 exactly and goes to even
+   SD_ROUND_ROUND = 'R',        // Away from zero if ½ or more
+   SD_ROUND_NI = 'N',           // Away from zero if above ½, but if ½ exactly round towards zero
+   SD_ROUND_BANKING = 'B',      // Away from zero if above ½, but if ½ exactly and goes to even
 } sd_round_t;
 
 // Decimal places formatting options (used with "places" argument)
