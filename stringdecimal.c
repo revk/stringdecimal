@@ -1125,19 +1125,20 @@ static sd_val_t *srnd_opts(const char **failp, srnd_t o)
                up = 1;          // not exact
          } else if (o.round == SD_ROUND_ROUND && a->d[p] >= 5)  // Up if .5 or above
             up = 1;
-         else if (o.round == SD_ROUND_BANKING && a->d[p] > 5)
-            up = 1;             // Up as more than .5
-         else if (o.round == SD_ROUND_NI && a->d[p] > 5)
-            up = 1;             // Up as more than .5
-         else if (o.round == SD_ROUND_BANKING && a->d[p] == 5)
-         {                      // Bankers, check exactly .5
-            p++;
-            while (p < a->sig && !a->d[p])
+         else if (o.round == SD_ROUND_BANKING || o.round == SD_ROUND_NI)
+         {                      // Bankers and NI depend on exact 0.5 special cases
+            if (a->d[p] > 5)
+               up = 1;          // Up as more than .5
+            else if (a->d[p] == 5)
+            {                   // Check if exactly 0.5, if above then we round up
                p++;
-            if (p < a->sig)
-               up = 1;          // greater than .5
-            else if (a->d[sig - 1] & 1)
-               up = 1;          // exactly .5 and odd, so move to even
+               while (p < a->sig && !a->d[p])
+                  p++;
+               if (p < a->sig)
+                  up = 1;       // greater than .5
+               else if (o.round != SD_ROUND_NI && a->d[sig - 1] & 1)
+                  up = 1;       // exactly .5 and odd, so move to even for bankers or down for NI
+            }
          }
          if (up)
          {                      // Round up (away from 0)
@@ -1473,6 +1474,11 @@ const char *sd_fail(sd_p p)
    if (p->failure)
       return p->failure;
    return NULL;
+}
+
+void sd_delete(sd_p * pp)
+{                               // Free in situ
+   *pp = sd_free(*pp);
 }
 
 void *sd_free(sd_p p)
@@ -2312,7 +2318,7 @@ int main(int argc, const char *argv[])
       const struct poptOption optionsTable[] = {
          { "places", 'p', POPT_ARG_INT, &places, 0, "Places", "N" },
          { "format", 'f', POPT_ARG_STRING, &format, 0, "Format", SD_FORMATS },
-         { "round", 'r', POPT_ARG_STRING, &round, 0, "Rounding", "TUFCRB" },
+         { "round", 'r', POPT_ARG_STRING, &round, 0, "Rounding", "TUFCRBN" },
          { "no-comma", 'n', POPT_ARG_NONE, &nocomma, 0, "No comma in input" },
          { "no-frac", 0, POPT_ARG_NONE, &nofrac, 0, "No fractions in input" },
          { "no-si", 0, POPT_ARG_NONE, &nosi, 0, "No SI suffix in input" },

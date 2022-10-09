@@ -171,6 +171,7 @@ typedef struct {                // Output options
 
 const char *sd_fail(sd_p);      // Failure string
 void *sd_free(sd_p);            // Free sd_p
+void sd_delete(sd_p *);         // Free and set NULL
 sd_p sd_copy(sd_p p);           // Make copy
 sd_p sd_int(long long);         // Make from integer
 sd_p sd_float(long double);     // Make from float
