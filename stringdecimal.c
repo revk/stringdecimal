@@ -1054,7 +1054,7 @@ typedef struct {
    sd_val_t *a;
    int places;
    sd_round_t round;
-   unsigned char cap:1;         // Cap to specified places
+   unsigned char nocap:1;       // Cap to specified places
    unsigned char pad:1;         // Pad to specified places
    unsigned char sig:1;         // Places+1 is sig figures
 } srnd_t;
@@ -1072,7 +1072,7 @@ static sd_val_t *srnd_opts(const char **failp, srnd_t o)
       o.places = o.places - a->mag - 1; // Places+1 is sig figures
    if (!o.pad && o.places > decimals)
       o.places = decimals;      // Not padding
-   if (!o.cap && o.places < decimals)
+   if (o.nocap && o.places < decimals)
       o.places = decimals;      // Not capping
    sd_val_t *z(void) {
       sd_val_t *r = copy(failp, &zero);
@@ -1247,7 +1247,7 @@ char *stringdecimal_rnd_opts(stringdecimal_unary_t o)
 {
    // Round to specified number of places
  sd_val_t *A = parse(o.failure, o.a, nocomma:o.nocomma);
- sd_val_t *R = srnd(o.failure, A, places: o.places, round: o.round, cap: 1, pad:1);
+ sd_val_t *R = srnd(o.failure, A, places: o.places, round: o.round, pad:1);
  char *ret = output_f(R, A, comma: o.comma, combined:o.combined);
    if (o.a_free)
       freez(o.a);
@@ -1298,10 +1298,10 @@ static sd_p sd_new(sd_p l, sd_p r)
 
 #define sd_rnd_val(...)	sd_rnd_val_opts((sd_rnd_t){__VA_ARGS__})
 static sd_val_t *sd_rnd_val_opts(sd_rnd_t o)
-{                               // Do sensible rounding
+{                               // Do sensible rounding in situ
    if (o.p->d)
     return sdiv(&o.p->failure, o.p->n, o.p->d, places: o.places, round: o.round, pad: o.pad, sig:o.sig);
- return srnd(&o.p->failure, o.p->n, places: o.places, round: o.round, cap: o.cap, pad: o.pad, sig:o.sig);
+ return srnd(&o.p->failure, o.p->n, places: o.places, round: o.round, nocap: o.nocap, pad: o.pad, sig:o.sig);
 }
 
 sd_p sd_rnd_opts(sd_rnd_t o)
@@ -1309,6 +1309,8 @@ sd_p sd_rnd_opts(sd_rnd_t o)
    sd_p r = sd_new(o.p, NULL);
    if (r)
       r->n = sd_rnd_val_opts(o);
+   if (o.p_free)
+      sd_free(o.p);
    return r;
 }
 
@@ -1596,17 +1598,17 @@ char *sd_output_opts(sd_output_opts_t o)
             return r;
          // Drop through
       case SD_FORMAT_LIMIT:
-       r = output_f(sd_rnd_val(p, places: guess(0), round: o.round, cap: 1), comma: o.comma, combined:o.combined);
+       r = output_f(sd_rnd_val(p, places: guess(0), round: o.round), comma: o.comma, combined:o.combined);
          break;
       case SD_FORMAT_EXACT:
-       r = output_f(sd_rnd_val(p, places: o.places, round: o.round, cap: 1, pad: 1), comma: o.comma, combined:o.combined);
+       r = output_f(sd_rnd_val(p, places: o.places, round: o.round, pad: 1), comma: o.comma, combined:o.combined);
          break;
       case SD_FORMAT_INPUT:
-       r = output_f(sd_rnd_val(p, places: p->places + o.places, round: o.round, cap: 1, pad: 1), comma: o.comma, combined:o.combined);
+       r = output_f(sd_rnd_val(p, places: p->places + o.places, round: o.round, pad: 1), comma: o.comma, combined:o.combined);
          break;
       case SD_FORMAT_EXP:
          {
-          sd_val_t *v = sd_rnd_val(p, places: guess(1), round: o.round, sig: 1, pad: o.places >= 0, cap:1);
+          sd_val_t *v = sd_rnd_val(p, places: guess(1), round: o.round, sig: 1, pad:o.places >= 0);
             int exp = v->mag;
             v->mag = 0;
           char *t = output_f(v, comma: o.comma, combined:o.combined);
@@ -1619,7 +1621,7 @@ char *sd_output_opts(sd_output_opts_t o)
          break;
       case SD_FORMAT_SI:
          {
-          sd_val_t *v = sd_rnd_val(p, places: guess(1), round: o.round, sig: 1, pad: o.places >= 0, cap:1);
+          sd_val_t *v = sd_rnd_val(p, places: guess(1), round: o.round, sig: 1, pad:o.places >= 0);
             int exp = (v->mag + 27) / 3 * 3 - 27;
             if (exp < -24)
                exp = -24;
@@ -1651,7 +1653,7 @@ char *sd_output_opts(sd_output_opts_t o)
                else
                 p->d = umul(&failp, p->d, make_int(&failp, ieee[i - 1].mul), b_free:1);
             }
-          sd_val_t *v = sd_rnd_val(p, places: guess(1), round: o.round, sig: 1, pad: o.places >= 0, cap:1);
+          sd_val_t *v = sd_rnd_val(p, places: guess(1), round: o.round, sig: 1, pad:o.places >= 0);
           char *t = output_f(v, comma: o.comma, combined:o.combined);
             if (!i)
                return t;
