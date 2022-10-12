@@ -609,6 +609,8 @@ static int ucmp(const char **failp, sd_val_t * a, sd_val_t * b, int boffset)
       a = &zero;
    if (!b)
       b = &zero;
+   norm(a);
+   norm(b);
    //debugout("ucmp", a, b, NULL);
    if (!a->sig && !b->sig)
       return 0;                 // Zeros
@@ -632,7 +634,6 @@ static int ucmp(const char **failp, sd_val_t * a, sd_val_t * b, int boffset)
       if (a->d[p] > b->d[p])
          return 1;
    }
-   // TODO broken, this is fooled if trailing 0's as result of rnd/padding, but fixing breaks divide somehow?
    // Compare length
    if (a->sig > p)
       return 1;                 // More digits
