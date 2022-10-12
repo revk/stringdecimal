@@ -1304,8 +1304,15 @@ static sd_val_t *sd_rnd_val_opts(sd_rnd_t o)
  return srnd(&o.p->failure, o.p->n, places: o.places, round: o.round, nocap: o.nocap, pad: o.pad, sig:o.sig);
 }
 
+static struct sd_s sd_zero = { &zero };
+
 sd_p sd_rnd_opts(sd_rnd_t o)
 {                               // Round to an sd_p
+   if (!o.p)
+   {
+      o.p = &sd_zero;
+      o.p_free = 0;
+   }
    sd_p r = sd_new(o.p, NULL);
    if (r)
       r->n = sd_rnd_val_opts(o);
@@ -1313,8 +1320,6 @@ sd_p sd_rnd_opts(sd_rnd_t o)
       sd_free(o.p);
    return r;
 }
-
-static struct sd_s sd_zero = { &zero };
 
 static sd_p sd_tidy(sd_p v)
 {                               // Check answer
