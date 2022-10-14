@@ -16,6 +16,7 @@ struct stringdecimal_context_s {
    sd_round_t round;
    const char *fail;
    const char *posn;
+   const char *currency;
    unsigned char nocomma:1;     // Do not allow comma in parse
    unsigned char comma:1;       // Add comma in output
    unsigned char raw:1;         // Raw output, i.e. sd not a string

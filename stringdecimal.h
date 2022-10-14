@@ -70,6 +70,7 @@ typedef struct {                // Binary stringdecimal operations
    int places;                  // Number of places
    sd_format_t format;          // Decimal places formatting
    sd_round_t round;            // Rounding
+   const char *currency;        // Output currency
    unsigned char nocomma:1;     // Do not allow commas when parsing
    unsigned char a_free:1;      // Free first argument
    unsigned char b_free:1;      // Free second argument
@@ -85,6 +86,7 @@ typedef struct {                // Unary stringdecimal operations
    int places;                  // Number of places
    sd_format_t format;          // Decimal places formatting
    sd_round_t round;            // Rounding
+   const char *currency;        // Output currency
    unsigned char nocomma:1;     // Do not allow commas when parsing
    unsigned char a_free:1;      // Free argument
    unsigned char comma:1;       // Add comma in output
@@ -101,6 +103,7 @@ typedef struct {                // Division stringdecimal operation
    sd_format_t format;          // Decimal places formatting
    sd_round_t round;            // Rounding
    char **remainder;            // Store remainder value
+   const char *currency;        // Output option
    unsigned char nocomma:1;     // Do not allow commas when parsing
    unsigned char a_free:1;      // Free first argument
    unsigned char b_free:1;      // Free second argument
@@ -163,6 +166,7 @@ typedef struct {                // Output options
    int places;                  // Number of places
    sd_format_t format;          // Decimal places formatting
    sd_round_t round;            // Rounding
+   const char *currency;        // Currency (after sign)
    unsigned char p_free:1;      // Free argument
    unsigned char comma:1;       // Add comma in output
    unsigned char combined:1;    // Use combined digit and comma or dot

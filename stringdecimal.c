@@ -471,6 +471,7 @@ const char *sd_check_opts(sd_parse_t o)
 typedef struct {
    sd_val_t *s;
    FILE *O;                     // output to a file
+   const char *currency;
    unsigned char comma:1;
    unsigned char combined:1;
 } output_t;
@@ -490,6 +491,8 @@ static char *output_opts(output_t o)
       O = open_memstream(&buf, &len);
    if (s->neg)
       fputc('-', O);
+   if (o.currency)
+      fprintf(O, "%s", o.currency);
    int q = 0;
    if (s->mag < 0)
    {
@@ -586,6 +589,7 @@ typedef struct {
    sd_val_t *c;
    sd_val_t *d;
    FILE *O;
+   const char *currency;
    unsigned char comma:1;
    unsigned char combined:1;
 } output_f_t;
@@ -593,7 +597,7 @@ typedef struct {
 #define output_f(...)	output_f_opts((output_f_t){__VA_ARGS__})
 static char *output_f_opts(output_f_t o)
 {                               // Convert first arg to string, but free multiple args
- char *r = output(o.a, comma: o.comma, combined: o.combined, O:o.O);
+ char *r = output(o.a, comma: o.comma, combined: o.combined, currency: o.currency, O:o.O);
    freez(o.a);
    freez(o.b);
    freez(o.c);
@@ -1237,7 +1241,7 @@ char *stringdecimal_div_opts(stringdecimal_div_t o)
    sd_val_t *REM = NULL;
  sd_val_t *R = sdiv(o.failure, A, B, rem: &REM, places: o.places, round:o.round);
    if (o.remainder)
-    *o.remainder = output(REM, comma: o.comma, combined:o.combined);
+    *o.remainder = output(REM, comma: o.comma, combined: o.combined, currency:o.currency);
    if (o.a_free)
       freez(o.a);
    if (o.b_free)
@@ -1554,14 +1558,14 @@ char *sd_output_opts(sd_output_opts_t o)
             sd_val_t *rem = NULL;
           sd_val_t *res = sdiv(NULL, c->n, c->d, rem: &rem, round:SD_ROUND_TRUNCATE);
             if (rem && !rem->sig)
-             r = output(res, comma: o.comma, combined:o.combined);
+             r = output(res, comma: o.comma, combined: o.combined, currency:o.currency);
             // No remainder, so integer
             freez(rem);
             freez(res);
             if (!r)
             {                   // Rational
-             char *n = output(c->n, comma: o.comma, combined:o.combined);
-             char *d = output(c->d, comma: o.comma, combined:o.combined);
+             char *n = output(c->n, comma: o.comma, combined: o.combined, currency:o.currency);
+             char *d = output(c->d, comma: o.comma, combined: o.combined, currency:o.currency);
                if (asprintf(&r, "%s/%s", n, d) < 0)
                   errx(1, "malloc");
                freez(d);
@@ -1593,7 +1597,7 @@ char *sd_output_opts(sd_output_opts_t o)
             {                   // Found
                char *v = NULL;
                if (N1->sig)
-                v = output(N1, comma: o.comma, combined:o.combined);
+                v = output(N1, comma: o.comma, combined: o.combined, currency:o.currency);
                if (asprintf(&r, "%s%s%s", p->n->neg ? "-" : "", v ? : "", fraction[f].value) < 0)
                   errx(1, "malloc");
                freez(v);
@@ -1605,20 +1609,20 @@ char *sd_output_opts(sd_output_opts_t o)
             return r;
          // Drop through
       case SD_FORMAT_LIMIT:
-       r = output_f(sd_rnd_val(p, places: guess(0), round: o.round), comma: o.comma, combined:o.combined);
+       r = output_f(sd_rnd_val(p, places: guess(0), round: o.round), comma: o.comma, combined: o.combined, currency:o.currency);
          break;
       case SD_FORMAT_EXACT:
-       r = output_f(sd_rnd_val(p, places: o.places, round: o.round, pad: 1), comma: o.comma, combined:o.combined);
+       r = output_f(sd_rnd_val(p, places: o.places, round: o.round, pad: 1), comma: o.comma, combined: o.combined, currency:o.currency);
          break;
       case SD_FORMAT_INPUT:
-       r = output_f(sd_rnd_val(p, places: p->places + o.places, round: o.round, pad: 1), comma: o.comma, combined:o.combined);
+       r = output_f(sd_rnd_val(p, places: p->places + o.places, round: o.round, pad: 1), comma: o.comma, combined: o.combined, currency:o.currency);
          break;
       case SD_FORMAT_EXP:
          {
           sd_val_t *v = sd_rnd_val(p, places: guess(1), round: o.round, sig: 1, pad:o.places >= 0);
             int exp = v->mag;
             v->mag = 0;
-          char *t = output_f(v, comma: o.comma, combined:o.combined);
+          char *t = output_f(v, comma: o.comma, combined: o.combined, currency:o.currency);
             char *r;
             if (asprintf(&r, "%se%+d", t, exp) < 0)
                errx(1, "malloc");
@@ -1635,7 +1639,7 @@ char *sd_output_opts(sd_output_opts_t o)
             if (exp > 24)
                exp = 24;
             v->mag -= exp;
-          char *t = output_f(v, comma: o.comma, combined:o.combined);
+          char *t = output_f(v, comma: o.comma, combined: o.combined, currency:o.currency);
             if (!exp)
                return t;
             int s;
@@ -1661,7 +1665,7 @@ char *sd_output_opts(sd_output_opts_t o)
                 p->d = umul(&failp, p->d, make_int(&failp, ieee[i - 1].mul), b_free:1);
             }
           sd_val_t *v = sd_rnd_val(p, places: guess(1), round: o.round, sig: 1, pad:o.places >= 0);
-          char *t = output_f(v, comma: o.comma, combined:o.combined);
+          char *t = output_f(v, comma: o.comma, combined: o.combined, currency:o.currency);
             if (!i)
                return t;
             char *r;
@@ -1993,7 +1997,7 @@ static void *parse_final(void *context, void *v)
    sd_p V = v;
    if (!V)
       return NULL;
- return sd_output(V, places: V->places, places: C->places, format: C->format, round: C->round, comma: C->comma, combined:C->combined);
+ return sd_output(V, places: V->places, places: C->places, format: C->format, round: C->round, comma: C->comma, combined: C->combined, currency:C->currency);
 }
 
 static void parse_dispose(void *context, void *v)
@@ -2322,6 +2326,7 @@ int main(int argc, const char *argv[])
    int noieee = 0;
    int fails = 0;
    int combined = 0;
+   const char *currency = NULL;
    {                            // POPT
       poptContext optCon;       // context for parsing command-line options
       const struct poptOption optionsTable[] = {
@@ -2334,6 +2339,7 @@ int main(int argc, const char *argv[])
          { "no-ieee", 0, POPT_ARG_NONE, &noieee, 0, "No IEEE suffix in input" },
          { "comma", 'c', POPT_ARG_NONE, &comma, 0, "Comma in output" },
          { "combined", 0, POPT_ARG_NONE, &combined, 0, "Combined digit and comma/dot" },
+         { "currency", 0, POPT_ARG_STRING, &currency, 0, "Currency prefix" },
          { "comma-char", 'C', POPT_ARG_STRING, &scomma, 0, "Set comma char", "char" },
          { "point-char", 'C', POPT_ARG_STRING, &spoint, 0, "Set point char", "char" },
          { "max", 'm', POPT_ARG_INT, &sd_max, 0, "Max size", "N" },
@@ -2358,7 +2364,7 @@ int main(int argc, const char *argv[])
       char *s;
       while ((s = expand(poptGetArg(optCon))))
       {
-       char *res = stringdecimal_eval(s, places: places, format: *format, round: *round, comma: comma, nocomma: nocomma, nofrac: nofrac, nosi: nosi, noieee: noieee, combined:combined);
+       char *res = stringdecimal_eval(s, places: places, format: *format, round: *round, comma: comma, nocomma: nocomma, nofrac: nofrac, nosi: nosi, noieee: noieee, combined: combined, currency:currency);
          if (pass && (!res || *res == '!' || strcmp(res, pass)))
          {
             fails++;
