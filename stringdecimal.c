@@ -1823,8 +1823,8 @@ sd_p sd_mul_opts(sd_2_t o)
    sd_p v = NULL;
    if (o.l && o.r)
    {                            // either being null means answer is null, as null is seen as zero
-      sd_p l = o.l ? : &sd_zero;
-      sd_p r = o.r ? : &sd_zero;
+      sd_p l = o.l;
+      sd_p r = o.r;
       sd_debugout("sd_mul", l, r, NULL);
       v = sd_new(l, r);
       if (r->d && !scmp(&v->failure, l->n, r->d))
@@ -1859,8 +1859,8 @@ sd_p sd_div_opts(sd_2_t o)
    sd_p v = NULL;
    if (o.l && o.r)
    {                            // either being null means answer is null, as null is seen as zero
-      sd_p l = o.l ? : &sd_zero;
-      sd_p r = o.r ? : &sd_zero;
+      sd_p l = o.l;
+      sd_p r = o.r;
       sd_debugout("sd_div", l, r, NULL);
       v = sd_new(l, r);
       if (!l->d && !r->d)
@@ -1890,8 +1890,8 @@ sd_p sd_mod_opts(sd_mod_t o)
    sd_p v = NULL;
    if (o.l && o.r)
    {                            // either being null means answer is null, as null is seen as zero
-      sd_p l = o.l ? : &sd_zero;
-      sd_p r = o.r ? : &sd_zero;
+      sd_p l = o.l;
+      sd_p r = o.r;
       sd_debugout("sd_mod", l, r, NULL);
       v = sd_new(l, r);
       sd_val_t *ad = smul(&v->failure, l->n, r->d ? : &one);
