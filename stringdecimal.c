@@ -1820,29 +1820,33 @@ sd_p sd_sub_opts(sd_2_t o)
 
 sd_p sd_mul_opts(sd_2_t o)
 {                               // Multiply
-   sd_p l = o.l ? : &sd_zero;
-   sd_p r = o.r ? : &sd_zero;
-   sd_debugout("sd_mul", l, r, NULL);
-   sd_p v = sd_new(l, r);
-   if (r->d && !scmp(&v->failure, l->n, r->d))
-   {                            // Cancel out
-      v->n = copy(&v->failure, r->n);
-      v->d = copy(&v->failure, l->d);
-      if (l->n->neg)
-         v->n->neg ^= 1;
-   } else if (l->d && !scmp(&v->failure, r->n, l->d))
-   {                            // Cancel out
-      v->n = copy(&v->failure, l->n);
-      v->d = copy(&v->failure, r->d);
-      if (r->n->neg)
-         v->n->neg ^= 1;
-   } else
-   {                            // Multiple
-      if (l->d || r->d)
-         v->d = smul(&v->failure, l->d ? : &one, r->d ? : &one);
-      v->n = smul(&v->failure, l->n, r->n);
+   sd_p v = NULL;
+   if (o.l && o.r)
+   {                            // either being null means answer is null, as null is seen as zero
+      sd_p l = o.l ? : &sd_zero;
+      sd_p r = o.r ? : &sd_zero;
+      sd_debugout("sd_mul", l, r, NULL);
+      v = sd_new(l, r);
+      if (r->d && !scmp(&v->failure, l->n, r->d))
+      {                         // Cancel out
+         v->n = copy(&v->failure, r->n);
+         v->d = copy(&v->failure, l->d);
+         if (l->n->neg)
+            v->n->neg ^= 1;
+      } else if (l->d && !scmp(&v->failure, r->n, l->d))
+      {                         // Cancel out
+         v->n = copy(&v->failure, l->n);
+         v->d = copy(&v->failure, r->d);
+         if (r->n->neg)
+            v->n->neg ^= 1;
+      } else
+      {                         // Multiple
+         if (l->d || r->d)
+            v->d = smul(&v->failure, l->d ? : &one, r->d ? : &one);
+         v->n = smul(&v->failure, l->n, r->n);
+      }
+      v = sd_tidy(v);
    }
-   v = sd_tidy(v);
    if (o.l_free)
       sd_free(o.l);
    if (o.r_free)
@@ -1852,24 +1856,28 @@ sd_p sd_mul_opts(sd_2_t o)
 
 sd_p sd_div_opts(sd_2_t o)
 {                               // Divide
-   sd_p l = o.l ? : &sd_zero;
-   sd_p r = o.r ? : &sd_zero;
-   sd_debugout("sd_div", l, r, NULL);
-   sd_p v = sd_new(l, r);
-   if (!l->d && !r->d)
-   {                            // Simple - making a new rational
-      v->n = copy(&v->failure, l->n);
-      v->d = copy(&v->failure, r->n);
-   } else
-   {                            // Flip and multiply 
-      sd_val_t *t = r->n;
-      r->n = r->d ? : copy(&v->failure, &one);
-      r->d = t;
-      r->n->neg = r->d->neg;
-      r->d->neg = 0;
-      return sd_mul(l, r);
+   sd_p v = NULL;
+   if (o.l && o.r)
+   {                            // either being null means answer is null, as null is seen as zero
+      sd_p l = o.l ? : &sd_zero;
+      sd_p r = o.r ? : &sd_zero;
+      sd_debugout("sd_div", l, r, NULL);
+      v = sd_new(l, r);
+      if (!l->d && !r->d)
+      {                         // Simple - making a new rational
+         v->n = copy(&v->failure, l->n);
+         v->d = copy(&v->failure, r->n);
+      } else
+      {                         // Flip and multiply 
+         sd_val_t *t = r->n;
+         r->n = r->d ? : copy(&v->failure, &one);
+         r->d = t;
+         r->n->neg = r->d->neg;
+         r->d->neg = 0;
+         return sd_mul(l, r);
+      }
+      v = sd_tidy(v);
    }
-   v = sd_tidy(v);
    if (o.l_free)
       sd_free(o.l);
    if (o.r_free)
@@ -1879,18 +1887,22 @@ sd_p sd_div_opts(sd_2_t o)
 
 sd_p sd_mod_opts(sd_mod_t o)
 {                               // modulo
-   sd_p l = o.l ? : &sd_zero;
-   sd_p r = o.r ? : &sd_zero;
-   sd_debugout("sd_mod", l, r, NULL);
-   sd_p v = sd_new(l, r);
-   sd_val_t *ad = smul(&v->failure, l->n, r->d ? : &one);
-   sd_val_t *bc = smul(&v->failure, l->d ? : &one, r->n);
-   v->d = smul(&v->failure, l->d ? : &one, r->d ? : &one);
- sd_val_t *n = sdiv(&v->failure, ad, bc, rem: &v->n, round:o.round ? : SD_ROUND_FLOOR);
-   freez(ad);
-   freez(bc);
-   freez(n);
-   v = sd_tidy(v);
+   sd_p v = NULL;
+   if (o.l && o.r)
+   {                            // either being null means answer is null, as null is seen as zero
+      sd_p l = o.l ? : &sd_zero;
+      sd_p r = o.r ? : &sd_zero;
+      sd_debugout("sd_mod", l, r, NULL);
+      v = sd_new(l, r);
+      sd_val_t *ad = smul(&v->failure, l->n, r->d ? : &one);
+      sd_val_t *bc = smul(&v->failure, l->d ? : &one, r->n);
+      v->d = smul(&v->failure, l->d ? : &one, r->d ? : &one);
+    sd_val_t *n = sdiv(&v->failure, ad, bc, rem: &v->n, round:o.round ? : SD_ROUND_FLOOR);
+      freez(ad);
+      freez(bc);
+      freez(n);
+      v = sd_tidy(v);
+   }
    if (o.l_free)
       sd_free(o.l);
    if (o.r_free)
