@@ -1715,7 +1715,8 @@ sd_p sd_abs_opts(sd_1_t o)
    if (!o.p_free)
       o.p = sd_copy(o.p);
    o.p->n->neg = 0;
-   o.p->d->neg = 0;
+   if (o.p->d)
+      o.p->d->neg = 0;
    return o.p;
 }
 
