@@ -284,7 +284,7 @@ sd_p sd_mod_opts(sd_mod_t);     // Modulo
 #define sd_cmp_fc(...) sd_cmp_opts((sd_cmp_t){__VA_ARGS__,l_free:1})
 #define sd_cmp_cf(...) sd_cmp_opts((sd_cmp_t){__VA_ARGS__,r_free:1})
 #define sd_cmp_ff(...) sd_cmp_opts((sd_cmp_t){__VA_ARGS__,l_free:1,r_free:1})
-#define sd_abs_cmp(...) sd_cmp_opts((sd_cmp_t){__VA_ARGS__})
+#define sd_abs_cmp(...) sd_cmp_opts((sd_cmp_t){__VA_ARGS__,abs:1})
 #define sd_abs_cmp_fc(...) sd_cmp_opts((sd_cmp_t){__VA_ARGS__,abs:1,l_free:1})
 #define sd_abs_cmp_cf(...) sd_cmp_opts((sd_cmp_t){__VA_ARGS__,abs:1,r_free:1})
 #define sd_abs_cmp_ff(...) sd_cmp_opts((sd_cmp_t){__VA_ARGS__,abs:1,l_free:1,r_free:1})
