@@ -1954,21 +1954,26 @@ sd_div_opts (sd_2_t o)
       sd_p l = o.l;
       sd_p r = o.r;
       sd_debugout ("sd_div", l, r, NULL);
-      v = sd_new (l, r);
       if (!l->d && !r->d)
       {                         // Simple - making a new rational
+         v = sd_new (l, r);
          v->n = copy (&v->failure, l->n);
          v->d = copy (&v->failure, r->n);
+         v = sd_tidy (v);
       } else
       {                         // Flip and multiply 
+         if (!o.r_free)
+         {
+            r = sd_copy (r);
+            o.r_free = 1;
+         }
          sd_val_t *t = r->n;
          r->n = r->d ? : copy (&v->failure, &one);
          r->d = t;
          r->n->neg = r->d->neg;
          r->d->neg = 0;
-         return sd_mul (l, r);
+         v = sd_mul (l, r);
       }
-      v = sd_tidy (v);
    }
    if (o.l_free)
       sd_free (o.l);
