@@ -1963,8 +1963,8 @@ sd_div_opts (sd_2_t o)
       } else
       {                         // Flip and multiply 
          if (!o.r_free)
-         {
-            r = sd_copy (r);
+         {                      // Copy as we are not freeing
+            o.r = r = sd_copy (r);
             o.r_free = 1;
          }
          sd_val_t *t = r->n;
