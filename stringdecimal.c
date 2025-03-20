@@ -1896,11 +1896,14 @@ sd_sub_opts (sd_2_t o)
 {                               // Subtract
    sd_p l = o.l ? : &sd_zero;
    sd_p r = o.r ? : &sd_zero;
+   if (!o.r || !o.r_free)
+   {                            // Copy as we are not freeing
+      o.r = r = sd_copy (r);
+      o.r_free = 1;
+   }
    if (r && r->n)
       r->n->neg ^= 1;
    sd_p v = sd_add (l, r);
-   if (r && r->n)
-      r->n->neg ^= 1;
    if (o.l_free)
       sd_free (o.l);
    if (o.r_free)
