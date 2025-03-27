@@ -2463,7 +2463,7 @@ main (int argc, const char *argv[])
    const char *format = "";
    const char *scomma = NULL;
    const char *spoint = NULL;
-   int places = 0;
+   int places = INT_MAX;
    int comma = 0;
    int nocomma = 0;
    int nofrac = 0;
@@ -2502,6 +2502,10 @@ main (int argc, const char *argv[])
          poptPrintUsage (optCon, stderr, 0);
          return -1;
       }
+      if (places == INT_MAX)
+         places = 0;
+      else if (!*format)
+         format = "-";
       if (scomma)
          sd_comma = *scomma;
       if (spoint)
